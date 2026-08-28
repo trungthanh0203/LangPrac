@@ -467,58 +467,70 @@ function parseCsvLine(line){
 document.getElementById("btn-import").addEventListener("click", async ()=>{
   const raw = document.getElementById("csv-input").value.trim();
   const resultEl = document.getElementById("import-result");
-  resultEl.className = "result-msg";
-  const missing = required.filter(r=>!headers.includes(r));
-  if(missing.length){ resultEl.className = "result-msg err"; resultEl.textContent = "Thiếu cột bắt buộc: " + missing.join(", "); return; }
-
-  const defaultLang = document.getElementById("csv-default-lang").value;
-  const hasLangCol = headers.includes("language");
-  const rows = [];
-  const errors = [];
-  for(let i=1;i<lines.length;i++){
-    const cols = parseCsvLine(lines[i]);
-    const obj = {};
-    headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
-    if(!hasLangCol || !obj.language){ obj.language = defaultLang; }
-    if(!obj.level || !obj.type || !obj.de_text || !obj.vi_meaning){
-      errors.push(`Dòng ${i+1}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
-      continue;
-    }
-    if(!LANGS_CFG[obj.language]){
-      errors.push(`Dòng ${i+1}: ngôn ngữ "${obj.language}" không có trong languages.json, đã bỏ qua.`);
-      continue;
-    }
-    if(!LANGS_CFG[obj.language].levels.some(lv=>lv.code===obj.level)){
-      errors.push(`Dòng ${i+1}: trình độ "${obj.level}" không hợp lệ cho ngôn ngữ "${obj.language}", đã bỏ qua.`);
-      continue;
-    }
-    if(!["word","sentence"].includes(obj.type)){
-      errors.push(`Dòng ${i+1}: loại "${obj.type}" không hợp lệ (phải là word/sentence), đã bỏ qua.`);
-      continue;
-    }
-    rows.push(obj);
-  }
-
-  if(rows.length === 0){
-    resultEl.className = "result-msg err";
-    resultEl.textContent = "Không có dòng nào hợp lệ để nhập.\n" + errors.join("\n");
-    return;
-  }
-
   const btn = document.getElementById("btn-import");
-  btn.disabled = true; btn.textContent = "Đang nhập...";
-  const { error, count } = await sb.from("vocab_items").insert(rows);
-  btn.disabled = false; btn.textContent = "Nhập vào hệ thống";
+  resultEl.className = "result-msg";
+  if(!raw){ return; }
 
-  if(error){
+  btn.disabled = true; btn.textContent = "Đang nhập...";
+  try {
+    const lines = raw.split(/\r?\n/).filter(l=>l.trim());
+    if(lines.length < 2){ resultEl.className = "result-msg err"; resultEl.textContent = "Cần ít nhất 1 dòng tiêu đề + 1 dòng dữ liệu."; return; }
+    const headers = parseCsvLine(lines[0]).map(h=>h.toLowerCase());
+    const required = ["level","type","de_text","vi_meaning"];
+    const missing = required.filter(r=>!headers.includes(r));
+    if(missing.length){ resultEl.className = "result-msg err"; resultEl.textContent = "Thiếu cột bắt buộc: " + missing.join(", "); return; }
+
+    const defaultLang = document.getElementById("csv-default-lang").value;
+    const hasLangCol = headers.includes("language");
+    const rows = [];
+    const errors = [];
+    for(let i=1;i<lines.length;i++){
+      const cols = parseCsvLine(lines[i]);
+      const obj = {};
+      headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+      if(!hasLangCol || !obj.language){ obj.language = defaultLang; }
+      if(!obj.level || !obj.type || !obj.de_text || !obj.vi_meaning){
+        errors.push(`Dòng ${i+1}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
+        continue;
+      }
+      if(!LANGS_CFG[obj.language]){
+        errors.push(`Dòng ${i+1}: ngôn ngữ "${obj.language}" không có trong languages.json, đã bỏ qua.`);
+        continue;
+      }
+      if(!LANGS_CFG[obj.language].levels.some(lv=>lv.code===obj.level)){
+        errors.push(`Dòng ${i+1}: trình độ "${obj.level}" không hợp lệ cho ngôn ngữ "${obj.language}", đã bỏ qua.`);
+        continue;
+      }
+      if(!["word","sentence"].includes(obj.type)){
+        errors.push(`Dòng ${i+1}: loại "${obj.type}" không hợp lệ (phải là word/sentence), đã bỏ qua.`);
+        continue;
+      }
+      rows.push(obj);
+    }
+
+    if(rows.length === 0){
+      resultEl.className = "result-msg err";
+      resultEl.textContent = "Không có dòng nào hợp lệ để nhập.\n" + errors.join("\n");
+      return;
+    }
+
+    const { error } = await sb.from("vocab_items").insert(rows);
+    if(error){
+      resultEl.className = "result-msg err";
+      resultEl.textContent = "Lỗi khi nhập: " + error.message;
+      return;
+    }
+    resultEl.className = "result-msg ok";
+    resultEl.textContent = `Đã nhập thành công ${rows.length} dòng.` + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
+    document.getElementById("csv-input").value = "";
+    await loadData();
+  } catch(err){
     resultEl.className = "result-msg err";
-    resultEl.textContent = "Lỗi khi nhập: " + error.message;
-    return;
+    resultEl.textContent = "Có lỗi bất ngờ xảy ra: " + (err && err.message ? err.message : String(err));
+    console.error(err);
+  } finally {
+    btn.disabled = false; btn.textContent = "Nhập vào hệ thống";
   }
-  resultEl.className = "result-msg ok";
-  resultEl.textContent = `Đã nhập thành công ${rows.length} dòng.` + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
-  document.getElementById("csv-input").value = "";
-  await loadData();
 });
 
 // ============================================================
@@ -682,89 +694,106 @@ document.getElementById("btn-add-ex").addEventListener("click", openAddEx);
 document.getElementById("btn-import-ex").addEventListener("click", async ()=>{
   const raw = document.getElementById("ex-csv-input").value.trim();
   const resultEl = document.getElementById("ex-import-result");
+  const btn = document.getElementById("btn-import-ex");
   resultEl.className = "result-msg";
-  const missing = required.filter(r=>!headers.includes(r));
-  if(missing.length){ resultEl.className = "result-msg err"; resultEl.textContent = "Thiếu cột bắt buộc: " + missing.join(", "); return; }
+  if(!raw){ return; }
 
-  const parsed = [];
-  const errors = [];
-  for(let i=1;i<lines.length;i++){
-    const cols = parseCsvLine(lines[i]);
-    const obj = {};
-    headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
-    if(!obj.language || !obj.level || !obj.type || !obj.question || !obj.correct_answer){
-      errors.push(`Dòng ${i+1}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
-      continue;
-    }
-    if(!LANGS_CFG[obj.language]){
-      errors.push(`Dòng ${i+1}: ngôn ngữ "${obj.language}" không có trong languages.json, đã bỏ qua.`);
-      continue;
-    }
-    if(!LANGS_CFG[obj.language].levels.some(lv=>lv.code===obj.level)){
-      errors.push(`Dòng ${i+1}: trình độ "${obj.level}" không hợp lệ cho ngôn ngữ "${obj.language}", đã bỏ qua.`);
-      continue;
-    }
-    if(!["multiple_choice","fill_blank"].includes(obj.type)){
-      errors.push(`Dòng ${i+1}: loại "${obj.type}" không hợp lệ (phải là multiple_choice/fill_blank), đã bỏ qua.`);
-      continue;
-    }
-    obj.order_index = parseInt(obj.order_index, 10) || (i);
-    parsed.push(obj);
-  }
+  btn.disabled = true; btn.textContent = "Đang nhập...";
+  try {
+    const lines = raw.split(/\r?\n/).filter(l=>l.trim());
+    if(lines.length < 2){ resultEl.className = "result-msg err"; resultEl.textContent = "Cần ít nhất 1 dòng tiêu đề + 1 dòng dữ liệu."; return; }
+    const headers = parseCsvLine(lines[0]).map(h=>h.toLowerCase());
+    const required = ["language","level","type","question","correct_answer"];
+    const missing = required.filter(r=>!headers.includes(r));
+    if(missing.length){ resultEl.className = "result-msg err"; resultEl.textContent = "Thiếu cột bắt buộc: " + missing.join(", "); return; }
 
-  if(parsed.length === 0){
-    resultEl.className = "result-msg err";
-    resultEl.textContent = "Không có dòng nào hợp lệ để nhập.\n" + errors.join("\n");
-    return;
-  }
+    const parsed = [];
+    const errors = [];
+    for(let i=1;i<lines.length;i++){
+      const cols = parseCsvLine(lines[i]);
+      const obj = {};
+      headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+      if(!obj.language || !obj.level || !obj.type || !obj.question || !obj.correct_answer){
+        errors.push(`Dòng ${i+1}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
+        continue;
+      }
+      if(!LANGS_CFG[obj.language]){
+        errors.push(`Dòng ${i+1}: ngôn ngữ "${obj.language}" không có trong languages.json, đã bỏ qua.`);
+        continue;
+      }
+      if(!LANGS_CFG[obj.language].levels.some(lv=>lv.code===obj.level)){
+        errors.push(`Dòng ${i+1}: trình độ "${obj.level}" không hợp lệ cho ngôn ngữ "${obj.language}", đã bỏ qua.`);
+        continue;
+      }
+      if(!["multiple_choice","fill_blank"].includes(obj.type)){
+        errors.push(`Dòng ${i+1}: loại "${obj.type}" không hợp lệ (phải là multiple_choice/fill_blank), đã bỏ qua.`);
+        continue;
+      }
+      obj.order_index = parseInt(obj.order_index, 10) || (i);
+      parsed.push(obj);
+    }
 
-  // Tra cứu lesson_id cho từng cặp (language, level) xuất hiện trong CSV
-  const pairs = Array.from(new Set(parsed.map(r => r.language + "|" + r.level)));
-  const lessonMap = {};
-  for(const pair of pairs){
-    const [language, level] = pair.split("|");
-    const { data } = await sb.from("grammar_lessons").select("id").eq("language", language).eq("level", level).maybeSingle();
-    if(data) lessonMap[pair] = data.id;
-  }
-
-  const rows = [];
-  parsed.forEach((obj, idx) => {
-    const pair = obj.language + "|" + obj.level;
-    if(!lessonMap[pair]){
-      errors.push(`Dòng dữ liệu #${idx+1} (${obj.language}/${obj.level}): chưa có bài học cho trình độ này — hãy tạo bài học trước, đã bỏ qua.`);
+    if(parsed.length === 0){
+      resultEl.className = "result-msg err";
+      resultEl.textContent = "Không có dòng nào hợp lệ để nhập.\n" + errors.join("\n");
       return;
     }
-    rows.push({
-      lesson_id: lessonMap[pair],
-      type: obj.type,
-      question: obj.question,
-      options: obj.options || "",
-      correct_answer: obj.correct_answer,
-      explanation: obj.explanation || "",
-      order_index: obj.order_index
+
+    // Tra cứu lesson_id cho từng cặp (language, level) xuất hiện trong CSV
+    const pairs = Array.from(new Set(parsed.map(r => r.language + "|" + r.level)));
+    const lessonMap = {};
+    for(const pair of pairs){
+      const [language, level] = pair.split("|");
+      const { data, error: lookupError } = await sb.from("grammar_lessons").select("id").eq("language", language).eq("level", level).maybeSingle();
+      if(lookupError){
+        resultEl.className = "result-msg err";
+        resultEl.textContent = `Lỗi khi tra cứu bài học (${language}/${level}): ${lookupError.message}`;
+        return;
+      }
+      if(data) lessonMap[pair] = data.id;
+    }
+
+    const rows = [];
+    parsed.forEach((obj, idx) => {
+      const pair = obj.language + "|" + obj.level;
+      if(!lessonMap[pair]){
+        errors.push(`Dòng dữ liệu #${idx+1} (${obj.language}/${obj.level}): chưa có bài học cho trình độ này — hãy tạo bài học trước, đã bỏ qua.`);
+        return;
+      }
+      rows.push({
+        lesson_id: lessonMap[pair],
+        type: obj.type,
+        question: obj.question,
+        options: obj.options || "",
+        correct_answer: obj.correct_answer,
+        explanation: obj.explanation || "",
+        order_index: obj.order_index
+      });
     });
-  });
 
-  if(rows.length === 0){
+    if(rows.length === 0){
+      resultEl.className = "result-msg err";
+      resultEl.textContent = "Không có dòng nào nhập được.\n" + errors.join("\n");
+      return;
+    }
+
+    const { error } = await sb.from("grammar_exercises").insert(rows);
+    if(error){
+      resultEl.className = "result-msg err";
+      resultEl.textContent = "Lỗi khi nhập: " + error.message;
+      return;
+    }
+    resultEl.className = "result-msg ok";
+    resultEl.textContent = `Đã nhập thành công ${rows.length} bài tập.` + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
+    document.getElementById("ex-csv-input").value = "";
+    if(CURRENT_LESSON) await loadExercises(CURRENT_LESSON.id);
+  } catch(err){
     resultEl.className = "result-msg err";
-    resultEl.textContent = "Không có dòng nào nhập được.\n" + errors.join("\n");
-    return;
+    resultEl.textContent = "Có lỗi bất ngờ xảy ra: " + (err && err.message ? err.message : String(err));
+    console.error(err);
+  } finally {
+    btn.disabled = false; btn.textContent = "Nhập vào hệ thống";
   }
-
-  const btn = document.getElementById("btn-import-ex");
-  btn.disabled = true; btn.textContent = "Đang nhập...";
-  const { error } = await sb.from("grammar_exercises").insert(rows);
-  btn.disabled = false; btn.textContent = "Nhập vào hệ thống";
-
-  if(error){
-    resultEl.className = "result-msg err";
-    resultEl.textContent = "Lỗi khi nhập: " + error.message;
-    return;
-  }
-  resultEl.className = "result-msg ok";
-  resultEl.textContent = `Đã nhập thành công ${rows.length} bài tập.` + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
-  document.getElementById("ex-csv-input").value = "";
-  if(CURRENT_LESSON) await loadExercises(CURRENT_LESSON.id);
 });
 </script>
 </body>
