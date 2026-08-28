@@ -467,12 +467,7 @@ function parseCsvLine(line){
 document.getElementById("btn-import").addEventListener("click", async ()=>{
   const raw = document.getElementById("csv-input").value.trim();
   const resultEl = document.getElementById("import-result");
-  resultEl.className = "result-msg"; resultEl.style.display = "none";
-  if(!raw){ return; }
-  const lines = raw.split(/\r?\n/).filter(l=>l.trim());
-  if(lines.length < 2){ resultEl.className = "result-msg err"; resultEl.textContent = "Cần ít nhất 1 dòng tiêu đề + 1 dòng dữ liệu."; return; }
-  const headers = parseCsvLine(lines[0]).map(h=>h.toLowerCase());
-  const required = ["level","type","de_text","vi_meaning"];
+  resultEl.className = "result-msg";
   const missing = required.filter(r=>!headers.includes(r));
   if(missing.length){ resultEl.className = "result-msg err"; resultEl.textContent = "Thiếu cột bắt buộc: " + missing.join(", "); return; }
 
@@ -687,12 +682,7 @@ document.getElementById("btn-add-ex").addEventListener("click", openAddEx);
 document.getElementById("btn-import-ex").addEventListener("click", async ()=>{
   const raw = document.getElementById("ex-csv-input").value.trim();
   const resultEl = document.getElementById("ex-import-result");
-  resultEl.className = "result-msg"; resultEl.style.display = "none";
-  if(!raw){ return; }
-  const lines = raw.split(/\r?\n/).filter(l=>l.trim());
-  if(lines.length < 2){ resultEl.className = "result-msg err"; resultEl.textContent = "Cần ít nhất 1 dòng tiêu đề + 1 dòng dữ liệu."; return; }
-  const headers = parseCsvLine(lines[0]).map(h=>h.toLowerCase());
-  const required = ["language","level","type","question","correct_answer"];
+  resultEl.className = "result-msg";
   const missing = required.filter(r=>!headers.includes(r));
   if(missing.length){ resultEl.className = "result-msg err"; resultEl.textContent = "Thiếu cột bắt buộc: " + missing.join(", "); return; }
 
