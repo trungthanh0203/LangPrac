@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Learn with Mr.Thanh</title>
 
-<!-- PWA: cho phép cài đặt lên điện thoại / máy tính -->
+<!-- PWA -->
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#142a4d" id="meta-theme-color">
+<meta name="theme-color" content="#0a2472" id="meta-theme-color">
 <link rel="icon" href="icons/icon-app-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon-app.png">
 <meta name="mobile-web-app-capable" content="yes">
@@ -18,8 +18,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 :root{
-  --navy:#142a4d; --navy2:#1f3864; --steel:#2e5395; --teal:#0ea5a0; --teal-light:#e3f6f5;
-  --word-font:Arial,sans-serif;
+  --navy:#0a2472; --navy2:#c8102e; --steel:#0a2472; --teal:#0a2472; --teal-light:#e7ecfa;
+  --word-font:"Trebuchet MS","Segoe UI",Arial,sans-serif;
   --amber:#f2994a; --amber-light:#fdf1e6; --red:#d64545; --red-light:#fdeaea;
   --green:#2f9e44; --green-light:#eaf7ec;
   --bg-page:#f2f4f7; --bg-card:#ffffff; --border:#e1e5eb;
@@ -27,16 +27,38 @@
   --radius:14px; --gap:16px; --shadow:0 1px 3px rgba(20,42,77,0.08);
 }
 *{box-sizing:border-box;}
-body{margin:0;font-family:Arial,"Segoe UI",sans-serif;background:var(--bg-page);color:var(--text-1);font-size:14px;transition:background .2s;}
+body{margin:0;font-family:Arial,"Segoe UI",sans-serif;background:var(--bg-page);color:var(--text-1);font-size:14px;}
 .wrap{max-width:900px;margin:0 auto;padding:20px;}
-header.top{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#fff;border-radius:var(--radius);padding:20px 24px 16px;margin-bottom:10px;text-align:center;transition:background .25s;}
+.hidden{display:none !important;}
+
+/* ---------- Đăng nhập / Đăng ký ---------- */
+.auth-wrap{max-width:420px;margin:60px auto;padding:20px;}
+.auth-card{background:var(--bg-card);border-radius:var(--radius);padding:28px 26px;box-shadow:var(--shadow);}
+.auth-card h2{margin:0 0 18px;text-align:center;color:var(--navy2);font-size:19px;}
+.auth-tabs{display:flex;gap:8px;margin-bottom:18px;}
+.auth-tabs button{flex:1;padding:10px;border-radius:8px;border:2px solid var(--border);background:#fff;font-size:13.5px;font-weight:700;color:var(--text-2);cursor:pointer;}
+.auth-tabs button.active{border-color:var(--navy2);color:var(--navy2);background:var(--teal-light);}
+.auth-field{margin-bottom:12px;}
+.auth-field label{display:block;font-size:12.5px;color:var(--text-2);margin-bottom:5px;}
+.auth-field input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;}
+.auth-submit{width:100%;padding:11px;border:none;border-radius:8px;background:var(--navy2);color:#fff;font-size:14.5px;font-weight:700;cursor:pointer;margin-top:6px;}
+.auth-submit:disabled{opacity:.6;cursor:not-allowed;}
+.auth-msg{margin-top:12px;font-size:12.5px;padding:10px 12px;border-radius:8px;display:none;}
+.auth-msg.err{display:block;background:var(--red-light);color:#a33;}
+.auth-msg.ok{display:block;background:var(--green-light);color:#2f7d3a;}
+
+/* ---------- Thanh người dùng ---------- */
+.user-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--bg-card);border-radius:10px;padding:10px 14px;margin-bottom:12px;box-shadow:var(--shadow);font-size:12.5px;}
+.user-bar .user-email{color:var(--text-2);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;}
+.user-bar .sep{color:var(--text-3);}
+.user-bar select{padding:6px 10px;border-radius:6px;border:1px solid var(--border);font-size:12.5px;background:#fff;font-weight:700;color:var(--navy2);}
+.user-bar .btn-logout{margin-left:auto;padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:#fff;font-size:12px;color:var(--text-2);cursor:pointer;}
+.user-bar .btn-logout:hover{border-color:var(--red);color:var(--red);}
+
+header.top{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#fff;border-radius:var(--radius);padding:20px 24px 16px;margin-bottom:10px;text-align:center;}
 header.top h1{font-size:21px;margin:0 0 4px;}
 header.top .sub{font-size:12.5px;color:rgba(255,255,255,0.7);}
 .flag-strip{height:6px;max-width:180px;margin:0 auto var(--gap);border-radius:3px;overflow:hidden;border:1px solid var(--border);}
-
-.lang-switch{display:flex;gap:10px;margin-bottom:var(--gap);flex-wrap:wrap;}
-.lang-switch button{flex:1;min-width:110px;padding:11px;border-radius:10px;border:2px solid var(--border);background:var(--bg-card);font-size:14px;font-weight:700;color:var(--text-2);cursor:pointer;}
-.lang-switch button.active{border-color:var(--navy2);color:var(--navy2);background:var(--teal-light);}
 
 .mode-tabs{display:flex;gap:10px;margin-bottom:var(--gap);}
 .mode-tabs button{flex:1;padding:12px;border-radius:10px;border:2px solid var(--border);background:var(--bg-card);font-size:14px;font-weight:700;color:var(--text-2);cursor:pointer;}
@@ -114,14 +136,48 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
   <div class="config-warning"><b>⚠️ Supabase chưa được cấu hình.</b> Điền SUPABASE_URL / SUPABASE_ANON_KEY ở đầu thẻ &lt;script&gt; trong file này.</div>
 </div>
 
-<div class="wrap" id="main-wrap" style="display:none;">
+<!-- ================= MÀN HÌNH ĐĂNG NHẬP / ĐĂNG KÝ ================= -->
+<div class="auth-wrap hidden" id="auth-screen">
+  <div class="auth-card">
+    <h2>Learn with Mr.Thanh</h2>
+    <div class="auth-tabs">
+      <button id="auth-tab-login" class="active">Đăng nhập</button>
+      <button id="auth-tab-register">Đăng ký</button>
+    </div>
+
+    <form id="login-form">
+      <div class="auth-field"><label>Email</label><input type="email" id="login-email" required autocomplete="email"></div>
+      <div class="auth-field"><label>Mật khẩu</label><input type="password" id="login-password" required autocomplete="current-password"></div>
+      <button type="submit" class="auth-submit" id="login-submit">Đăng nhập</button>
+      <div class="auth-msg" id="login-msg"></div>
+    </form>
+
+    <form id="register-form" class="hidden">
+      <div class="auth-field"><label>Email</label><input type="email" id="reg-email" required autocomplete="email"></div>
+      <div class="auth-field"><label>Mật khẩu (tối thiểu 6 ký tự)</label><input type="password" id="reg-password" required minlength="6" autocomplete="new-password"></div>
+      <div class="auth-field"><label>Nhập lại mật khẩu</label><input type="password" id="reg-password2" required autocomplete="new-password"></div>
+      <div class="auth-field"><label>Số điện thoại</label><input type="tel" id="reg-phone" required autocomplete="tel"></div>
+      <div class="auth-field"><label>Địa chỉ</label><input type="text" id="reg-address" required autocomplete="street-address"></div>
+      <button type="submit" class="auth-submit" id="register-submit">Đăng ký</button>
+      <div class="auth-msg" id="register-msg"></div>
+    </form>
+  </div>
+</div>
+
+<!-- ================= APP CHÍNH (chỉ hiện sau khi đăng nhập) ================= -->
+<div class="wrap hidden" id="main-wrap">
+  <div class="user-bar" id="user-bar">
+    <span class="user-email" id="user-email-label"></span>
+    <span class="sep">·</span>
+    <select id="lang-select"></select>
+    <button class="btn-logout" id="btn-logout">Đăng xuất</button>
+  </div>
+
   <header class="top">
     <h1 id="header-title"></h1>
     <div class="sub" id="header-sub"></div>
   </header>
   <div class="flag-strip" id="flag-strip"></div>
-
-  <div class="lang-switch" id="lang-switch"></div>
 
   <div class="mode-tabs">
     <button id="tab-flash" class="active"></button>
@@ -157,6 +213,7 @@ if(SUPABASE_URL.includes("YOUR-PROJECT") || SUPABASE_ANON_KEY.includes("YOUR-ANO
 }
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+let THEME = {};
 let LANGS = {};
 let LANG_ORDER = [];
 let currentLanguage = null;
@@ -166,40 +223,31 @@ let type = "word";
 let topic = "all";
 let items = [];
 let flashIndex = 0;
+let CURRENT_USER = null;
+let CURRENT_PROFILE = null;
 
 function L(){ return LANGS[currentLanguage]; }
-
-function fmt(str, vars){
-  return str.replace(/\{(\w+)\}/g, (_, k) => (vars[k] !== undefined ? vars[k] : ""));
-}
-
+function fmt(str, vars){ return str.replace(/\{(\w+)\}/g, (_, k) => (vars[k] !== undefined ? vars[k] : "")); }
 function shuffle(arr){
   const a = [...arr];
-  for(let i=a.length-1;i>0;i--){
-    const j = Math.floor(Math.random()*(i+1));
-    [a[i],a[j]] = [a[j],a[i]];
-  }
+  for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; }
   return a;
 }
 
-async function init(){
-  try{
-    const res = await fetch("languages.json");
-    LANGS = await res.json();
-  } catch(err){
-    document.getElementById("content-area").innerHTML =
-      '<div class="empty-msg">Không tải được languages.json: ' + err.message + '</div>';
-    document.getElementById("main-wrap").style.display = "block";
-    return;
-  }
+// ============================================================
+// Khởi động: nạp cấu hình ngôn ngữ, rồi kiểm tra phiên đăng nhập
+// ============================================================
+async function boot(){
+  const res = await fetch("languages.json");
+  const cfg = await res.json();
+  THEME = cfg.theme;
+  LANGS = cfg.languages;
   LANG_ORDER = Object.keys(LANGS);
-  currentLanguage = LANG_ORDER[0];
-  level = LANGS[currentLanguage].levels[0].code;
+  applyGlobalTheme();
 
-  buildLangSwitch();
-  document.getElementById("main-wrap").style.display = "block";
-  applyLanguageUI();
-  loadItems();
+  const { data: { session } } = await sb.auth.getSession();
+  if(session){ await enterApp(session.user); }
+  else { showAuthScreen(); }
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
@@ -208,44 +256,145 @@ async function init(){
   }
 }
 
-function buildLangSwitch(){
-  const wrap = document.getElementById("lang-switch");
-  wrap.innerHTML = "";
-  LANG_ORDER.forEach(code=>{
-    const btn = document.createElement("button");
-    btn.id = "lang-" + code;
-    btn.textContent = LANGS[code].switchLabel;
-    if(code === currentLanguage) btn.classList.add("active");
-    btn.addEventListener("click", ()=>{
-      if(currentLanguage !== code){ currentLanguage = code; onLanguageChange(); }
-    });
-    wrap.appendChild(btn);
-  });
-}
-
-function applyLanguageUI(){
-  const cfg = L();
-  const u = cfg.ui;
-
-  document.title = u.pageTitle;
-  document.getElementById("meta-theme-color").setAttribute("content", cfg.theme.navy);
-  document.getElementById("meta-apple-title").setAttribute("content", u.appleTitle);
-
+function applyGlobalTheme(){
   const root = document.body.style;
-  root.setProperty("--navy", cfg.theme.navy);
-  root.setProperty("--navy2", cfg.theme.navy2);
-  root.setProperty("--steel", cfg.theme.steel);
-  root.setProperty("--teal", cfg.theme.teal);
-  root.setProperty("--teal-light", cfg.theme.tealLight);
-  root.setProperty("--word-font", cfg.wordFontFamily);
+  root.setProperty("--navy", THEME.navy);
+  root.setProperty("--navy2", THEME.navy2);
+  root.setProperty("--steel", THEME.steel);
+  root.setProperty("--teal", THEME.teal);
+  root.setProperty("--teal-light", THEME.tealLight);
+  root.setProperty("--word-font", THEME.wordFontFamily);
+  document.getElementById("meta-theme-color").setAttribute("content", THEME.navy);
 
-  const colors = cfg.flagStripeColors;
+  const colors = THEME.flagStripeColors;
   const stops = colors.map((c,i)=>{
     const from = (i/colors.length*100).toFixed(1);
     const to = ((i+1)/colors.length*100).toFixed(1);
     return `${c} ${from}%, ${c} ${to}%`;
   }).join(", ");
   document.getElementById("flag-strip").style.background = `linear-gradient(90deg, ${stops})`;
+}
+
+// ============================================================
+// Đăng nhập / Đăng ký
+// ============================================================
+function showAuthScreen(){
+  document.getElementById("main-wrap").classList.add("hidden");
+  document.getElementById("auth-screen").classList.remove("hidden");
+}
+
+document.getElementById("auth-tab-login").addEventListener("click", ()=>{
+  document.getElementById("auth-tab-login").classList.add("active");
+  document.getElementById("auth-tab-register").classList.remove("active");
+  document.getElementById("login-form").classList.remove("hidden");
+  document.getElementById("register-form").classList.add("hidden");
+});
+document.getElementById("auth-tab-register").addEventListener("click", ()=>{
+  document.getElementById("auth-tab-register").classList.add("active");
+  document.getElementById("auth-tab-login").classList.remove("active");
+  document.getElementById("register-form").classList.remove("hidden");
+  document.getElementById("login-form").classList.add("hidden");
+});
+
+document.getElementById("login-form").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const msg = document.getElementById("login-msg");
+  msg.className = "auth-msg";
+  const btn = document.getElementById("login-submit");
+  btn.disabled = true; btn.textContent = "Đang đăng nhập...";
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value;
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  btn.disabled = false; btn.textContent = "Đăng nhập";
+  if(error){ msg.className = "auth-msg err"; msg.textContent = error.message; return; }
+  await enterApp(data.user);
+});
+
+document.getElementById("register-form").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const msg = document.getElementById("register-msg");
+  msg.className = "auth-msg";
+  const email = document.getElementById("reg-email").value.trim();
+  const password = document.getElementById("reg-password").value;
+  const password2 = document.getElementById("reg-password2").value;
+  const phone = document.getElementById("reg-phone").value.trim();
+  const address = document.getElementById("reg-address").value.trim();
+
+  if(password !== password2){ msg.className = "auth-msg err"; msg.textContent = "Mật khẩu nhập lại không khớp."; return; }
+
+  const btn = document.getElementById("register-submit");
+  btn.disabled = true; btn.textContent = "Đang đăng ký...";
+  const { data, error } = await sb.auth.signUp({
+    email, password,
+    options: { data: { phone, address } }
+  });
+  btn.disabled = false; btn.textContent = "Đăng ký";
+  if(error){ msg.className = "auth-msg err"; msg.textContent = error.message; return; }
+
+  if(data.session){
+    // Email confirmation đang TẮT ở Supabase -> có phiên đăng nhập ngay
+    await enterApp(data.user);
+  } else {
+    // Email confirmation đang BẬT -> cần xác nhận email trước khi đăng nhập được
+    msg.className = "auth-msg ok";
+    msg.textContent = "Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản trước khi đăng nhập.";
+    document.getElementById("register-form").reset();
+  }
+});
+
+document.getElementById("btn-logout").addEventListener("click", async ()=>{
+  await sb.auth.signOut();
+  CURRENT_USER = null; CURRENT_PROFILE = null;
+  document.getElementById("main-wrap").classList.add("hidden");
+  document.getElementById("login-form").reset();
+  showAuthScreen();
+});
+
+async function enterApp(user){
+  CURRENT_USER = user;
+  const { data: profile } = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
+  CURRENT_PROFILE = profile;
+
+  document.getElementById("auth-screen").classList.add("hidden");
+  document.getElementById("main-wrap").classList.remove("hidden");
+  document.getElementById("user-email-label").textContent = user.email;
+
+  buildLangSelect();
+  currentLanguage = (profile && profile.selected_language && LANGS[profile.selected_language])
+    ? profile.selected_language
+    : LANG_ORDER[0];
+  document.getElementById("lang-select").value = currentLanguage;
+  level = LANGS[currentLanguage].levels[0].code;
+
+  applyLanguageUI();
+  loadItems();
+}
+
+function buildLangSelect(){
+  const sel = document.getElementById("lang-select");
+  sel.innerHTML = LANG_ORDER.map(code=>`<option value="${code}">${LANGS[code].switchLabel}</option>`).join("");
+  sel.addEventListener("change", onLanguageSelectChange);
+}
+
+async function onLanguageSelectChange(e){
+  currentLanguage = e.target.value;
+  applyLanguageUI();
+  loadItems();
+  // Lưu lại lựa chọn ngôn ngữ cho lần đăng nhập sau
+  if(CURRENT_USER){
+    await sb.from("profiles").update({ selected_language: currentLanguage }).eq("id", CURRENT_USER.id);
+  }
+}
+
+// ============================================================
+// Áp dụng nhãn/trình độ theo ngôn ngữ đang chọn (màu sắc KHÔNG đổi theo ngôn ngữ nữa)
+// ============================================================
+function applyLanguageUI(){
+  const cfg = L();
+  const u = cfg.ui;
+
+  document.title = u.pageTitle;
+  document.getElementById("meta-apple-title").setAttribute("content", u.appleTitle);
 
   document.getElementById("header-title").textContent = u.headerTitle;
   document.getElementById("header-sub").textContent = u.headerSub;
@@ -262,15 +411,7 @@ function applyLanguageUI(){
   level = cfg.levels.some(lv=>lv.code===prevLevel) ? prevLevel : cfg.levels[0].code;
   levelSel.value = level;
 
-  LANG_ORDER.forEach(code=>{
-    document.getElementById("lang-"+code).classList.toggle("active", code === currentLanguage);
-  });
   setActiveTab();
-}
-
-function onLanguageChange(){
-  applyLanguageUI();
-  if(mode === "grammar"){ loadGrammar(); } else { loadItems(); }
 }
 
 document.getElementById("tab-flash").addEventListener("click", ()=>{ mode="flash"; setActiveTab(); loadItems(); });
@@ -305,12 +446,7 @@ async function loadItems(){
   allLoadedItems = data || [];
   populateTopics();
   applyTopicFilter();
-  if(mode === "flash"){
-    flashIndex = 0;
-    renderFlash();
-  } else {
-    startGameRound();
-  }
+  if(mode === "flash"){ flashIndex = 0; renderFlash(); } else { startGameRound(); }
 }
 
 function populateTopics(){
@@ -329,10 +465,7 @@ function applyTopicFilter(){
 
 function renderFlash(){
   const area = document.getElementById("content-area");
-  if(items.length === 0){
-    area.innerHTML = `<div class="empty-msg">${L().ui.emptyVocab}</div>`;
-    return;
-  }
+  if(items.length === 0){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyVocab}</div>`; return; }
   if(flashIndex >= items.length) flashIndex = 0;
   const it = items[flashIndex];
   area.innerHTML = `
@@ -367,10 +500,7 @@ let selectedLeftId = null;
 let matchedIds = new Set();
 
 function startGameRound(){
-  if(items.length === 0){
-    document.getElementById("content-area").innerHTML = `<div class="empty-msg">${L().ui.emptyVocab}</div>`;
-    return;
-  }
+  if(items.length === 0){ document.getElementById("content-area").innerHTML = `<div class="empty-msg">${L().ui.emptyVocab}</div>`; return; }
   gamePool = shuffle(items);
   nextBatch();
 }
@@ -411,9 +541,7 @@ function renderGame(){
     div.className = "game-item" + (matchedIds.has(it.id) ? " matched" : "") + (selectedLeftId===it.id ? " selected" : "");
     div.textContent = it.de_text;
     div.dataset.id = it.id;
-    if(!matchedIds.has(it.id)){
-      div.addEventListener("click", ()=> onLeftClick(it.id));
-    }
+    if(!matchedIds.has(it.id)){ div.addEventListener("click", ()=> onLeftClick(it.id)); }
     colLeft.appendChild(div);
   });
 
@@ -422,37 +550,25 @@ function renderGame(){
     div.className = "game-item" + (matchedIds.has(it.id) ? " matched" : "");
     div.textContent = it.vi_meaning;
     div.dataset.id = it.id;
-    if(!matchedIds.has(it.id)){
-      div.addEventListener("click", ()=> onRightClick(it.id));
-    }
+    if(!matchedIds.has(it.id)){ div.addEventListener("click", ()=> onRightClick(it.id)); }
     colRight.appendChild(div);
   });
 }
 
-function onLeftClick(id){
-  selectedLeftId = (selectedLeftId === id) ? null : id;
-  renderGame();
-}
+function onLeftClick(id){ selectedLeftId = (selectedLeftId === id) ? null : id; renderGame(); }
 
 function onRightClick(rightId){
   if(selectedLeftId === null) return;
   if(selectedLeftId === rightId){
     matchedIds.add(rightId);
     selectedLeftId = null;
-    if(matchedIds.size === gameBatch.length){
-      setTimeout(nextBatch, 500);
-    } else {
-      renderGame();
-    }
+    if(matchedIds.size === gameBatch.length){ setTimeout(nextBatch, 500); } else { renderGame(); }
   } else {
     const leftEl = document.querySelector(`#col-left [data-id="${selectedLeftId}"]`);
     const rightEl = document.querySelector(`#col-right [data-id="${rightId}"]`);
     if(leftEl) leftEl.classList.add("wrong");
     if(rightEl) rightEl.classList.add("wrong");
-    setTimeout(()=>{
-      selectedLeftId = null;
-      renderGame();
-    }, 500);
+    setTimeout(()=>{ selectedLeftId = null; renderGame(); }, 500);
   }
 }
 
@@ -466,13 +582,8 @@ function formatGrammarContent(text){
   let current = null;
   lines.forEach(line=>{
     const trimmed = line.trim();
-    if(trimmed.startsWith('## ')){
-      current = { title: trimmed.slice(3).trim(), lines: [] };
-      sections.push(current);
-    } else {
-      if(!current){ current = { title: '', lines: [] }; sections.push(current); }
-      current.lines.push(line);
-    }
+    if(trimmed.startsWith('## ')){ current = { title: trimmed.slice(3).trim(), lines: [] }; sections.push(current); }
+    else { if(!current){ current = { title: '', lines: [] }; sections.push(current); } current.lines.push(line); }
   });
   return sections.map((sec, idx)=>{
     const bodyHtml = formatBlockLines(sec.lines);
@@ -490,10 +601,7 @@ function formatBlockLines(lines){
     let html = '', listBuf = [], textBuf = [];
     const flushList = ()=>{ if(listBuf.length){ html += '<ul>' + listBuf.map(l=>`<li>${escHtml(l.slice(2))}</li>`).join('') + '</ul>'; listBuf = []; } };
     const flushText = ()=>{ if(textBuf.length){ html += '<p>' + textBuf.map(escHtml).join('<br>') + '</p>'; textBuf = []; } };
-    ls.forEach(l=>{
-      if(l.startsWith('- ')){ flushText(); listBuf.push(l); }
-      else { flushList(); textBuf.push(l); }
-    });
+    ls.forEach(l=>{ if(l.startsWith('- ')){ flushText(); listBuf.push(l); } else { flushList(); textBuf.push(l); } });
     flushList(); flushText();
     return html;
   }).join('');
@@ -504,10 +612,7 @@ async function loadGrammar(){
   area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
   const { data: lessonData, error: lessonError } = await sb.from("grammar_lessons").select("*").eq("language", currentLanguage).eq("level", level).maybeSingle();
   if(lessonError){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${lessonError.message}</div>`; return; }
-  if(!lessonData){
-    area.innerHTML = `<div class="empty-msg">${L().ui.emptyGrammar}</div>`;
-    return;
-  }
+  if(!lessonData){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyGrammar}</div>`; return; }
   const { data: exData, error: exError } = await sb.from("grammar_exercises").select("*").eq("lesson_id", lessonData.id).order("order_index");
   if(exError){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${exError.message}</div>`; return; }
   renderGrammar(lessonData, shuffle(exData || []));
@@ -520,10 +625,7 @@ function renderGrammar(lesson, exs){
     let inputHtml;
     if(ex.type === "multiple_choice"){
       const opts = (ex.options || "").split(",").map(o=>o.trim()).filter(Boolean);
-      inputHtml = opts.map(o=>`
-        <label class="exercise-option">
-          <input type="radio" name="ex-${ex.id}" value="${escHtml(o)}"> ${escHtml(o)}
-        </label>`).join("");
+      inputHtml = opts.map(o=>`<label class="exercise-option"><input type="radio" name="ex-${ex.id}" value="${escHtml(o)}"> ${escHtml(o)}</label>`).join("");
     } else {
       inputHtml = `<input type="text" class="exercise-input" id="input-${ex.id}" placeholder="${u.fillPlaceholder}">`;
     }
@@ -552,9 +654,7 @@ function renderGrammar(lesson, exs){
   if(btnCheck) btnCheck.addEventListener("click", ()=> checkGrammarAnswers(exs));
 }
 
-function normalizeAnswer(s){
-  return String(s||"").trim().toLowerCase().replace(/\s+/g," ");
-}
+function normalizeAnswer(s){ return String(s||"").trim().toLowerCase().replace(/\s+/g," "); }
 
 function checkGrammarAnswers(exs){
   const u = L().ui;
@@ -582,7 +682,7 @@ function checkGrammarAnswers(exs){
   if(scoreEl) scoreEl.textContent = fmt(u.scoreLabel, {correct: correctCount, total: exs.length});
 }
 
-init();
+boot();
 </script>
 </body>
 </html>

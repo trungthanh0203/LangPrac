@@ -1,138 +1,188 @@
 {
-  "de": {
-    "code": "de",
-    "flagEmoji": "🇩🇪",
-    "switchLabel": "🇩🇪 Deutsch",
-    "speechLang": "de-DE",
-    "wordFontFamily": "Georgia, \"Times New Roman\", serif",
-    "theme": {
-      "navy": "#1a1a1a",
-      "navy2": "#8c1c1c",
-      "steel": "#c8a13c",
-      "teal": "#c8a13c",
-      "tealLight": "#faf3df"
-    },
-    "flagStripeColors": [
-      "#1a1a1a",
-      "#c8102e",
-      "#d4a017"
-    ],
-    "levels": [
-      {
-        "code": "A1",
-        "label": "A1"
-      },
-      {
-        "code": "A2",
-        "label": "A2"
-      },
-      {
-        "code": "B1",
-        "label": "B1"
-      },
-      {
-        "code": "B2",
-        "label": "B2"
-      },
-      {
-        "code": "Cons",
-        "label": "Baufachsprache"
-      }
-    ],
-    "ui": {
-      "pageTitle": "Deutsch Learn with Mr.Thanh",
-      "appleTitle": "Deutsch",
-      "headerTitle": "🇩🇪 Deutsch lernen mit Mr.Thanh",
-      "headerSub": "Wortschatz & Beispielsätze für die Niveaus A1 – B2 sowie Baufachsprache",
-      "tabFlash": "📇 Wortschatz lernen",
-      "tabGame": "🎯 Zuordnungsspiel",
-      "tabGrammar": "📘 Grammatik",
-      "optWord": "Wörter",
-      "optSentence": "Sätze",
-      "optAllTopics": "Alle Themen",
-      "loading": "Wird geladen…",
-      "errorPrefix": "Fehler beim Laden der Daten: ",
-      "emptyVocab": "Für diese Auswahl sind noch keine Daten vorhanden.",
-      "emptyGrammar": "Für dieses Niveau ist noch keine Grammatiklektion vorhanden.",
-      "speakTitle": "Aussprache anhören",
-      "gameComplete": "🎉 Alle Wörter geschafft!",
-      "gameCompleteSub": "Du hast alle {n} Einträge auf Niveau {level} geübt.",
-      "restartBtn": "Von vorne üben",
-      "gameProgress": "Noch {remain} Einträge nach dieser Runde · {matched}/{total} zugeordnet",
-      "exerciseHeading": "Übungen",
-      "checkBtn": "Antworten prüfen",
-      "correctMsg": "Richtig!",
-      "wrongPrefix": "Falsch. Richtige Antwort: ",
-      "scoreLabel": "Ergebnis: {correct} / {total} richtig",
-      "fillPlaceholder": "Ihre Antwort",
-      "footer": "Lerninhalte verwaltet von Mr.Thanh Tran.<br>Kontakt: Tel: +84.0989099454 - E-Mail: trungthanh0203@gmail.com"
-    },
-    "adminLabel": "🇩🇪 Tiếng Đức"
-  },
-  "en": {
-    "code": "en",
-    "flagEmoji": "🇬🇧",
-    "switchLabel": "🇬🇧 English",
-    "speechLang": "en-US",
+  "theme": {
+    "navy": "#0a2472",
+    "navy2": "#c8102e",
+    "steel": "#0a2472",
+    "teal": "#0a2472",
+    "tealLight": "#e7ecfa",
     "wordFontFamily": "\"Trebuchet MS\", \"Segoe UI\", Arial, sans-serif",
-    "theme": {
-      "navy": "#0a2472",
-      "navy2": "#c8102e",
-      "steel": "#0a2472",
-      "teal": "#0a2472",
-      "tealLight": "#e7ecfa"
-    },
     "flagStripeColors": [
       "#0a2472",
       "#ffffff",
       "#c8102e"
-    ],
-    "levels": [
-      {
-        "code": "A1",
-        "label": "A1"
+    ]
+  },
+  "languages": {
+    "de": {
+      "code": "de",
+      "flagEmoji": "🇩🇪",
+      "switchLabel": "🇩🇪 Deutsch",
+      "speechLang": "de-DE",
+      "levels": [
+        {
+          "code": "A1",
+          "label": "A1"
+        },
+        {
+          "code": "A2",
+          "label": "A2"
+        },
+        {
+          "code": "B1",
+          "label": "B1"
+        },
+        {
+          "code": "B2",
+          "label": "B2"
+        },
+        {
+          "code": "Cons",
+          "label": "Baufachsprache"
+        }
+      ],
+      "ui": {
+        "pageTitle": "Deutsch Learn with Mr.Thanh",
+        "appleTitle": "Deutsch",
+        "headerTitle": "🇩🇪 Deutsch lernen mit Mr.Thanh",
+        "headerSub": "Wortschatz & Beispielsätze für die Niveaus A1 – B2 sowie Baufachsprache",
+        "tabFlash": "📇 Wortschatz lernen",
+        "tabGame": "🎯 Zuordnungsspiel",
+        "tabGrammar": "📘 Grammatik",
+        "optWord": "Wörter",
+        "optSentence": "Sätze",
+        "optAllTopics": "Alle Themen",
+        "loading": "Wird geladen…",
+        "errorPrefix": "Fehler beim Laden der Daten: ",
+        "emptyVocab": "Für diese Auswahl sind noch keine Daten vorhanden.",
+        "emptyGrammar": "Für dieses Niveau ist noch keine Grammatiklektion vorhanden.",
+        "speakTitle": "Aussprache anhören",
+        "gameComplete": "🎉 Alle Wörter geschafft!",
+        "gameCompleteSub": "Du hast alle {n} Einträge auf Niveau {level} geübt.",
+        "restartBtn": "Von vorne üben",
+        "gameProgress": "Noch {remain} Einträge nach dieser Runde · {matched}/{total} zugeordnet",
+        "exerciseHeading": "Übungen",
+        "checkBtn": "Antworten prüfen",
+        "correctMsg": "Richtig!",
+        "wrongPrefix": "Falsch. Richtige Antwort: ",
+        "scoreLabel": "Ergebnis: {correct} / {total} richtig",
+        "fillPlaceholder": "Ihre Antwort",
+        "footer": "Lerninhalte verwaltet von Mr.Thanh Tran.<br>Kontakt: Tel: +84.0989099454 - E-Mail: trungthanh0203@gmail.com"
       },
-      {
-        "code": "A2",
-        "label": "A2"
-      },
-      {
-        "code": "B1",
-        "label": "B1"
-      },
-      {
-        "code": "B2",
-        "label": "B2"
-      }
-    ],
-    "ui": {
-      "pageTitle": "English Learn with Mr.Thanh",
-      "appleTitle": "English",
-      "headerTitle": "🇬🇧 Learn English with Mr.Thanh",
-      "headerSub": "Common vocabulary & example sentences for levels A1 – B2, organized by topic",
-      "tabFlash": "📇 Learn Vocabulary",
-      "tabGame": "🎯 Matching Game",
-      "tabGrammar": "📘 Grammar",
-      "optWord": "Words",
-      "optSentence": "Sentences",
-      "optAllTopics": "All Topics",
-      "loading": "Loading…",
-      "errorPrefix": "Error loading data: ",
-      "emptyVocab": "No data available for this selection yet.",
-      "emptyGrammar": "No grammar lesson available for this level yet.",
-      "speakTitle": "Listen to pronunciation",
-      "gameComplete": "🎉 You've completed the whole set!",
-      "gameCompleteSub": "You have practiced all {n} items at level {level}.",
-      "restartBtn": "Practice Again",
-      "gameProgress": "{remain} items left after this round · Matched {matched}/{total}",
-      "exerciseHeading": "Exercises",
-      "checkBtn": "Check Answers",
-      "correctMsg": "Correct!",
-      "wrongPrefix": "Incorrect. Correct answer: ",
-      "scoreLabel": "Score: {correct} / {total} correct",
-      "fillPlaceholder": "Your answer",
-      "footer": "Learning content managed by Mr.Thanh Tran.<br>Contact: Tel: +84.0989099454 - Email: trungthanh0203@gmail.com"
+      "adminLabel": "🇩🇪 Tiếng Đức"
     },
-    "adminLabel": "🇬🇧 Tiếng Anh"
+    "en": {
+      "code": "en",
+      "flagEmoji": "🇬🇧",
+      "switchLabel": "🇬🇧 English",
+      "speechLang": "en-US",
+      "levels": [
+        {
+          "code": "A1",
+          "label": "A1"
+        },
+        {
+          "code": "A2",
+          "label": "A2"
+        },
+        {
+          "code": "B1",
+          "label": "B1"
+        },
+        {
+          "code": "B2",
+          "label": "B2"
+        }
+      ],
+      "ui": {
+        "pageTitle": "English Learn with Mr.Thanh",
+        "appleTitle": "English",
+        "headerTitle": "🇬🇧 Learn English with Mr.Thanh",
+        "headerSub": "Common vocabulary & example sentences for levels A1 – B2, organized by topic",
+        "tabFlash": "📇 Learn Vocabulary",
+        "tabGame": "🎯 Matching Game",
+        "tabGrammar": "📘 Grammar",
+        "optWord": "Words",
+        "optSentence": "Sentences",
+        "optAllTopics": "All Topics",
+        "loading": "Loading…",
+        "errorPrefix": "Error loading data: ",
+        "emptyVocab": "No data available for this selection yet.",
+        "emptyGrammar": "No grammar lesson available for this level yet.",
+        "speakTitle": "Listen to pronunciation",
+        "gameComplete": "🎉 You've completed the whole set!",
+        "gameCompleteSub": "You have practiced all {n} items at level {level}.",
+        "restartBtn": "Practice Again",
+        "gameProgress": "{remain} items left after this round · Matched {matched}/{total}",
+        "exerciseHeading": "Exercises",
+        "checkBtn": "Check Answers",
+        "correctMsg": "Correct!",
+        "wrongPrefix": "Incorrect. Correct answer: ",
+        "scoreLabel": "Score: {correct} / {total} correct",
+        "fillPlaceholder": "Your answer",
+        "footer": "Learning content managed by Mr.Thanh Tran.<br>Contact: Tel: +84.0989099454 - Email: trungthanh0203@gmail.com"
+      },
+      "adminLabel": "🇬🇧 Tiếng Anh"
+    },
+    "zh": {
+      "code": "zh",
+      "flagEmoji": "🇨🇳",
+      "switchLabel": "🇨🇳 中文",
+      "speechLang": "zh-CN",
+      "levels": [
+        {
+          "code": "HSK1",
+          "label": "HSK 1"
+        },
+        {
+          "code": "HSK2",
+          "label": "HSK 2"
+        },
+        {
+          "code": "HSK3",
+          "label": "HSK 3"
+        },
+        {
+          "code": "HSK4",
+          "label": "HSK 4"
+        },
+        {
+          "code": "HSK5",
+          "label": "HSK 5"
+        },
+        {
+          "code": "HSK6",
+          "label": "HSK 6"
+        }
+      ],
+      "ui": {
+        "pageTitle": "中文 Learn with Mr.Thanh",
+        "appleTitle": "中文",
+        "headerTitle": "🇨🇳 跟Mr.Thanh学中文",
+        "headerSub": "HSK 1-6 词汇、例句与语法练习",
+        "tabFlash": "📇 学习词汇",
+        "tabGame": "🎯 配对游戏",
+        "tabGrammar": "📘 语法",
+        "optWord": "单词",
+        "optSentence": "例句",
+        "optAllTopics": "所有主题",
+        "loading": "加载中…",
+        "errorPrefix": "加载数据出错：",
+        "emptyVocab": "该选择暂无数据。",
+        "emptyGrammar": "该级别暂无语法课程。",
+        "speakTitle": "听发音",
+        "gameComplete": "🎉 全部完成！",
+        "gameCompleteSub": "你已经练习了 {level} 级别的全部 {n} 个内容。",
+        "restartBtn": "重新开始",
+        "gameProgress": "本轮结束后还剩 {remain} 个 · 已配对 {matched}/{total}",
+        "exerciseHeading": "练习",
+        "checkBtn": "检查答案",
+        "correctMsg": "回答正确！",
+        "wrongPrefix": "回答错误。正确答案：",
+        "scoreLabel": "得分：{correct} / {total}",
+        "fillPlaceholder": "请输入答案",
+        "footer": "学习内容由 Mr.Thanh Tran 管理。<br>联系方式：电话 +84.0989099454 - 邮箱 trungthanh0203@gmail.com"
+      },
+      "adminLabel": "🇨🇳 Tiếng Trung (HSK)"
+    }
   }
 }
