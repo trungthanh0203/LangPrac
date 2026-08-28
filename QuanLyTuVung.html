@@ -173,6 +173,20 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
         <span id="lesson-status" style="margin-left:10px;font-size:12.5px;color:var(--text-2);"></span>
       </div>
 
+      <div class="card">
+        <h3>Nhập nhanh nhiều bài học từ CSV (dùng khi có sẵn nhiều trình độ, vd HSK1-6)</h3>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">
+          Cấu trúc cột (đúng thứ tự, có dòng tiêu đề): <code>language,level,title,content</code><br>
+          &bull; Mỗi dòng là 1 bài học đầy đủ — nếu ngôn ngữ + trình độ đã có bài học từ trước, dòng mới sẽ <b>ghi đè</b> lên bài cũ.<br>
+          &bull; Đây là file <b>khác</b> với "Nhập nhanh bài tập từ CSV" ở dưới — file bài học có cột <code>title,content</code>, file bài tập có cột <code>type,question,correct_answer</code>. Dán nhầm ô sẽ báo lỗi "Thiếu cột bắt buộc".
+        </div>
+        <textarea id="lesson-csv-input" placeholder='language,level,title,content&#10;zh,HSK2,"Thì hoàn thành...","## Trợ từ...&#10;..."'></textarea>
+        <div style="margin-top:10px;">
+          <button class="btn btn-primary" id="btn-import-lesson">Nhập vào hệ thống</button>
+        </div>
+        <div class="result-msg" id="lesson-import-result"></div>
+      </div>
+
       <div class="card" id="exercises-card" style="display:none;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
           <h3 style="margin:0;">Bài tập (<span id="ex-count">0</span>)</h3>
@@ -464,6 +478,28 @@ function parseCsvLine(line){
   return out.map(s=>s.trim());
 }
 
+// Phân tích CSV đầy đủ, hiểu được các trường dữ liệu chứa xuống dòng thật bên trong
+// dấu ngoặc kép (vd cột "content" của bài học ngữ pháp có nhiều đoạn/nhiều mục).
+// Dùng hàm này thay cho parseCsvLine bất cứ khi nào 1 cột có thể chứa nhiều dòng.
+function parseCsvRows(text){
+  const rows = []; let row = []; let field = ""; let inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(inQuotes){
+      if(c === '"'){ if(text[i+1] === '"'){ field += '"'; i++; } else { inQuotes = false; } }
+      else field += c;
+    } else {
+      if(c === '"') inQuotes = true;
+      else if(c === ','){ row.push(field); field = ""; }
+      else if(c === '\r'){ /* bỏ qua, xử lý ở \n */ }
+      else if(c === '\n'){ row.push(field); rows.push(row); row = []; field = ""; }
+      else field += c;
+    }
+  }
+  if(field.length > 0 || row.length > 0){ row.push(field); rows.push(row); }
+  return rows.map(r => r.map(s => s.trim())).filter(r => !(r.length === 1 && r[0] === ""));
+}
+
 document.getElementById("btn-import").addEventListener("click", async ()=>{
   const raw = document.getElementById("csv-input").value.trim();
   const resultEl = document.getElementById("import-result");
@@ -687,6 +723,71 @@ function wireExForm(record){
   };
 }
 document.getElementById("btn-add-ex").addEventListener("click", openAddEx);
+
+// ============================================================
+// Nhập nhanh nhiều bài học từ CSV
+// ============================================================
+document.getElementById("btn-import-lesson").addEventListener("click", async ()=>{
+  const raw = document.getElementById("lesson-csv-input").value.trim();
+  const resultEl = document.getElementById("lesson-import-result");
+  resultEl.className = "result-msg";
+  if(!raw){ return; }
+
+  const btn = document.getElementById("btn-import-lesson");
+  btn.disabled = true; btn.textContent = "Đang nhập...";
+  try {
+    const allRows = parseCsvRows(raw);
+    if(allRows.length < 2){ resultEl.className = "result-msg err"; resultEl.textContent = "Cần ít nhất 1 dòng tiêu đề + 1 dòng dữ liệu."; return; }
+    const headers = allRows[0].map(h=>h.toLowerCase());
+    const required = ["language","level","title","content"];
+    const missing = required.filter(r=>!headers.includes(r));
+    if(missing.length){ resultEl.className = "result-msg err"; resultEl.textContent = "Thiếu cột bắt buộc: " + missing.join(", "); return; }
+
+    const rows = [];
+    const errors = [];
+    for(let i=1;i<allRows.length;i++){
+      const cols = allRows[i];
+      const obj = {};
+      headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+      if(!obj.language || !obj.level || !obj.title || !obj.content){
+        errors.push(`Dòng dữ liệu #${i}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
+        continue;
+      }
+      if(!LANGS_CFG[obj.language]){
+        errors.push(`Dòng dữ liệu #${i}: ngôn ngữ "${obj.language}" không có trong languages.json, đã bỏ qua.`);
+        continue;
+      }
+      if(!LANGS_CFG[obj.language].levels.some(lv=>lv.code===obj.level)){
+        errors.push(`Dòng dữ liệu #${i}: trình độ "${obj.level}" không hợp lệ cho ngôn ngữ "${obj.language}", đã bỏ qua.`);
+        continue;
+      }
+      rows.push({ language: obj.language, level: obj.level, title: obj.title, content: obj.content });
+    }
+
+    if(rows.length === 0){
+      resultEl.className = "result-msg err";
+      resultEl.textContent = "Không có dòng nào hợp lệ để nhập.\n" + errors.join("\n");
+      return;
+    }
+
+    const { error } = await sb.from("grammar_lessons").upsert(rows, { onConflict: "language,level" });
+    if(error){
+      resultEl.className = "result-msg err";
+      resultEl.textContent = "Lỗi khi nhập: " + error.message;
+      return;
+    }
+    resultEl.className = "result-msg ok";
+    resultEl.textContent = `Đã nhập/ghi đè thành công ${rows.length} bài học.` + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
+    document.getElementById("lesson-csv-input").value = "";
+    // Nếu bài học vừa nhập trùng đúng ngôn ngữ/trình độ đang xem thì tải lại luôn
+    await loadLesson();
+  } catch(err) {
+    resultEl.className = "result-msg err";
+    resultEl.textContent = "Có lỗi bất ngờ xảy ra: " + err.message;
+  } finally {
+    btn.disabled = false; btn.textContent = "Nhập vào hệ thống";
+  }
+});
 
 // ============================================================
 // Nhập nhanh bài tập từ CSV
