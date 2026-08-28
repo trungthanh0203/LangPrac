@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BG Wind – Quản lý Từ vựng Đức & Anh</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+:root{
+  --navy:#142a4d; --navy2:#1f3864; --steel:#2e5395; --teal:#0ea5a0; --teal-light:#e3f6f5;
+  --amber:#f2994a; --amber-light:#fdf1e6; --red:#d64545; --red-light:#fdeaea;
+  --green:#2f9e44; --green-light:#eaf7ec;
+  --bg-page:#f2f4f7; --bg-card:#ffffff; --border:#e1e5eb;
+  --text-1:#1a2332; --text-2:#5b6472; --text-3:#8a92a0;
+  --radius:10px; --gap:16px; --shadow:0 1px 3px rgba(20,42,77,0.08);
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:Arial,"Segoe UI",sans-serif;background:var(--bg-page);color:var(--text-1);font-size:14px;}
+.wrap{max-width:1200px;margin:0 auto;padding:20px;}
+header.top{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#fff;border-radius:var(--radius);padding:20px 24px;margin-bottom:var(--gap);display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;}
+header.top h1{font-size:20px;margin:0 0 4px;font-weight:700;}
+header.top .sub{font-size:12.5px;color:rgba(255,255,255,0.7);}
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.filters select,.filters input[type=text]{padding:7px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.12);color:#fff;font-size:12.5px;}
+.filters select option{color:#1a2332;}
+.btn{padding:8px 16px;border-radius:6px;border:none;font-size:13px;font-weight:600;cursor:pointer;}
+.btn-primary{background:var(--teal);color:#fff;}
+.btn-outline{background:transparent;border:1px solid rgba(255,255,255,0.4);color:#fff;}
+.btn-ghost{background:var(--bg-card);border:1px solid var(--border);color:var(--text-1);}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.card{background:var(--bg-card);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);margin-bottom:var(--gap);}
+.card h3{font-size:14px;margin:0 0 10px;}
+.table-wrap{overflow-x:auto;max-height:520px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;}
+table{width:100%;border-collapse:collapse;font-size:12.5px;}
+thead th{position:sticky;top:0;background:var(--navy2);color:#fff;text-align:left;padding:9px 12px;font-weight:600;white-space:nowrap;}
+tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
+tbody tr:hover{background:var(--teal-light);}
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;background:var(--bg-page);color:var(--text-2);}
+.btn-sm{padding:4px 10px;font-size:11.5px;border-radius:5px;border:1px solid var(--border);background:#fff;cursor:pointer;margin-right:4px;}
+.btn-sm.danger{color:var(--red);border-color:var(--red-light);}
+textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border);border-radius:8px;font-family:monospace;font-size:12px;}
+.overlay{display:none;position:fixed;inset:0;background:rgba(20,30,48,0.55);z-index:50;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px;}
+.overlay.show{display:flex;}
+.modal{background:#fff;border-radius:12px;width:100%;max-width:560px;padding:24px 28px;box-shadow:0 12px 40px rgba(0,0,0,.25);}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-3);}
+.field-row{margin-bottom:12px;}
+.field-row label{display:block;font-size:11.5px;color:var(--text-2);margin-bottom:4px;font-weight:600;}
+.field-row input,.field-row select,.field-row textarea{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);}
+.login-screen{min-height:80vh;display:flex;align-items:center;justify-content:center;}
+.login-card{background:var(--bg-card);border-radius:14px;box-shadow:0 8px 30px rgba(20,42,77,0.12);padding:36px 32px;width:100%;max-width:380px;}
+.login-card h1{font-size:19px;margin:0 0 4px;color:var(--navy2);}
+.login-card label{display:block;font-size:12px;font-weight:600;color:var(--text-2);margin:14px 0 6px;}
+.login-card input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;}
+.login-card .btn-primary{width:100%;margin-top:22px;padding:11px;}
+.login-error{background:var(--red-light);color:var(--red);font-size:12.5px;padding:9px 12px;border-radius:8px;margin-top:14px;display:none;}
+.denied-box{max-width:480px;margin:60px auto;text-align:center;background:var(--bg-card);border-radius:var(--radius);padding:36px 28px;box-shadow:var(--shadow);}
+.loading-msg{text-align:center;padding:40px;color:var(--text-3);}
+.result-msg{font-size:12.5px;margin-top:10px;padding:10px 12px;border-radius:8px;display:none;}
+.result-msg.ok{background:var(--green-light);color:var(--green);display:block;}
+.result-msg.err{background:var(--red-light);color:var(--red);display:block;white-space:pre-wrap;}
+.config-warning{max-width:600px;margin:60px auto;background:var(--amber-light);color:#8a5a15;padding:20px 24px;border-radius:10px;font-size:13px;line-height:1.6;}
+.section-tabs{display:flex;gap:10px;margin-bottom:var(--gap);}
+.section-tabs button{flex:1;padding:12px;border-radius:10px;border:2px solid var(--border);background:var(--bg-card);font-size:13.5px;font-weight:700;color:var(--text-2);cursor:pointer;}
+.section-tabs button.active{border-color:var(--teal);color:var(--teal);background:var(--teal-light);}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="config-warning" style="display:none;">
+  <div class="config-warning"><b>⚠️ Chưa cấu hình Supabase.</b> Điền SUPABASE_URL / SUPABASE_ANON_KEY ở đầu thẻ &lt;script&gt; trong file này.</div>
+</div>
+
+<div class="wrap" id="login-screen" style="display:none;">
+  <div class="login-screen">
+    <div class="login-card">
+      <h1>Quản lý Từ vựng – Đăng nhập</h1>
+      <div style="font-size:12.5px;color:var(--text-2);">Tài khoản quản trị viên (độc lập, không liên quan hệ thống Nhân sự)</div>
+      <form id="login-form">
+        <label>Email</label>
+        <input type="email" id="login-email" required>
+        <label>Mật khẩu</label>
+        <input type="password" id="login-password" required>
+        <button class="btn btn-primary" type="submit" id="login-btn">Đăng nhập</button>
+        <div class="login-error" id="login-error"></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="wrap" id="denied-screen" style="display:none;">
+  <div class="denied-box">
+    <h2>Không có quyền truy cập</h2>
+    <p style="color:var(--text-2);font-size:13.5px;">Tài khoản của bạn chưa được cấp quyền quản trị. Liên hệ người phụ trách để được thêm vào danh sách quản trị viên.</p>
+    <button class="btn btn-ghost" id="btn-logout-denied">Đăng xuất</button>
+  </div>
+</div>
+
+<div class="wrap" id="main-wrap" style="display:none;">
+  <header class="top">
+    <div>
+      <h1>Quản lý Từ vựng & Ngữ pháp Đa ngôn ngữ</h1>
+      <div class="sub">Quản trị chung dữ liệu cho trang học: index.html — thêm ngôn ngữ mới trong languages.json</div>
+    </div>
+    <div class="filters">
+      <select id="f-language"><option value="all">Tất cả ngôn ngữ</option></select>
+      <select id="f-level"><option value="all">Tất cả trình độ</option></select>
+      <select id="f-type"><option value="all">Tất cả loại</option><option value="word">Từ</option><option value="sentence">Câu</option></select>
+      <input type="text" id="f-search" placeholder="Tìm kiếm...">
+      <button class="btn btn-outline" id="btn-logout">Đăng xuất</button>
+    </div>
+  </header>
+
+  <div id="loading" class="loading-msg">Đang tải…</div>
+
+  <div id="app" style="display:none;">
+    <div class="section-tabs">
+      <button id="sec-vocab" class="active">📚 Từ vựng</button>
+      <button id="sec-grammar">📘 Ngữ pháp</button>
+    </div>
+
+    <div id="vocab-section">
+    <div class="card">
+      <h3>Nhập nhanh từ file CSV</h3>
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">
+        Cấu trúc cột (đúng thứ tự, có dòng tiêu đề): <code>level,type,language,de_text,phonetic,vi_meaning,en_meaning,category</code><br>
+        &bull; <b>language</b>: mã ngôn ngữ trong <code>languages.json</code> (vd: <code>de</code>, <code>en</code>...). Nếu bỏ trống cột này / không có cột này, hệ thống sẽ dùng ngôn ngữ mặc định chọn bên dưới cho toàn bộ các dòng.<br>
+        &bull; <b>de_text</b>: nội dung từ/câu — dùng chung cho mọi ngôn ngữ (tên cột giữ nguyên từ bản đầu, không còn nghĩa là "tiếng Đức").<br>
+        &bull; <b>level</b>: mã trình độ đúng theo ngôn ngữ đã chọn (vd tiếng Đức/Anh dùng A1/A2/B1/B2, ngôn ngữ khác có thể dùng thang riêng như HSK1-HSK6) — xem danh sách hợp lệ trong <code>languages.json</code>.<br>
+        Mở file CSV bằng Notepad, copy toàn bộ nội dung, dán vào ô bên dưới.
+      </div>
+      <div class="field-row" style="max-width:260px;">
+        <label>Ngôn ngữ mặc định (khi CSV không có cột language)</label>
+        <select id="csv-default-lang"></select>
+      </div>
+      <textarea id="csv-input" placeholder="level,type,language,de_text,phonetic,vi_meaning,en_meaning,category&#10;A1,word,de,der Beton,[deːɐ̯ beˈtɔŋ],bê tông,concrete,Vật liệu&#10;A1,word,en,concrete,,bê tông,,Materials"></textarea>
+      <div style="margin-top:10px;">
+        <button class="btn btn-primary" id="btn-import">Nhập vào hệ thống</button>
+      </div>
+      <div class="result-msg" id="import-result"></div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <h3 style="margin:0;">Danh sách từ vựng / câu mẫu (<span id="result-count">0</span>)</h3>
+        <button class="btn btn-primary" id="btn-add">+ Thêm 1 mục</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Ngôn ngữ</th><th>Trình độ</th><th>Loại</th><th>Từ / Câu</th><th>Phiên âm</th><th>Nghĩa VI</th><th>Nghĩa EN</th><th>Chủ đề</th><th></th>
+          </tr></thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </div>
+    </div>
+
+    <div id="grammar-section" style="display:none;">
+      <div class="card">
+        <h3>Bài học ngữ pháp (1 bài / ngôn ngữ / trình độ)</h3>
+        <div class="filters" style="margin-bottom:14px;">
+          <select id="g-language" style="color:var(--text-1);background:#fff;border:1px solid var(--border);"></select>
+          <select id="g-level" style="color:var(--text-1);background:#fff;border:1px solid var(--border);"></select>
+        </div>
+        <div class="field-row"><label>Tiêu đề bài học</label><input id="g-title" placeholder="Vd: Präsens & Grundlagen des Satzbaus"></div>
+        <div class="field-row">
+          <label>Nội dung giải thích — dùng dòng bắt đầu bằng "## " để tạo 1 mục mới (sẽ tự động đánh số 1, 2, 3...); trong mỗi mục, để 1 dòng trống ngăn đoạn văn, dòng bắt đầu bằng "- " sẽ hiển thị thành gạch đầu dòng</label>
+          <textarea id="g-content" style="min-height:260px;" placeholder="## Tên mục thứ nhất&#10;Đoạn giải thích...&#10;- Gạch đầu dòng 1&#10;- Gạch đầu dòng 2&#10;&#10;## Tên mục thứ hai&#10;Đoạn giải thích tiếp theo..."></textarea>
+        </div>
+        <button class="btn btn-primary" id="btn-save-lesson">Lưu bài học</button>
+        <span id="lesson-status" style="margin-left:10px;font-size:12.5px;color:var(--text-2);"></span>
+      </div>
+
+      <div class="card" id="exercises-card" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <h3 style="margin:0;">Bài tập (<span id="ex-count">0</span>)</h3>
+          <button class="btn btn-primary" id="btn-add-ex">+ Thêm bài tập</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Loại</th><th>Câu hỏi</th><th>Đáp án đúng</th><th></th></tr></thead>
+            <tbody id="ex-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Nhập nhanh bài tập từ CSV</h3>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">
+          Cấu trúc cột (đúng thứ tự, có dòng tiêu đề): <code>language,level,type,question,options,correct_answer,explanation,order_index</code><br>
+          &bull; <b>type</b>: <code>multiple_choice</code> hoặc <code>fill_blank</code>.<br>
+          &bull; <b>options</b>: các lựa chọn cách nhau bởi dấu phẩy — chỉ cần với multiple_choice, để trống với fill_blank.<br>
+          &bull; Bài học tương ứng (đúng ngôn ngữ + trình độ) phải được tạo/lưu ở phần trên trước — nếu chưa có, dòng đó sẽ bị bỏ qua kèm thông báo lỗi.
+        </div>
+        <textarea id="ex-csv-input" placeholder='language,level,type,question,options,correct_answer,explanation,order_index&#10;de,A1,multiple_choice,Ich ___ Deutsch.,"lerne,lernst,lernt,lernen",lerne,,1&#10;de,A1,fill_blank,Er ___ (sein) mein Bruder.,,ist,,2'></textarea>
+        <div style="margin-top:10px;">
+          <button class="btn btn-primary" id="btn-import-ex">Nhập vào hệ thống</button>
+        </div>
+        <div class="result-msg" id="ex-import-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+
+<script>
+const SUPABASE_URL = "https://vuykuqmebmainyhiotfx.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_8Ro-jEFQqFh7EfbXPfzWaw_V1xrkoyU";
+
+if(SUPABASE_URL.includes("YOUR-PROJECT") || SUPABASE_ANON_KEY.includes("YOUR-ANON")){
+  document.getElementById("config-warning").style.display = "block";
+  throw new Error("Chưa cấu hình Supabase");
+}
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let ME = null;
+let ITEMS = [];
+let filters = { language:"all", level:"all", type:"all", search:"" };
+
+// ============================================================
+// Cấu hình ngôn ngữ nạp động từ languages.json — thêm ngôn ngữ mới
+// chỉ cần thêm 1 khối JSON ở đó, trang quản trị này tự nhận diện.
+// ============================================================
+let LANGS_CFG = {};
+let LANGS_ORDER = [];
+
+async function loadLanguagesConfig(){
+  const res = await fetch("languages.json");
+  LANGS_CFG = await res.json();
+  LANGS_ORDER = Object.keys(LANGS_CFG);
+  buildLanguageDropdowns();
+}
+
+function allLevelsUnion(){
+  const seen = new Map();
+  LANGS_ORDER.forEach(code=>{
+    LANGS_CFG[code].levels.forEach(lv=>{ if(!seen.has(lv.code)) seen.set(lv.code, lv.label); });
+  });
+  return Array.from(seen.entries()).map(([code,label])=>({code,label}));
+}
+
+function buildLanguageDropdowns(){
+  // Bộ lọc ngôn ngữ (bảng danh sách từ vựng)
+  const fLang = document.getElementById("f-language");
+  fLang.innerHTML = '<option value="all">Tất cả ngôn ngữ</option>' +
+    LANGS_ORDER.map(code=>`<option value="${code}">${LANGS_CFG[code].adminLabel}</option>`).join("");
+  rebuildLevelFilterOptions();
+
+  // Ngôn ngữ mặc định cho CSV
+  document.getElementById("csv-default-lang").innerHTML =
+    LANGS_ORDER.map(code=>`<option value="${code}">${LANGS_CFG[code].adminLabel}</option>`).join("");
+
+  // Bộ chọn ngôn ngữ/trình độ trong phần Ngữ pháp
+  const gLang = document.getElementById("g-language");
+  gLang.innerHTML = LANGS_ORDER.map(code=>`<option value="${code}">${LANGS_CFG[code].adminLabel}</option>`).join("");
+  rebuildGLevelOptions();
+}
+
+function rebuildLevelFilterOptions(){
+  const sel = document.getElementById("f-level");
+  const levels = filters.language === "all" ? allLevelsUnion() : (LANGS_CFG[filters.language]?.levels || []);
+  const prev = filters.level;
+  sel.innerHTML = '<option value="all">Tất cả trình độ</option>' + levels.map(lv=>`<option value="${lv.code}">${lv.label}</option>`).join("");
+  filters.level = levels.some(lv=>lv.code===prev) ? prev : "all";
+  sel.value = filters.level;
+}
+
+function rebuildGLevelOptions(){
+  const lang = document.getElementById("g-language").value;
+  const sel = document.getElementById("g-level");
+  const levels = LANGS_CFG[lang]?.levels || [];
+  sel.innerHTML = levels.map(lv=>`<option value="${lv.code}">${lv.label}</option>`).join("");
+}
+
+loadLanguagesConfig();
+
+function showScreen(name){
+  document.getElementById("login-screen").style.display = name==="login" ? "block" : "none";
+  document.getElementById("denied-screen").style.display = name==="denied" ? "block" : "none";
+  document.getElementById("main-wrap").style.display = name==="main" ? "block" : "none";
+}
+
+document.getElementById("login-form").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value;
+  const err = document.getElementById("login-error");
+  err.style.display = "none";
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){ err.textContent = error.message; err.style.display = "block"; return; }
+  await afterLogin();
+});
+document.getElementById("btn-logout").addEventListener("click", doLogout);
+document.getElementById("btn-logout-denied").addEventListener("click", doLogout);
+async function doLogout(){ await sb.auth.signOut(); ME = null; showScreen("login"); }
+
+async function afterLogin(){
+  const { data: { user } } = await sb.auth.getUser();
+  if(!user){ showScreen("login"); return; }
+  const { data: adminRow } = await sb.from("admins").select("user_id").eq("user_id", user.id).limit(1);
+  if(!adminRow || !adminRow.length){ showScreen("denied"); return; }
+  showScreen("main");
+  loadData();
+}
+(async function(){
+  const { data: { session } } = await sb.auth.getSession();
+  if(session) await afterLogin(); else showScreen("login");
+})();
+
+document.getElementById("f-language").addEventListener("change", e=>{ filters.language = e.target.value; rebuildLevelFilterOptions(); renderTable(); });
+document.getElementById("f-level").addEventListener("change", e=>{ filters.level = e.target.value; renderTable(); });
+document.getElementById("f-type").addEventListener("change", e=>{ filters.type = e.target.value; renderTable(); });
+document.getElementById("f-search").addEventListener("input", e=>{ filters.search = e.target.value.trim().toLowerCase(); renderTable(); });
+
+async function loadData(){
+  document.getElementById("loading").style.display = "block";
+  document.getElementById("app").style.display = "none";
+  const { data, error } = await sb.from("vocab_items").select("*").order("level").order("id");
+  if(error){ document.getElementById("loading").textContent = "Lỗi: " + error.message; return; }
+  ITEMS = data || [];
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  renderTable();
+}
+
+function getFiltered(){
+  return ITEMS.filter(r=>{
+    if(filters.language!=="all" && r.language!==filters.language) return false;
+    if(filters.level!=="all" && r.level!==filters.level) return false;
+    if(filters.type!=="all" && r.type!==filters.type) return false;
+    if(filters.search){
+      const hay = `${r.de_text||''} ${r.vi_meaning||''} ${r.en_meaning||''} ${r.category||''}`.toLowerCase();
+      if(!hay.includes(filters.search)) return false;
+    }
+    return true;
+  });
+}
+
+function renderTable(){
+  const data = getFiltered();
+  document.getElementById("result-count").textContent = data.length;
+  document.getElementById("table-body").innerHTML = data.map(r=>{
+    const langCfg = LANGS_CFG[r.language];
+    const langBadge = langCfg ? `${langCfg.flagEmoji} ${r.language.toUpperCase()}` : r.language;
+    const levelLabel = langCfg?.levels.find(lv=>lv.code===r.level)?.label || r.level;
+    return `
+    <tr>
+      <td><span class="badge">${langBadge}</span></td>
+      <td><span class="badge">${levelLabel}</span></td>
+      <td>${r.type==='word'?'Từ':'Câu'}</td>
+      <td>${r.de_text}</td>
+      <td>${r.phonetic||''}</td>
+      <td>${r.vi_meaning}</td>
+      <td>${r.en_meaning||''}</td>
+      <td>${r.category||''}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-sm" onclick="openEdit(${r.id})">Sửa</button>
+        <button class="btn-sm danger" onclick="deleteItem(${r.id})">Xoá</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+function fieldForm(record){
+  const defaultLang = LANGS_ORDER[0];
+  const r = record || {language:defaultLang, level:LANGS_CFG[defaultLang].levels[0].code, type:"word", de_text:"", phonetic:"", vi_meaning:"", en_meaning:"", category:""};
+  const levelsForLang = (LANGS_CFG[r.language]?.levels) || [];
+  return `
+    <div class="field-row"><label>Ngôn ngữ</label>
+      <select data-f="language">
+        ${LANGS_ORDER.map(code=>`<option value="${code}" ${code===r.language?"selected":""}>${LANGS_CFG[code].adminLabel}</option>`).join("")}
+      </select>
+    </div>
+    <div class="field-row"><label>Trình độ</label>
+      <select data-f="level">${levelsForLang.map(lv=>`<option value="${lv.code}" ${lv.code===r.level?"selected":""}>${lv.label}</option>`).join("")}</select>
+    </div>
+    <div class="field-row"><label>Loại</label>
+      <select data-f="type">
+        <option value="word" ${r.type==='word'?"selected":""}>Từ</option>
+        <option value="sentence" ${r.type==='sentence'?"selected":""}>Câu</option>
+      </select>
+    </div>
+    <div class="field-row"><label>Từ / Câu (theo đúng ngôn ngữ đã chọn ở trên)</label><input data-f="de_text" value="${r.de_text||''}"></div>
+    <div class="field-row"><label>Phiên âm (IPA/Pinyin...)</label><input data-f="phonetic" value="${r.phonetic||''}"></div>
+    <div class="field-row"><label>Nghĩa tiếng Việt</label><input data-f="vi_meaning" value="${r.vi_meaning||''}"></div>
+    <div class="field-row"><label>Nghĩa tiếng Anh (ghi chú thêm, không bắt buộc)</label><input data-f="en_meaning" value="${r.en_meaning||''}"></div>
+    <div class="field-row"><label>Chủ đề (tuỳ chọn)</label><input data-f="category" value="${r.category||''}"></div>
+  `;
+}
+
+function openAdd(){
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Thêm từ vựng / câu mẫu</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="item-form">${fieldForm(null)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Thêm</button></div>
+    </form>`;
+  wireItemForm(null);
+}
+window.openEdit = function(id){
+  const record = ITEMS.find(i=>i.id===id);
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Sửa từ vựng / câu mẫu</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="item-form">${fieldForm(record)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Lưu</button></div>
+    </form>`;
+  wireItemForm(record);
+};
+window.deleteItem = async function(id){
+  if(!confirm("Xoá mục này?")) return;
+  const { error } = await sb.from("vocab_items").delete().eq("id", id);
+  if(error){ alert("Lỗi: " + error.message); return; }
+  await loadData();
+};
+
+function wireItemForm(record){
+  document.getElementById("overlay").classList.add("show");
+  document.getElementById("m-close").onclick = closeModal;
+  document.getElementById("m-cancel").onclick = closeModal;
+  const form = document.getElementById("item-form");
+  const langSel = form.querySelector('[data-f="language"]');
+  const levelSel = form.querySelector('[data-f="level"]');
+  langSel.addEventListener("change", ()=>{
+    const levels = LANGS_CFG[langSel.value]?.levels || [];
+    levelSel.innerHTML = levels.map(lv=>`<option value="${lv.code}">${lv.label}</option>`).join("");
+  });
+  document.getElementById("item-form").onsubmit = async (e)=>{
+    e.preventDefault();
+    const form = e.target;
+    const payload = {};
+    form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+    let error;
+    if(record){
+      ({ error } = await sb.from("vocab_items").update(payload).eq("id", record.id));
+    } else {
+      ({ error } = await sb.from("vocab_items").insert(payload));
+    }
+    if(error){ alert("Lỗi: " + error.message); return; }
+    closeModal();
+    await loadData();
+  };
+}
+function closeModal(){ document.getElementById("overlay").classList.remove("show"); }
+document.getElementById("overlay").addEventListener("click", e=>{ if(e.target.id==="overlay") closeModal(); });
+document.getElementById("btn-add").addEventListener("click", openAdd);
+
+// ---------- Nhập CSV hàng loạt ----------
+function parseCsvLine(line){
+  const out = []; let cur = ""; let inQuotes = false;
+  for(let i=0;i<line.length;i++){
+    const c = line[i];
+    if(inQuotes){
+      if(c === '"'){ if(line[i+1] === '"'){ cur += '"'; i++; } else { inQuotes = false; } }
+      else cur += c;
+    } else {
+      if(c === '"') inQuotes = true;
+      else if(c === ','){ out.push(cur); cur = ""; }
+      else cur += c;
+    }
+  }
+  out.push(cur);
+  return out.map(s=>s.trim());
+}
+
+document.getElementById("btn-import").addEventListener("click", async ()=>{
+  const raw = document.getElementById("csv-input").value.trim();
+  const resultEl = document.getElementById("import-result");
+  resultEl.className = "result-msg"; resultEl.style.display = "none";
+  if(!raw){ return; }
+  const lines = raw.split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length < 2){ resultEl.className = "result-msg err"; resultEl.textContent = "Cần ít nhất 1 dòng tiêu đề + 1 dòng dữ liệu."; return; }
+  const headers = parseCsvLine(lines[0]).map(h=>h.toLowerCase());
+  const required = ["level","type","de_text","vi_meaning"];
+  const missing = required.filter(r=>!headers.includes(r));
+  if(missing.length){ resultEl.className = "result-msg err"; resultEl.textContent = "Thiếu cột bắt buộc: " + missing.join(", "); return; }
+
+  const defaultLang = document.getElementById("csv-default-lang").value;
+  const hasLangCol = headers.includes("language");
+  const rows = [];
+  const errors = [];
+  for(let i=1;i<lines.length;i++){
+    const cols = parseCsvLine(lines[i]);
+    const obj = {};
+    headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+    if(!hasLangCol || !obj.language){ obj.language = defaultLang; }
+    if(!obj.level || !obj.type || !obj.de_text || !obj.vi_meaning){
+      errors.push(`Dòng ${i+1}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
+      continue;
+    }
+    if(!LANGS_CFG[obj.language]){
+      errors.push(`Dòng ${i+1}: ngôn ngữ "${obj.language}" không có trong languages.json, đã bỏ qua.`);
+      continue;
+    }
+    if(!LANGS_CFG[obj.language].levels.some(lv=>lv.code===obj.level)){
+      errors.push(`Dòng ${i+1}: trình độ "${obj.level}" không hợp lệ cho ngôn ngữ "${obj.language}", đã bỏ qua.`);
+      continue;
+    }
+    if(!["word","sentence"].includes(obj.type)){
+      errors.push(`Dòng ${i+1}: loại "${obj.type}" không hợp lệ (phải là word/sentence), đã bỏ qua.`);
+      continue;
+    }
+    rows.push(obj);
+  }
+
+  if(rows.length === 0){
+    resultEl.className = "result-msg err";
+    resultEl.textContent = "Không có dòng nào hợp lệ để nhập.\n" + errors.join("\n");
+    return;
+  }
+
+  const btn = document.getElementById("btn-import");
+  btn.disabled = true; btn.textContent = "Đang nhập...";
+  const { error, count } = await sb.from("vocab_items").insert(rows);
+  btn.disabled = false; btn.textContent = "Nhập vào hệ thống";
+
+  if(error){
+    resultEl.className = "result-msg err";
+    resultEl.textContent = "Lỗi khi nhập: " + error.message;
+    return;
+  }
+  resultEl.className = "result-msg ok";
+  resultEl.textContent = `Đã nhập thành công ${rows.length} dòng.` + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
+  document.getElementById("csv-input").value = "";
+  await loadData();
+});
+
+// ============================================================
+// Chuyển đổi giữa 2 khu vực quản trị: Từ vựng / Ngữ pháp
+// ============================================================
+document.getElementById("sec-vocab").addEventListener("click", ()=>{
+  document.getElementById("sec-vocab").classList.add("active");
+  document.getElementById("sec-grammar").classList.remove("active");
+  document.getElementById("vocab-section").style.display = "block";
+  document.getElementById("grammar-section").style.display = "none";
+});
+document.getElementById("sec-grammar").addEventListener("click", ()=>{
+  document.getElementById("sec-grammar").classList.add("active");
+  document.getElementById("sec-vocab").classList.remove("active");
+  document.getElementById("vocab-section").style.display = "none";
+  document.getElementById("grammar-section").style.display = "block";
+  loadLesson();
+});
+
+// ============================================================
+// Bài học ngữ pháp (1 bài / ngôn ngữ / trình độ)
+// ============================================================
+let CURRENT_LESSON = null; // bài học đang xem/sửa (hoặc null nếu chưa có)
+let CURRENT_EXERCISES = [];
+
+document.getElementById("g-language").addEventListener("change", ()=>{ rebuildGLevelOptions(); loadLesson(); });
+document.getElementById("g-level").addEventListener("change", loadLesson);
+
+async function loadLesson(){
+  const language = document.getElementById("g-language").value;
+  const level = document.getElementById("g-level").value;
+  document.getElementById("lesson-status").textContent = "Đang tải...";
+  document.getElementById("exercises-card").style.display = "none";
+  const { data, error } = await sb.from("grammar_lessons").select("*").eq("language", language).eq("level", level).maybeSingle();
+  if(error){ document.getElementById("lesson-status").textContent = "Lỗi: " + error.message; return; }
+  CURRENT_LESSON = data || null;
+  document.getElementById("g-title").value = data ? data.title : "";
+  document.getElementById("g-content").value = data ? data.content : "";
+  if(data){
+    document.getElementById("lesson-status").textContent = "Đã có bài học — sửa xong nhớ bấm Lưu.";
+    document.getElementById("exercises-card").style.display = "block";
+    await loadExercises(data.id);
+  } else {
+    document.getElementById("lesson-status").textContent = "Chưa có bài học cho lựa chọn này. Điền nội dung rồi bấm Lưu để tạo mới.";
+    CURRENT_EXERCISES = [];
+  }
+}
+
+document.getElementById("btn-save-lesson").addEventListener("click", async ()=>{
+  const language = document.getElementById("g-language").value;
+  const level = document.getElementById("g-level").value;
+  const title = document.getElementById("g-title").value.trim();
+  const content = document.getElementById("g-content").value.trim();
+  if(!title || !content){ alert("Vui lòng nhập tiêu đề và nội dung bài học."); return; }
+  const statusEl = document.getElementById("lesson-status");
+  statusEl.textContent = "Đang lưu...";
+  const { data, error } = await sb.from("grammar_lessons")
+    .upsert({ language, level, title, content }, { onConflict: "language,level" })
+    .select().single();
+  if(error){ statusEl.textContent = "Lỗi: " + error.message; return; }
+  CURRENT_LESSON = data;
+  statusEl.textContent = "Đã lưu bài học.";
+  document.getElementById("exercises-card").style.display = "block";
+  await loadExercises(data.id);
+});
+
+// ============================================================
+// Bài tập ngữ pháp
+// ============================================================
+async function loadExercises(lessonId){
+  const { data, error } = await sb.from("grammar_exercises").select("*").eq("lesson_id", lessonId).order("order_index");
+  if(error){ alert("Lỗi khi tải bài tập: " + error.message); return; }
+  CURRENT_EXERCISES = data || [];
+  renderExercises();
+}
+
+function renderExercises(){
+  document.getElementById("ex-count").textContent = CURRENT_EXERCISES.length;
+  document.getElementById("ex-table-body").innerHTML = CURRENT_EXERCISES.map((ex,idx)=>`
+    <tr>
+      <td>${idx+1}</td>
+      <td><span class="badge">${ex.type === "multiple_choice" ? "Trắc nghiệm" : "Điền từ"}</span></td>
+      <td>${ex.question}</td>
+      <td>${ex.correct_answer}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-sm" onclick="openEditEx(${ex.id})">Sửa</button>
+        <button class="btn-sm danger" onclick="deleteEx(${ex.id})">Xoá</button>
+      </td>
+    </tr>`).join("");
+}
+
+function exFieldForm(record){
+  const r = record || { type:"multiple_choice", question:"", options:"", correct_answer:"", explanation:"", order_index: CURRENT_EXERCISES.length + 1 };
+  return `
+    <div class="field-row"><label>Loại bài tập</label>
+      <select data-f="type">
+        <option value="multiple_choice" ${r.type==='multiple_choice'?"selected":""}>Trắc nghiệm</option>
+        <option value="fill_blank" ${r.type==='fill_blank'?"selected":""}>Điền vào chỗ trống</option>
+      </select>
+    </div>
+    <div class="field-row"><label>Câu hỏi</label><input data-f="question" value="${(r.question||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Các lựa chọn (cách nhau bởi dấu phẩy — chỉ cần cho trắc nghiệm)</label><input data-f="options" value="${(r.options||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Đáp án đúng</label><input data-f="correct_answer" value="${(r.correct_answer||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Giải thích (hiện ra sau khi chấm, không bắt buộc)</label><input data-f="explanation" value="${(r.explanation||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Thứ tự</label><input data-f="order_index" type="number" value="${r.order_index||0}"></div>
+  `;
+}
+
+function openAddEx(){
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Thêm bài tập</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="ex-form">${exFieldForm(null)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Thêm</button></div>
+    </form>`;
+  wireExForm(null);
+}
+window.openEditEx = function(id){
+  const record = CURRENT_EXERCISES.find(e=>e.id===id);
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Sửa bài tập</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="ex-form">${exFieldForm(record)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Lưu</button></div>
+    </form>`;
+  wireExForm(record);
+};
+window.deleteEx = async function(id){
+  if(!confirm("Xoá bài tập này?")) return;
+  const { error } = await sb.from("grammar_exercises").delete().eq("id", id);
+  if(error){ alert("Lỗi: " + error.message); return; }
+  await loadExercises(CURRENT_LESSON.id);
+};
+
+function wireExForm(record){
+  document.getElementById("overlay").classList.add("show");
+  document.getElementById("m-close").onclick = closeModal;
+  document.getElementById("m-cancel").onclick = closeModal;
+  document.getElementById("ex-form").onsubmit = async (e)=>{
+    e.preventDefault();
+    if(!CURRENT_LESSON){ alert("Chưa có bài học — hãy lưu bài học trước."); return; }
+    const form = e.target;
+    const payload = { lesson_id: CURRENT_LESSON.id };
+    form.querySelectorAll("[data-f]").forEach(el=>{
+      payload[el.dataset.f] = el.dataset.f === "order_index" ? (parseInt(el.value,10) || 0) : el.value;
+    });
+    let error;
+    if(record){
+      ({ error } = await sb.from("grammar_exercises").update(payload).eq("id", record.id));
+    } else {
+      ({ error } = await sb.from("grammar_exercises").insert(payload));
+    }
+    if(error){ alert("Lỗi: " + error.message); return; }
+    closeModal();
+    await loadExercises(CURRENT_LESSON.id);
+  };
+}
+document.getElementById("btn-add-ex").addEventListener("click", openAddEx);
+
+// ============================================================
+// Nhập nhanh bài tập từ CSV
+// ============================================================
+document.getElementById("btn-import-ex").addEventListener("click", async ()=>{
+  const raw = document.getElementById("ex-csv-input").value.trim();
+  const resultEl = document.getElementById("ex-import-result");
+  resultEl.className = "result-msg"; resultEl.style.display = "none";
+  if(!raw){ return; }
+  const lines = raw.split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length < 2){ resultEl.className = "result-msg err"; resultEl.textContent = "Cần ít nhất 1 dòng tiêu đề + 1 dòng dữ liệu."; return; }
+  const headers = parseCsvLine(lines[0]).map(h=>h.toLowerCase());
+  const required = ["language","level","type","question","correct_answer"];
+  const missing = required.filter(r=>!headers.includes(r));
+  if(missing.length){ resultEl.className = "result-msg err"; resultEl.textContent = "Thiếu cột bắt buộc: " + missing.join(", "); return; }
+
+  const parsed = [];
+  const errors = [];
+  for(let i=1;i<lines.length;i++){
+    const cols = parseCsvLine(lines[i]);
+    const obj = {};
+    headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+    if(!obj.language || !obj.level || !obj.type || !obj.question || !obj.correct_answer){
+      errors.push(`Dòng ${i+1}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
+      continue;
+    }
+    if(!LANGS_CFG[obj.language]){
+      errors.push(`Dòng ${i+1}: ngôn ngữ "${obj.language}" không có trong languages.json, đã bỏ qua.`);
+      continue;
+    }
+    if(!LANGS_CFG[obj.language].levels.some(lv=>lv.code===obj.level)){
+      errors.push(`Dòng ${i+1}: trình độ "${obj.level}" không hợp lệ cho ngôn ngữ "${obj.language}", đã bỏ qua.`);
+      continue;
+    }
+    if(!["multiple_choice","fill_blank"].includes(obj.type)){
+      errors.push(`Dòng ${i+1}: loại "${obj.type}" không hợp lệ (phải là multiple_choice/fill_blank), đã bỏ qua.`);
+      continue;
+    }
+    obj.order_index = parseInt(obj.order_index, 10) || (i);
+    parsed.push(obj);
+  }
+
+  if(parsed.length === 0){
+    resultEl.className = "result-msg err";
+    resultEl.textContent = "Không có dòng nào hợp lệ để nhập.\n" + errors.join("\n");
+    return;
+  }
+
+  // Tra cứu lesson_id cho từng cặp (language, level) xuất hiện trong CSV
+  const pairs = Array.from(new Set(parsed.map(r => r.language + "|" + r.level)));
+  const lessonMap = {};
+  for(const pair of pairs){
+    const [language, level] = pair.split("|");
+    const { data } = await sb.from("grammar_lessons").select("id").eq("language", language).eq("level", level).maybeSingle();
+    if(data) lessonMap[pair] = data.id;
+  }
+
+  const rows = [];
+  parsed.forEach((obj, idx) => {
+    const pair = obj.language + "|" + obj.level;
+    if(!lessonMap[pair]){
+      errors.push(`Dòng dữ liệu #${idx+1} (${obj.language}/${obj.level}): chưa có bài học cho trình độ này — hãy tạo bài học trước, đã bỏ qua.`);
+      return;
+    }
+    rows.push({
+      lesson_id: lessonMap[pair],
+      type: obj.type,
+      question: obj.question,
+      options: obj.options || "",
+      correct_answer: obj.correct_answer,
+      explanation: obj.explanation || "",
+      order_index: obj.order_index
+    });
+  });
+
+  if(rows.length === 0){
+    resultEl.className = "result-msg err";
+    resultEl.textContent = "Không có dòng nào nhập được.\n" + errors.join("\n");
+    return;
+  }
+
+  const btn = document.getElementById("btn-import-ex");
+  btn.disabled = true; btn.textContent = "Đang nhập...";
+  const { error } = await sb.from("grammar_exercises").insert(rows);
+  btn.disabled = false; btn.textContent = "Nhập vào hệ thống";
+
+  if(error){
+    resultEl.className = "result-msg err";
+    resultEl.textContent = "Lỗi khi nhập: " + error.message;
+    return;
+  }
+  resultEl.className = "result-msg ok";
+  resultEl.textContent = `Đã nhập thành công ${rows.length} bài tập.` + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
+  document.getElementById("ex-csv-input").value = "";
+  if(CURRENT_LESSON) await loadExercises(CURRENT_LESSON.id);
+});
+</script>
+</body>
+</html>

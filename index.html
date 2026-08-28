@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Learn with Mr.Thanh</title>
+
+<!-- PWA: cho phép cài đặt lên điện thoại / máy tính -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#142a4d" id="meta-theme-color">
+<link rel="icon" href="icons/icon-app-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon-app.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Learn" id="meta-apple-title">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+:root{
+  --navy:#142a4d; --navy2:#1f3864; --steel:#2e5395; --teal:#0ea5a0; --teal-light:#e3f6f5;
+  --word-font:Arial,sans-serif;
+  --amber:#f2994a; --amber-light:#fdf1e6; --red:#d64545; --red-light:#fdeaea;
+  --green:#2f9e44; --green-light:#eaf7ec;
+  --bg-page:#f2f4f7; --bg-card:#ffffff; --border:#e1e5eb;
+  --text-1:#1a2332; --text-2:#5b6472; --text-3:#8a92a0;
+  --radius:14px; --gap:16px; --shadow:0 1px 3px rgba(20,42,77,0.08);
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:Arial,"Segoe UI",sans-serif;background:var(--bg-page);color:var(--text-1);font-size:14px;transition:background .2s;}
+.wrap{max-width:900px;margin:0 auto;padding:20px;}
+header.top{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#fff;border-radius:var(--radius);padding:20px 24px 16px;margin-bottom:10px;text-align:center;transition:background .25s;}
+header.top h1{font-size:21px;margin:0 0 4px;}
+header.top .sub{font-size:12.5px;color:rgba(255,255,255,0.7);}
+.flag-strip{height:6px;max-width:180px;margin:0 auto var(--gap);border-radius:3px;overflow:hidden;border:1px solid var(--border);}
+
+.lang-switch{display:flex;gap:10px;margin-bottom:var(--gap);flex-wrap:wrap;}
+.lang-switch button{flex:1;min-width:110px;padding:11px;border-radius:10px;border:2px solid var(--border);background:var(--bg-card);font-size:14px;font-weight:700;color:var(--text-2);cursor:pointer;}
+.lang-switch button.active{border-color:var(--navy2);color:var(--navy2);background:var(--teal-light);}
+
+.mode-tabs{display:flex;gap:10px;margin-bottom:var(--gap);}
+.mode-tabs button{flex:1;padding:12px;border-radius:10px;border:2px solid var(--border);background:var(--bg-card);font-size:14px;font-weight:700;color:var(--text-2);cursor:pointer;}
+.mode-tabs button.active{border-color:var(--teal);color:var(--navy2);background:var(--teal-light);}
+
+.selectors{display:flex;gap:10px;margin-bottom:var(--gap);flex-wrap:wrap;justify-content:center;}
+.selectors select{padding:9px 14px;border-radius:8px;border:1px solid var(--border);font-size:13.5px;background:#fff;}
+
+.card{background:var(--bg-card);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);}
+.loading-msg{text-align:center;padding:60px 20px;color:var(--text-3);}
+
+/* Flashcard */
+.flash-wrap{text-align:center;}
+.flash-progress{font-size:12.5px;color:var(--text-3);margin-bottom:14px;}
+.flash-card{background:linear-gradient(135deg,#f7f9fc,#eef2f8);border-radius:16px;padding:40px 30px;margin-bottom:20px;min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;}
+.flash-cat{font-size:11.5px;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px;}
+.flash-de{font-size:32px;font-weight:800;color:var(--navy2);font-family:var(--word-font);}
+.flash-phonetic{font-size:15px;color:var(--text-3);font-style:italic;}
+.flash-speak{background:var(--navy2);color:#fff;border:none;width:42px;height:42px;border-radius:50%;font-size:18px;cursor:pointer;margin-top:6px;}
+.flash-speak:hover{opacity:.85;}
+.flash-meanings{margin-top:14px;font-size:16px;}
+.flash-meanings .vi{font-weight:700;color:var(--text-1);}
+.flash-meanings .en{color:var(--text-2);font-size:13.5px;margin-top:4px;}
+.flash-nav{display:flex;justify-content:center;align-items:center;gap:20px;}
+.flash-nav button{background:var(--navy2);color:#fff;border:none;width:48px;height:48px;border-radius:50%;font-size:20px;cursor:pointer;}
+.flash-nav button:disabled{opacity:.3;cursor:not-allowed;}
+.flash-nav .counter{font-size:13px;color:var(--text-2);min-width:70px;}
+
+/* Game */
+.game-progress{text-align:center;font-size:12.5px;color:var(--text-3);margin-bottom:14px;}
+.game-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.game-item{background:#fff;border:2px solid var(--border);border-radius:10px;padding:14px 16px;font-size:14px;cursor:pointer;margin-bottom:10px;transition:all .15s;}
+.game-item:hover{border-color:var(--teal);}
+.game-item.selected{border-color:var(--steel);background:var(--teal-light);}
+.game-item.matched{border-color:var(--green);background:var(--green-light);color:var(--green);cursor:default;font-weight:600;}
+.game-item.matched:hover{border-color:var(--green);}
+.game-item.wrong{border-color:var(--red);background:var(--red-light);animation:shake .3s;}
+@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-4px);}75%{transform:translateX(4px);}}
+.game-complete{text-align:center;padding:30px;}
+.game-complete h3{color:var(--green);font-size:20px;}
+.btn{padding:9px 18px;border-radius:8px;border:none;font-size:13.5px;font-weight:700;cursor:pointer;background:var(--teal);color:#fff;}
+.config-warning{max-width:600px;margin:60px auto;background:var(--amber-light);color:#8a5a15;padding:20px 24px;border-radius:10px;font-size:13px;line-height:1.6;}
+.empty-msg{text-align:center;color:var(--text-3);padding:50px 20px;}
+footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 0 4px;}
+
+/* Grammar */
+.grammar-lesson{margin-bottom:8px;}
+.grammar-title{font-size:19px;margin:0 0 16px;color:var(--navy2);}
+.grammar-section{margin-bottom:18px;}
+.grammar-section-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.grammar-section-num{flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--navy2);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.grammar-section-title{font-size:15px;font-weight:700;color:var(--navy2);}
+.grammar-section-body{padding-left:36px;}
+.grammar-section-body p{margin:0 0 10px;line-height:1.65;color:var(--text-1);}
+.grammar-section-body ul{margin:0 0 10px 20px;padding:0;line-height:1.65;}
+.grammar-section-body li{margin-bottom:4px;}
+.exercise-section{border-top:1px solid var(--border);margin-top:22px;padding-top:20px;}
+.exercise-heading{font-size:16px;margin:0 0 14px;color:var(--text-1);}
+.exercise-item{background:var(--bg-page);border:2px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:12px;}
+.exercise-item.correct{border-color:var(--green);background:var(--green-light);}
+.exercise-item.incorrect{border-color:var(--red);background:var(--red-light);}
+.exercise-question{font-weight:700;margin-bottom:10px;font-size:13.5px;}
+.exercise-option{display:block;padding:5px 0;cursor:pointer;font-size:13.5px;}
+.exercise-option input{margin-right:8px;}
+.exercise-input{width:100%;max-width:320px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13.5px;font-family:inherit;}
+.exercise-feedback{margin-top:8px;font-size:12.5px;font-weight:600;min-height:1em;}
+.exercise-item.correct .exercise-feedback{color:var(--green);}
+.exercise-item.incorrect .exercise-feedback{color:var(--red);}
+.grammar-score{margin-top:16px;font-weight:700;font-size:15px;text-align:center;color:var(--navy2);}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="config-warning" style="display:none;">
+  <div class="config-warning"><b>⚠️ Supabase chưa được cấu hình.</b> Điền SUPABASE_URL / SUPABASE_ANON_KEY ở đầu thẻ &lt;script&gt; trong file này.</div>
+</div>
+
+<div class="wrap" id="main-wrap" style="display:none;">
+  <header class="top">
+    <h1 id="header-title"></h1>
+    <div class="sub" id="header-sub"></div>
+  </header>
+  <div class="flag-strip" id="flag-strip"></div>
+
+  <div class="lang-switch" id="lang-switch"></div>
+
+  <div class="mode-tabs">
+    <button id="tab-flash" class="active"></button>
+    <button id="tab-game"></button>
+    <button id="tab-grammar"></button>
+  </div>
+
+  <div class="selectors">
+    <select id="sel-level"></select>
+    <div id="vocab-filters" style="display:contents;">
+      <select id="sel-type">
+        <option id="opt-word" value="word"></option>
+        <option id="opt-sentence" value="sentence"></option>
+      </select>
+      <select id="sel-topic"></select>
+    </div>
+  </div>
+
+  <div class="card" id="content-area">
+    <div class="loading-msg">…</div>
+  </div>
+
+  <footer class="foot" id="footer-text"></footer>
+</div>
+
+<script>
+const SUPABASE_URL = "https://vuykuqmebmainyhiotfx.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_8Ro-jEFQqFh7EfbXPfzWaw_V1xrkoyU";
+
+if(SUPABASE_URL.includes("YOUR-PROJECT") || SUPABASE_ANON_KEY.includes("YOUR-ANON")){
+  document.getElementById("config-warning").style.display = "block";
+  throw new Error("Supabase chưa được cấu hình");
+}
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let LANGS = {};
+let LANG_ORDER = [];
+let currentLanguage = null;
+let mode = "flash";
+let level = "";
+let type = "word";
+let topic = "all";
+let items = [];
+let flashIndex = 0;
+
+function L(){ return LANGS[currentLanguage]; }
+
+function fmt(str, vars){
+  return str.replace(/\{(\w+)\}/g, (_, k) => (vars[k] !== undefined ? vars[k] : ""));
+}
+
+function shuffle(arr){
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+async function init(){
+  try{
+    const res = await fetch("languages.json");
+    LANGS = await res.json();
+  } catch(err){
+    document.getElementById("content-area").innerHTML =
+      '<div class="empty-msg">Không tải được languages.json: ' + err.message + '</div>';
+    document.getElementById("main-wrap").style.display = "block";
+    return;
+  }
+  LANG_ORDER = Object.keys(LANGS);
+  currentLanguage = LANG_ORDER[0];
+  level = LANGS[currentLanguage].levels[0].code;
+
+  buildLangSwitch();
+  document.getElementById("main-wrap").style.display = "block";
+  applyLanguageUI();
+  loadItems();
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch(err => console.warn("SW registration failed:", err));
+    });
+  }
+}
+
+function buildLangSwitch(){
+  const wrap = document.getElementById("lang-switch");
+  wrap.innerHTML = "";
+  LANG_ORDER.forEach(code=>{
+    const btn = document.createElement("button");
+    btn.id = "lang-" + code;
+    btn.textContent = LANGS[code].switchLabel;
+    if(code === currentLanguage) btn.classList.add("active");
+    btn.addEventListener("click", ()=>{
+      if(currentLanguage !== code){ currentLanguage = code; onLanguageChange(); }
+    });
+    wrap.appendChild(btn);
+  });
+}
+
+function applyLanguageUI(){
+  const cfg = L();
+  const u = cfg.ui;
+
+  document.title = u.pageTitle;
+  document.getElementById("meta-theme-color").setAttribute("content", cfg.theme.navy);
+  document.getElementById("meta-apple-title").setAttribute("content", u.appleTitle);
+
+  const root = document.body.style;
+  root.setProperty("--navy", cfg.theme.navy);
+  root.setProperty("--navy2", cfg.theme.navy2);
+  root.setProperty("--steel", cfg.theme.steel);
+  root.setProperty("--teal", cfg.theme.teal);
+  root.setProperty("--teal-light", cfg.theme.tealLight);
+  root.setProperty("--word-font", cfg.wordFontFamily);
+
+  const colors = cfg.flagStripeColors;
+  const stops = colors.map((c,i)=>{
+    const from = (i/colors.length*100).toFixed(1);
+    const to = ((i+1)/colors.length*100).toFixed(1);
+    return `${c} ${from}%, ${c} ${to}%`;
+  }).join(", ");
+  document.getElementById("flag-strip").style.background = `linear-gradient(90deg, ${stops})`;
+
+  document.getElementById("header-title").textContent = u.headerTitle;
+  document.getElementById("header-sub").textContent = u.headerSub;
+  document.getElementById("tab-flash").textContent = u.tabFlash;
+  document.getElementById("tab-game").textContent = u.tabGame;
+  document.getElementById("tab-grammar").textContent = u.tabGrammar;
+  document.getElementById("opt-word").textContent = u.optWord;
+  document.getElementById("opt-sentence").textContent = u.optSentence;
+  document.getElementById("footer-text").innerHTML = u.footer;
+
+  const levelSel = document.getElementById("sel-level");
+  const prevLevel = level;
+  levelSel.innerHTML = cfg.levels.map(lv => `<option value="${lv.code}">${lv.label}</option>`).join("");
+  level = cfg.levels.some(lv=>lv.code===prevLevel) ? prevLevel : cfg.levels[0].code;
+  levelSel.value = level;
+
+  LANG_ORDER.forEach(code=>{
+    document.getElementById("lang-"+code).classList.toggle("active", code === currentLanguage);
+  });
+  setActiveTab();
+}
+
+function onLanguageChange(){
+  applyLanguageUI();
+  if(mode === "grammar"){ loadGrammar(); } else { loadItems(); }
+}
+
+document.getElementById("tab-flash").addEventListener("click", ()=>{ mode="flash"; setActiveTab(); loadItems(); });
+document.getElementById("tab-game").addEventListener("click", ()=>{ mode="game"; setActiveTab(); loadItems(); });
+document.getElementById("tab-grammar").addEventListener("click", ()=>{ mode="grammar"; setActiveTab(); loadGrammar(); });
+function setActiveTab(){
+  document.getElementById("tab-flash").classList.toggle("active", mode==="flash");
+  document.getElementById("tab-game").classList.toggle("active", mode==="game");
+  document.getElementById("tab-grammar").classList.toggle("active", mode==="grammar");
+  document.getElementById("vocab-filters").style.display = (mode==="grammar") ? "none" : "contents";
+}
+document.getElementById("sel-level").addEventListener("change", e=>{ level = e.target.value; if(mode==="grammar"){ loadGrammar(); } else { loadItems(); } });
+document.getElementById("sel-type").addEventListener("change", e=>{ type = e.target.value; loadItems(); });
+document.getElementById("sel-topic").addEventListener("change", e=>{ topic = e.target.value; applyTopicFilter(); if(mode==="flash"){ flashIndex=0; renderFlash(); } else { startGameRound(); } });
+
+function speak(text){
+  if(!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = L().speechLang;
+  u.rate = 0.9;
+  window.speechSynthesis.speak(u);
+}
+
+let allLoadedItems = [];
+
+async function loadItems(){
+  const area = document.getElementById("content-area");
+  area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
+  const { data, error } = await sb.from("vocab_items").select("*").eq("language", currentLanguage).eq("level", level).eq("type", type);
+  if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
+  allLoadedItems = data || [];
+  populateTopics();
+  applyTopicFilter();
+  if(mode === "flash"){
+    flashIndex = 0;
+    renderFlash();
+  } else {
+    startGameRound();
+  }
+}
+
+function populateTopics(){
+  const sel = document.getElementById("sel-topic");
+  const cats = Array.from(new Set(allLoadedItems.map(i=>i.category).filter(Boolean))).sort();
+  const prev = topic;
+  sel.innerHTML = `<option value="all">${L().ui.optAllTopics}</option>` + cats.map(c=>`<option value="${c}">${c}</option>`).join("");
+  topic = cats.includes(prev) ? prev : "all";
+  sel.value = topic;
+}
+
+function applyTopicFilter(){
+  const filtered = topic === "all" ? allLoadedItems : allLoadedItems.filter(i=>i.category===topic);
+  items = shuffle(filtered);
+}
+
+function renderFlash(){
+  const area = document.getElementById("content-area");
+  if(items.length === 0){
+    area.innerHTML = `<div class="empty-msg">${L().ui.emptyVocab}</div>`;
+    return;
+  }
+  if(flashIndex >= items.length) flashIndex = 0;
+  const it = items[flashIndex];
+  area.innerHTML = `
+    <div class="flash-wrap">
+      <div class="flash-progress">${flashIndex+1} / ${items.length}</div>
+      <div class="flash-card">
+        ${it.category ? `<div class="flash-cat">${it.category}</div>` : ''}
+        <div class="flash-de">${it.de_text}</div>
+        ${it.phonetic ? `<div class="flash-phonetic">${it.phonetic}</div>` : ''}
+        <button class="flash-speak" id="btn-speak" title="${L().ui.speakTitle}">🔊</button>
+        <div class="flash-meanings">
+          <div class="vi">${it.vi_meaning}</div>
+          ${it.en_meaning ? `<div class="en">${it.en_meaning}</div>` : ''}
+        </div>
+      </div>
+      <div class="flash-nav">
+        <button id="btn-prev" ${flashIndex===0?'disabled':''}>‹</button>
+        <span class="counter">${flashIndex+1} / ${items.length}</span>
+        <button id="btn-next" ${flashIndex===items.length-1?'disabled':''}>›</button>
+      </div>
+    </div>`;
+  document.getElementById("btn-speak").addEventListener("click", ()=> speak(it.de_text));
+  document.getElementById("btn-prev").addEventListener("click", ()=>{ if(flashIndex>0){ flashIndex--; renderFlash(); } });
+  document.getElementById("btn-next").addEventListener("click", ()=>{ if(flashIndex<items.length-1){ flashIndex++; renderFlash(); } });
+}
+
+let gamePool = [];
+let gameBatch = [];
+let leftOrder = [];
+let rightOrder = [];
+let selectedLeftId = null;
+let matchedIds = new Set();
+
+function startGameRound(){
+  if(items.length === 0){
+    document.getElementById("content-area").innerHTML = `<div class="empty-msg">${L().ui.emptyVocab}</div>`;
+    return;
+  }
+  gamePool = shuffle(items);
+  nextBatch();
+}
+
+function nextBatch(){
+  if(gamePool.length === 0){
+    const u = L().ui;
+    document.getElementById("content-area").innerHTML = `
+      <div class="game-complete">
+        <h3>${u.gameComplete}</h3>
+        <p style="color:var(--text-2);">${fmt(u.gameCompleteSub, {n: items.length, level: level})}</p>
+        <button class="btn" id="btn-restart">${u.restartBtn}</button>
+      </div>`;
+    document.getElementById("btn-restart").addEventListener("click", startGameRound);
+    return;
+  }
+  gameBatch = gamePool.splice(0, Math.min(5, gamePool.length));
+  leftOrder = shuffle(gameBatch);
+  rightOrder = shuffle(gameBatch);
+  selectedLeftId = null;
+  matchedIds = new Set();
+  renderGame();
+}
+
+function renderGame(){
+  const area = document.getElementById("content-area");
+  area.innerHTML = `
+    <div class="game-progress">${fmt(L().ui.gameProgress, {remain: gamePool.length, matched: matchedIds.size, total: gameBatch.length})}</div>
+    <div class="game-cols">
+      <div id="col-left"></div>
+      <div id="col-right"></div>
+    </div>`;
+  const colLeft = document.getElementById("col-left");
+  const colRight = document.getElementById("col-right");
+
+  leftOrder.forEach(it=>{
+    const div = document.createElement("div");
+    div.className = "game-item" + (matchedIds.has(it.id) ? " matched" : "") + (selectedLeftId===it.id ? " selected" : "");
+    div.textContent = it.de_text;
+    div.dataset.id = it.id;
+    if(!matchedIds.has(it.id)){
+      div.addEventListener("click", ()=> onLeftClick(it.id));
+    }
+    colLeft.appendChild(div);
+  });
+
+  rightOrder.forEach(it=>{
+    const div = document.createElement("div");
+    div.className = "game-item" + (matchedIds.has(it.id) ? " matched" : "");
+    div.textContent = it.vi_meaning;
+    div.dataset.id = it.id;
+    if(!matchedIds.has(it.id)){
+      div.addEventListener("click", ()=> onRightClick(it.id));
+    }
+    colRight.appendChild(div);
+  });
+}
+
+function onLeftClick(id){
+  selectedLeftId = (selectedLeftId === id) ? null : id;
+  renderGame();
+}
+
+function onRightClick(rightId){
+  if(selectedLeftId === null) return;
+  if(selectedLeftId === rightId){
+    matchedIds.add(rightId);
+    selectedLeftId = null;
+    if(matchedIds.size === gameBatch.length){
+      setTimeout(nextBatch, 500);
+    } else {
+      renderGame();
+    }
+  } else {
+    const leftEl = document.querySelector(`#col-left [data-id="${selectedLeftId}"]`);
+    const rightEl = document.querySelector(`#col-right [data-id="${rightId}"]`);
+    if(leftEl) leftEl.classList.add("wrong");
+    if(rightEl) rightEl.classList.add("wrong");
+    setTimeout(()=>{
+      selectedLeftId = null;
+      renderGame();
+    }, 500);
+  }
+}
+
+function escHtml(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function formatGrammarContent(text){
+  const raw = String(text||'').trim();
+  const lines = raw.split('\n');
+  const sections = [];
+  let current = null;
+  lines.forEach(line=>{
+    const trimmed = line.trim();
+    if(trimmed.startsWith('## ')){
+      current = { title: trimmed.slice(3).trim(), lines: [] };
+      sections.push(current);
+    } else {
+      if(!current){ current = { title: '', lines: [] }; sections.push(current); }
+      current.lines.push(line);
+    }
+  });
+  return sections.map((sec, idx)=>{
+    const bodyHtml = formatBlockLines(sec.lines);
+    const head = sec.title
+      ? `<div class="grammar-section-head"><span class="grammar-section-num">${idx+1}</span><span class="grammar-section-title">${escHtml(sec.title)}</span></div>`
+      : '';
+    return `<div class="grammar-section">${head}<div class="grammar-section-body">${bodyHtml}</div></div>`;
+  }).join('');
+}
+function formatBlockLines(lines){
+  const text = lines.join('\n');
+  const blocks = text.trim().split(/\n\s*\n/);
+  return blocks.filter(b=>b.trim()).map(block=>{
+    const ls = block.split('\n').map(l=>l.trim()).filter(Boolean);
+    let html = '', listBuf = [], textBuf = [];
+    const flushList = ()=>{ if(listBuf.length){ html += '<ul>' + listBuf.map(l=>`<li>${escHtml(l.slice(2))}</li>`).join('') + '</ul>'; listBuf = []; } };
+    const flushText = ()=>{ if(textBuf.length){ html += '<p>' + textBuf.map(escHtml).join('<br>') + '</p>'; textBuf = []; } };
+    ls.forEach(l=>{
+      if(l.startsWith('- ')){ flushText(); listBuf.push(l); }
+      else { flushList(); textBuf.push(l); }
+    });
+    flushList(); flushText();
+    return html;
+  }).join('');
+}
+
+async function loadGrammar(){
+  const area = document.getElementById("content-area");
+  area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
+  const { data: lessonData, error: lessonError } = await sb.from("grammar_lessons").select("*").eq("language", currentLanguage).eq("level", level).maybeSingle();
+  if(lessonError){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${lessonError.message}</div>`; return; }
+  if(!lessonData){
+    area.innerHTML = `<div class="empty-msg">${L().ui.emptyGrammar}</div>`;
+    return;
+  }
+  const { data: exData, error: exError } = await sb.from("grammar_exercises").select("*").eq("lesson_id", lessonData.id).order("order_index");
+  if(exError){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${exError.message}</div>`; return; }
+  renderGrammar(lessonData, shuffle(exData || []));
+}
+
+function renderGrammar(lesson, exs){
+  const area = document.getElementById("content-area");
+  const u = L().ui;
+  const exHtml = exs.map((ex, idx)=>{
+    let inputHtml;
+    if(ex.type === "multiple_choice"){
+      const opts = (ex.options || "").split(",").map(o=>o.trim()).filter(Boolean);
+      inputHtml = opts.map(o=>`
+        <label class="exercise-option">
+          <input type="radio" name="ex-${ex.id}" value="${escHtml(o)}"> ${escHtml(o)}
+        </label>`).join("");
+    } else {
+      inputHtml = `<input type="text" class="exercise-input" id="input-${ex.id}" placeholder="${u.fillPlaceholder}">`;
+    }
+    return `
+      <div class="exercise-item" id="exercise-${ex.id}">
+        <div class="exercise-question">${idx+1}. ${escHtml(ex.question)}</div>
+        <div>${inputHtml}</div>
+        <div class="exercise-feedback" id="feedback-${ex.id}"></div>
+      </div>`;
+  }).join("");
+
+  area.innerHTML = `
+    <div class="grammar-lesson">
+      <h2 class="grammar-title">${escHtml(lesson.title)}</h2>
+      <div class="grammar-content">${formatGrammarContent(lesson.content)}</div>
+    </div>
+    ${exs.length ? `
+    <div class="exercise-section">
+      <h3 class="exercise-heading">${u.exerciseHeading}</h3>
+      <div class="exercise-list">${exHtml}</div>
+      <button class="btn" id="btn-check-grammar">${u.checkBtn}</button>
+      <div class="grammar-score" id="grammar-score"></div>
+    </div>` : ""}
+  `;
+  const btnCheck = document.getElementById("btn-check-grammar");
+  if(btnCheck) btnCheck.addEventListener("click", ()=> checkGrammarAnswers(exs));
+}
+
+function normalizeAnswer(s){
+  return String(s||"").trim().toLowerCase().replace(/\s+/g," ");
+}
+
+function checkGrammarAnswers(exs){
+  const u = L().ui;
+  let correctCount = 0;
+  exs.forEach(ex=>{
+    let userAnswer = "";
+    if(ex.type === "multiple_choice"){
+      const checked = document.querySelector(`input[name="ex-${ex.id}"]:checked`);
+      userAnswer = checked ? checked.value : "";
+    } else {
+      const inp = document.getElementById(`input-${ex.id}`);
+      userAnswer = inp ? inp.value : "";
+    }
+    const isCorrect = normalizeAnswer(userAnswer) === normalizeAnswer(ex.correct_answer);
+    if(isCorrect) correctCount++;
+    const itemEl = document.getElementById(`exercise-${ex.id}`);
+    itemEl.classList.remove("correct", "incorrect");
+    itemEl.classList.add(isCorrect ? "correct" : "incorrect");
+    const fb = document.getElementById(`feedback-${ex.id}`);
+    let msg = isCorrect ? u.correctMsg : (u.wrongPrefix + ex.correct_answer);
+    if(ex.explanation) msg += " — " + ex.explanation;
+    fb.textContent = msg;
+  });
+  const scoreEl = document.getElementById("grammar-score");
+  if(scoreEl) scoreEl.textContent = fmt(u.scoreLabel, {correct: correctCount, total: exs.length});
+}
+
+init();
+</script>
+</body>
+</html>
