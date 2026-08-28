@@ -228,7 +228,8 @@ let LANGS_ORDER = [];
 
 async function loadLanguagesConfig(){
   const res = await fetch("languages.json");
-  LANGS_CFG = await res.json();
+  const cfg = await res.json();
+  LANGS_CFG = cfg.languages || cfg; // hỗ trợ cả file cũ (không tách theme) lẫn file mới
   LANGS_ORDER = Object.keys(LANGS_CFG);
   buildLanguageDropdowns();
 }
