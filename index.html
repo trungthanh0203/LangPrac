@@ -466,10 +466,8 @@ document.getElementById("sel-topic").addEventListener("change", e=>{ topic = e.t
 // Giọng nam/nữ thật cũng tùy thuộc danh sách giọng đọc máy/trình duyệt cài sẵn.
 // ============================================================
 const VOICE_PROFILES = {
-  male_adult:   { label: "🧔 Nam lớn",  pitch: 0.55, rate: 0.80, genderHint: "male"   },
-  male_child:   { label: "👦 Bé trai",  pitch: 1.85, rate: 1.10, genderHint: "male"   },
-  female_adult: { label: "👩 Nữ lớn",   pitch: 1.15, rate: 0.90, genderHint: "female" },
-  female_child: { label: "👧 Bé gái",   pitch: 1.95, rate: 1.15, genderHint: "female" },
+  male_adult:   { label: "🧔 Nam",  pitch: 0.85, rate: 0.9, genderHint: "male"   },
+  female_adult: { label: "👩 Nữ",   pitch: 1.1,  rate: 0.9, genderHint: "female" },
 };
 let currentVoiceType = "female_adult";
 
