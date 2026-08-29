@@ -204,8 +204,9 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
         <h3>Nhập nhanh bài tập từ CSV</h3>
         <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">
           Cấu trúc cột (đúng thứ tự, có dòng tiêu đề): <code>language,level,type,question,options,correct_answer,explanation,order_index</code><br>
-          &bull; <b>type</b>: <code>multiple_choice</code> hoặc <code>fill_blank</code>.<br>
-          &bull; <b>options</b>: các lựa chọn cách nhau bởi dấu phẩy — chỉ cần với multiple_choice, để trống với fill_blank.<br>
+          &bull; <b>type</b>: <code>multiple_choice</code>, <code>fill_blank</code>, <code>sentence_ordering</code> (sắp xếp câu), <code>listening_choice</code> (nghe & chọn), <code>synonym_antonym</code> (đồng/trái nghĩa), <code>odd_one_out</code> (từ khác nhóm), hoặc <code>word_form</code> (biến đổi từ).<br>
+          &bull; <b>options</b>: cách nhau bởi dấu phẩy — dùng cho các dạng trắc nghiệm/nghe/đồng nghĩa/khác nhóm; với <code>sentence_ordering</code> đây là danh sách từ bị xáo trộn; để trống với <code>fill_blank</code>/<code>word_form</code>.<br>
+          &bull; Riêng <code>listening_choice</code>: cột <b>question</b> chứa câu/từ sẽ được đọc lên (không hiển thị chữ cho người học thấy trước).<br>
           &bull; Bài học tương ứng (đúng ngôn ngữ + trình độ) phải được tạo/lưu ở phần trên trước — nếu chưa có, dòng đó sẽ bị bỏ qua kèm thông báo lỗi.
         </div>
         <textarea id="ex-csv-input" placeholder='language,level,type,question,options,correct_answer,explanation,order_index&#10;de,A1,multiple_choice,Ich ___ Deutsch.,"lerne,lernst,lernt,lernen",lerne,,1&#10;de,A1,fill_blank,Er ___ (sein) mein Bruder.,,ist,,2'></textarea>
@@ -238,6 +239,15 @@ let filters = { language:"all", level:"all", type:"all", search:"" };
 // chỉ cần thêm 1 khối JSON ở đó, trang quản trị này tự nhận diện.
 // ============================================================
 let LANGS_CFG = {};
+const EX_TYPE_LABELS = {
+  multiple_choice: "Trắc nghiệm",
+  fill_blank: "Điền từ",
+  sentence_ordering: "Sắp xếp câu",
+  listening_choice: "Nghe & chọn",
+  synonym_antonym: "Đồng/Trái nghĩa",
+  odd_one_out: "Từ khác nhóm",
+  word_form: "Biến đổi từ",
+};
 let LANGS_ORDER = [];
 
 async function loadLanguagesConfig(){
@@ -648,7 +658,7 @@ function renderExercises(){
   document.getElementById("ex-table-body").innerHTML = CURRENT_EXERCISES.map((ex,idx)=>`
     <tr>
       <td>${idx+1}</td>
-      <td><span class="badge">${ex.type === "multiple_choice" ? "Trắc nghiệm" : "Điền từ"}</span></td>
+      <td><span class="badge">${EX_TYPE_LABELS[ex.type] || ex.type}</span></td>
       <td>${ex.question}</td>
       <td>${ex.correct_answer}</td>
       <td style="white-space:nowrap;">
@@ -665,6 +675,11 @@ function exFieldForm(record){
       <select data-f="type">
         <option value="multiple_choice" ${r.type==='multiple_choice'?"selected":""}>Trắc nghiệm</option>
         <option value="fill_blank" ${r.type==='fill_blank'?"selected":""}>Điền vào chỗ trống</option>
+        <option value="sentence_ordering" ${r.type==='sentence_ordering'?"selected":""}>Sắp xếp câu</option>
+        <option value="listening_choice" ${r.type==='listening_choice'?"selected":""}>Nghe & chọn đáp án</option>
+        <option value="synonym_antonym" ${r.type==='synonym_antonym'?"selected":""}>Đồng nghĩa/Trái nghĩa</option>
+        <option value="odd_one_out" ${r.type==='odd_one_out'?"selected":""}>Từ khác nhóm</option>
+        <option value="word_form" ${r.type==='word_form'?"selected":""}>Biến đổi từ</option>
       </select>
     </div>
     <div class="field-row"><label>Câu hỏi</label><input data-f="question" value="${(r.question||'').replace(/"/g,'&quot;')}"></div>
@@ -814,7 +829,8 @@ document.getElementById("btn-import-ex").addEventListener("click", async ()=>{
       const cols = parseCsvLine(lines[i]);
       const obj = {};
       headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
-      if(!obj.language || !obj.level || !obj.type || !obj.question || !obj.correct_answer){
+      const questionRequired = obj.type !== "sentence_ordering"; // bài sắp xếp câu không cần câu hỏi riêng, giao diện tự hiện nhãn chung
+      if(!obj.language || !obj.level || !obj.type || (questionRequired && !obj.question) || !obj.correct_answer){
         errors.push(`Dòng ${i+1}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
         continue;
       }
@@ -826,8 +842,8 @@ document.getElementById("btn-import-ex").addEventListener("click", async ()=>{
         errors.push(`Dòng ${i+1}: trình độ "${obj.level}" không hợp lệ cho ngôn ngữ "${obj.language}", đã bỏ qua.`);
         continue;
       }
-      if(!["multiple_choice","fill_blank"].includes(obj.type)){
-        errors.push(`Dòng ${i+1}: loại "${obj.type}" không hợp lệ (phải là multiple_choice/fill_blank), đã bỏ qua.`);
+      if(!["multiple_choice","fill_blank","sentence_ordering","listening_choice","synonym_antonym","odd_one_out","word_form"].includes(obj.type)){
+        errors.push(`Dòng ${i+1}: loại "${obj.type}" không hợp lệ, đã bỏ qua.`);
         continue;
       }
       obj.order_index = parseInt(obj.order_index, 10) || (i);

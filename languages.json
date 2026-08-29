@@ -70,7 +70,9 @@
         "tabPractice": "📝 Übungen",
         "emptyPractice": "Für dieses Niveau sind noch keine Übungsaufgaben vorhanden.",
         "retryBtn": "Nochmal versuchen",
-        "nextBtn": "Weiter üben"
+        "nextBtn": "Weiter üben",
+        "listeningPrompt": "Hör zu und wähle die richtige Antwort:",
+        "orderingPrompt": "Bringe die Wörter in die richtige Reihenfolge:"
       },
       "adminLabel": "🇩🇪 Tiếng Đức"
     },
@@ -127,7 +129,9 @@
         "tabPractice": "📝 Practice",
         "emptyPractice": "No practice exercises available for this level yet.",
         "retryBtn": "Try Again",
-        "nextBtn": "Practice More"
+        "nextBtn": "Practice More",
+        "listeningPrompt": "Listen and choose the correct answer:",
+        "orderingPrompt": "Put the words in the correct order:"
       },
       "adminLabel": "🇬🇧 Tiếng Anh"
     },
@@ -192,7 +196,9 @@
         "tabPractice": "📝 练习",
         "emptyPractice": "该级别暂无练习题。",
         "retryBtn": "重新做",
-        "nextBtn": "继续练习"
+        "nextBtn": "继续练习",
+        "listeningPrompt": "听录音，选择正确答案：",
+        "orderingPrompt": "将下列词语排列成正确的句子："
       },
       "adminLabel": "🇨🇳 Tiếng Trung (HSK)"
     }

@@ -144,6 +144,12 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
 .exercise-feedback{margin-top:8px;font-size:12.5px;font-weight:600;min-height:1em;}
 .exercise-item.correct .exercise-feedback{color:var(--green);}
 .exercise-item.incorrect .exercise-feedback{color:var(--red);}
+.order-answer-row{min-height:44px;border:2px dashed var(--border);border-radius:8px;padding:8px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.order-bank-row{display:flex;flex-wrap:wrap;gap:6px;}
+.order-chip{padding:7px 12px;border-radius:16px;border:1px solid var(--border);background:#fff;font-size:13px;cursor:pointer;font-family:inherit;}
+.order-chip:hover{border-color:var(--teal);}
+.order-chip-selected{background:var(--teal-light);border-color:var(--teal);}
+.order-placeholder{color:var(--text-3);font-size:12.5px;font-style:italic;}
 .grammar-score{margin-top:16px;font-weight:700;font-size:15px;text-align:center;color:var(--navy2);}
 </style>
 </head>
@@ -746,9 +752,22 @@ function normalizeAnswer(s){ return String(s||"").trim().toLowerCase().replace(/
 // Muốn thêm loại bài mới sau này, chỉ cần thêm 1 dòng vào PRACTICE_SEQUENCE.
 // ============================================================
 const PRACTICE_SEQUENCE = [
-  { type: "multiple_choice", count: 10 },
-  { type: "fill_blank", count: 5 },
+  { type: "multiple_choice",   count: 8 },
+  { type: "fill_blank",        count: 2 },
+  { type: "sentence_ordering", count: 2 },
+  { type: "listening_choice",  count: 2 },
+  { type: "synonym_antonym",   count: 2 },
+  { type: "odd_one_out",       count: 2 },
+  { type: "word_form",         count: 2 },
 ];
+
+// Phân loại cách hiển thị/chấm điểm cho từng dạng bài — thêm dạng bài mới sau này
+// chỉ cần khai báo ở đây, không cần sửa code hiển thị/chấm điểm bên dưới.
+function exerciseCategory(type){
+  if(type === "sentence_ordering") return "ordering";
+  if(["multiple_choice","synonym_antonym","odd_one_out","listening_choice"].includes(type)) return "choice";
+  return "input"; // fill_blank, word_form, và mặc định an toàn cho dạng chưa biết
+}
 
 let practicePoolCache = {}; // key "ngôn ngữ|trình độ" -> toàn bộ bài tập của trình độ đó (chưa lọc)
 let currentPracticeItems = []; // bộ câu hỏi đang hiển thị (giữ cố định để nút "Làm lại" dùng đúng bộ này)
@@ -788,21 +807,68 @@ function startNewPracticeSet(pool){
   renderPractice(currentPracticeItems);
 }
 
+let orderStates = {}; // ex.id -> { bank: [{text,uid}], answer: [{text,uid}] } — trạng thái bài "sắp xếp câu"
+
+function initOrderState(ex){
+  const words = (ex.options || "").split(",").map(o=>o.trim()).filter(Boolean);
+  orderStates[ex.id] = { bank: shuffle(words.map((w,i)=>({text:w, uid:`${ex.id}-${i}`}))), answer: [] };
+}
+
+function orderExerciseHtml(exId){
+  const st = orderStates[exId];
+  const answerHtml = st.answer.length
+    ? st.answer.map(w=>`<button type="button" class="order-chip order-chip-selected" data-uid="${w.uid}" data-zone="answer">${escHtml(w.text)}</button>`).join(" ")
+    : `<span class="order-placeholder">...</span>`;
+  const bankHtml = st.bank.map(w=>`<button type="button" class="order-chip" data-uid="${w.uid}" data-zone="bank">${escHtml(w.text)}</button>`).join(" ");
+  return `<div class="order-answer-row">${answerHtml}</div><div class="order-bank-row">${bankHtml}</div>`;
+}
+
+function wireOrderChips(exId){
+  const body = document.querySelector(`#exercise-${exId} .exercise-body`);
+  body.querySelectorAll(".order-chip").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const st = orderStates[exId];
+      const uid = btn.dataset.uid;
+      const fromArr = btn.dataset.zone === "bank" ? st.bank : st.answer;
+      const toArr = btn.dataset.zone === "bank" ? st.answer : st.bank;
+      const i = fromArr.findIndex(w=>w.uid===uid);
+      if(i>-1){ const [w] = fromArr.splice(i,1); toArr.push(w); }
+      body.innerHTML = orderExerciseHtml(exId);
+      wireOrderChips(exId);
+    });
+  });
+}
+
 function renderPractice(items){
   const area = document.getElementById("content-area");
   const u = L().ui;
+  orderStates = {}; // mỗi lần hiện bài (kể cả "Làm lại") đều xáo lại bài sắp xếp câu từ đầu
+
   const exHtml = items.map((ex, idx)=>{
-    let inputHtml;
-    if(ex.type === "multiple_choice"){
+    const cat = exerciseCategory(ex.type);
+    let questionLabel = escHtml(ex.question);
+    let bodyHtml;
+
+    if(ex.type === "sentence_ordering"){
+      questionLabel = "🔀 " + u.orderingPrompt;
+      initOrderState(ex);
+      bodyHtml = orderExerciseHtml(ex.id);
+    } else if(ex.type === "listening_choice"){
+      questionLabel = "🎧 " + u.listeningPrompt;
       const opts = (ex.options || "").split(",").map(o=>o.trim()).filter(Boolean);
-      inputHtml = opts.map(o=>`<label class="exercise-option"><input type="radio" name="ex-${ex.id}" value="${escHtml(o)}"> ${escHtml(o)}</label>`).join("");
+      bodyHtml = `<button type="button" class="flash-speak" data-listen="${escHtml(ex.question)}" style="margin-bottom:10px;">🔊</button>`
+        + opts.map(o=>`<label class="exercise-option"><input type="radio" name="ex-${ex.id}" value="${escHtml(o)}"> ${escHtml(o)}</label>`).join("");
+    } else if(cat === "choice"){
+      const opts = (ex.options || "").split(",").map(o=>o.trim()).filter(Boolean);
+      bodyHtml = opts.map(o=>`<label class="exercise-option"><input type="radio" name="ex-${ex.id}" value="${escHtml(o)}"> ${escHtml(o)}</label>`).join("");
     } else {
-      inputHtml = `<input type="text" class="exercise-input" id="input-${ex.id}" placeholder="${u.fillPlaceholder}">`;
+      bodyHtml = `<input type="text" class="exercise-input" id="input-${ex.id}" placeholder="${u.fillPlaceholder}">`;
     }
+
     return `
       <div class="exercise-item" id="exercise-${ex.id}">
-        <div class="exercise-question">${idx+1}. ${escHtml(ex.question)}</div>
-        <div>${inputHtml}</div>
+        <div class="exercise-question">${idx+1}. ${questionLabel}</div>
+        <div class="exercise-body">${bodyHtml}</div>
         <div class="exercise-feedback" id="feedback-${ex.id}"></div>
       </div>`;
   }).join("");
@@ -819,6 +885,12 @@ function renderPractice(items){
       </div>
     </div>
   `;
+  items.forEach(ex=>{
+    if(ex.type === "sentence_ordering") wireOrderChips(ex.id);
+  });
+  document.querySelectorAll(".flash-speak[data-listen]").forEach(btn=>{
+    btn.addEventListener("click", ()=> speak(btn.dataset.listen));
+  });
   document.getElementById("btn-check-practice").addEventListener("click", checkPracticeAnswers);
   document.getElementById("btn-practice-retry").addEventListener("click", ()=> renderPractice(currentPracticeItems));
   document.getElementById("btn-practice-next").addEventListener("click", ()=> startNewPracticeSet(practicePoolCache[`${currentLanguage}|${level}`]));
@@ -828,8 +900,12 @@ function checkPracticeAnswers(){
   const u = L().ui;
   let correctCount = 0;
   currentPracticeItems.forEach(ex=>{
+    const cat = exerciseCategory(ex.type);
     let userAnswer = "";
-    if(ex.type === "multiple_choice"){
+    if(cat === "ordering"){
+      const st = orderStates[ex.id];
+      userAnswer = st ? st.answer.map(w=>w.text).join(" ") : "";
+    } else if(cat === "choice"){
       const checked = document.querySelector(`input[name="ex-${ex.id}"]:checked`);
       userAnswer = checked ? checked.value : "";
     } else {
