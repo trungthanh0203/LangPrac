@@ -208,6 +208,7 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
     <button id="tab-flash" class="active"></button>
     <button id="tab-game"></button>
     <button id="tab-grammar"></button>
+    <button id="tab-practice"></button>
   </div>
 
   <div class="selectors">
@@ -440,6 +441,7 @@ function applyLanguageUI(){
   document.getElementById("tab-flash").textContent = u.tabFlash;
   document.getElementById("tab-game").textContent = u.tabGame;
   document.getElementById("tab-grammar").textContent = u.tabGrammar;
+  document.getElementById("tab-practice").textContent = u.tabPractice;
   document.getElementById("opt-word").textContent = u.optWord;
   document.getElementById("opt-sentence").textContent = u.optSentence;
   document.getElementById("footer-text").innerHTML = u.footer;
@@ -456,13 +458,20 @@ function applyLanguageUI(){
 document.getElementById("tab-flash").addEventListener("click", ()=>{ mode="flash"; setActiveTab(); loadItems(); });
 document.getElementById("tab-game").addEventListener("click", ()=>{ mode="game"; setActiveTab(); loadItems(); });
 document.getElementById("tab-grammar").addEventListener("click", ()=>{ mode="grammar"; setActiveTab(); loadGrammar(); });
+document.getElementById("tab-practice").addEventListener("click", ()=>{ mode="practice"; setActiveTab(); loadPractice(); });
 function setActiveTab(){
   document.getElementById("tab-flash").classList.toggle("active", mode==="flash");
   document.getElementById("tab-game").classList.toggle("active", mode==="game");
   document.getElementById("tab-grammar").classList.toggle("active", mode==="grammar");
-  document.getElementById("vocab-filters").style.display = (mode==="grammar") ? "none" : "contents";
+  document.getElementById("tab-practice").classList.toggle("active", mode==="practice");
+  document.getElementById("vocab-filters").style.display = (mode==="grammar" || mode==="practice") ? "none" : "contents";
 }
-document.getElementById("sel-level").addEventListener("change", e=>{ level = e.target.value; if(mode==="grammar"){ loadGrammar(); } else { loadItems(); } });
+document.getElementById("sel-level").addEventListener("change", e=>{
+  level = e.target.value;
+  if(mode==="grammar"){ loadGrammar(); }
+  else if(mode==="practice"){ loadPractice(); }
+  else { loadItems(); }
+});
 document.getElementById("sel-type").addEventListener("change", e=>{ type = e.target.value; loadItems(); });
 document.getElementById("sel-topic").addEventListener("change", e=>{ topic = e.target.value; applyTopicFilter(); if(mode==="flash"){ flashIndex=0; renderFlash(); } else { startGameRound(); } });
 
@@ -699,34 +708,90 @@ function formatBlockLines(lines){
   }).join('');
 }
 
-let grammarCache = {}; // key "ngôn ngữ|trình độ" -> { lesson, exercises } đã tải, tránh gọi mạng lại
+let grammarCache = {}; // key "ngôn ngữ|trình độ" -> bài học lý thuyết đã tải, tránh gọi mạng lại
 
 async function loadGrammar(){
   const key = `${currentLanguage}|${level}`;
   const area = document.getElementById("content-area");
 
   if(grammarCache[key] !== undefined){
-    // Đã tải trước đó — dùng lại, chỉ xáo trộn lại thứ tự bài tập cho mỗi lần xem
     const cached = grammarCache[key];
     if(cached === null){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyGrammar}</div>`; return; }
-    renderGrammar(cached.lesson, shuffle(cached.exercises));
+    renderGrammar(cached);
     return;
   }
 
   area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
   const { data: lessonData, error: lessonError } = await sb.from("grammar_lessons").select("*").eq("language", currentLanguage).eq("level", level).maybeSingle();
   if(lessonError){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${lessonError.message}</div>`; return; }
-  if(!lessonData){ grammarCache[key] = null; area.innerHTML = `<div class="empty-msg">${L().ui.emptyGrammar}</div>`; return; }
-  const { data: exData, error: exError } = await sb.from("grammar_exercises").select("*").eq("lesson_id", lessonData.id).order("order_index");
-  if(exError){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${exError.message}</div>`; return; }
-  grammarCache[key] = { lesson: lessonData, exercises: exData || [] };
-  renderGrammar(lessonData, shuffle(exData || []));
+  grammarCache[key] = lessonData || null;
+  if(!lessonData){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyGrammar}</div>`; return; }
+  renderGrammar(lessonData);
 }
 
-function renderGrammar(lesson, exs){
+function renderGrammar(lesson){
+  const area = document.getElementById("content-area");
+  area.innerHTML = `
+    <div class="grammar-lesson">
+      <h2 class="grammar-title">${escHtml(lesson.title)}</h2>
+      <div class="grammar-content">${formatGrammarContent(lesson.content)}</div>
+    </div>
+  `;
+}
+
+function normalizeAnswer(s){ return String(s||"").trim().toLowerCase().replace(/\s+/g," "); }
+
+// ============================================================
+// Tab Luyện tập: lấy ngẫu nhiên bài tập theo đúng trình tự loại bài.
+// Muốn thêm loại bài mới sau này, chỉ cần thêm 1 dòng vào PRACTICE_SEQUENCE.
+// ============================================================
+const PRACTICE_SEQUENCE = [
+  { type: "multiple_choice", count: 10 },
+  { type: "fill_blank", count: 5 },
+];
+
+let practicePoolCache = {}; // key "ngôn ngữ|trình độ" -> toàn bộ bài tập của trình độ đó (chưa lọc)
+let currentPracticeItems = []; // bộ câu hỏi đang hiển thị (giữ cố định để nút "Làm lại" dùng đúng bộ này)
+
+function buildPracticeSet(pool){
+  const result = [];
+  PRACTICE_SEQUENCE.forEach(seq => {
+    const candidates = shuffle(pool.filter(ex => ex.type === seq.type));
+    result.push(...candidates.slice(0, seq.count));
+  });
+  return result;
+}
+
+async function loadPractice(){
+  const key = `${currentLanguage}|${level}`;
+  const area = document.getElementById("content-area");
+
+  if(practicePoolCache[key] !== undefined){
+    startNewPracticeSet(practicePoolCache[key]);
+    return;
+  }
+
+  area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
+  const { data: lessonData, error: lessonError } = await sb.from("grammar_lessons").select("id").eq("language", currentLanguage).eq("level", level).maybeSingle();
+  if(lessonError){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${lessonError.message}</div>`; return; }
+  if(!lessonData){ practicePoolCache[key] = []; area.innerHTML = `<div class="empty-msg">${L().ui.emptyPractice}</div>`; return; }
+  const { data: exData, error: exError } = await sb.from("grammar_exercises").select("*").eq("lesson_id", lessonData.id);
+  if(exError){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${exError.message}</div>`; return; }
+  practicePoolCache[key] = exData || [];
+  startNewPracticeSet(practicePoolCache[key]);
+}
+
+function startNewPracticeSet(pool){
+  const area = document.getElementById("content-area");
+  if(!pool || pool.length === 0){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyPractice}</div>`; return; }
+  currentPracticeItems = buildPracticeSet(pool);
+  renderPractice(currentPracticeItems);
+}
+
+function renderPractice(items){
   const area = document.getElementById("content-area");
   const u = L().ui;
-  const exHtml = exs.map((ex, idx)=>{
+  const exHtml = items.map((ex, idx)=>{
     let inputHtml;
     if(ex.type === "multiple_choice"){
       const opts = (ex.options || "").split(",").map(o=>o.trim()).filter(Boolean);
@@ -743,28 +808,26 @@ function renderGrammar(lesson, exs){
   }).join("");
 
   area.innerHTML = `
-    <div class="grammar-lesson">
-      <h2 class="grammar-title">${escHtml(lesson.title)}</h2>
-      <div class="grammar-content">${formatGrammarContent(lesson.content)}</div>
-    </div>
-    ${exs.length ? `
-    <div class="exercise-section">
+    <div class="exercise-section" style="border-top:none;margin-top:0;padding-top:0;">
       <h3 class="exercise-heading">${u.exerciseHeading}</h3>
       <div class="exercise-list">${exHtml}</div>
-      <button class="btn" id="btn-check-grammar">${u.checkBtn}</button>
-      <div class="grammar-score" id="grammar-score"></div>
-    </div>` : ""}
+      <button class="btn" id="btn-check-practice">${u.checkBtn}</button>
+      <div class="grammar-score" id="practice-score"></div>
+      <div id="practice-after-actions" style="display:none;text-align:center;margin-top:14px;">
+        <button class="btn" id="btn-practice-retry" style="margin-right:10px;">${u.retryBtn}</button>
+        <button class="btn" id="btn-practice-next">${u.nextBtn}</button>
+      </div>
+    </div>
   `;
-  const btnCheck = document.getElementById("btn-check-grammar");
-  if(btnCheck) btnCheck.addEventListener("click", ()=> checkGrammarAnswers(exs));
+  document.getElementById("btn-check-practice").addEventListener("click", checkPracticeAnswers);
+  document.getElementById("btn-practice-retry").addEventListener("click", ()=> renderPractice(currentPracticeItems));
+  document.getElementById("btn-practice-next").addEventListener("click", ()=> startNewPracticeSet(practicePoolCache[`${currentLanguage}|${level}`]));
 }
 
-function normalizeAnswer(s){ return String(s||"").trim().toLowerCase().replace(/\s+/g," "); }
-
-function checkGrammarAnswers(exs){
+function checkPracticeAnswers(){
   const u = L().ui;
   let correctCount = 0;
-  exs.forEach(ex=>{
+  currentPracticeItems.forEach(ex=>{
     let userAnswer = "";
     if(ex.type === "multiple_choice"){
       const checked = document.querySelector(`input[name="ex-${ex.id}"]:checked`);
@@ -783,8 +846,10 @@ function checkGrammarAnswers(exs){
     if(ex.explanation) msg += " — " + ex.explanation;
     fb.textContent = msg;
   });
-  const scoreEl = document.getElementById("grammar-score");
-  if(scoreEl) scoreEl.textContent = fmt(u.scoreLabel, {correct: correctCount, total: exs.length});
+  const scoreEl = document.getElementById("practice-score");
+  if(scoreEl) scoreEl.textContent = fmt(u.scoreLabel, {correct: correctCount, total: currentPracticeItems.length});
+  document.getElementById("btn-check-practice").style.display = "none";
+  document.getElementById("practice-after-actions").style.display = "block";
 }
 
 boot();

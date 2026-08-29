@@ -66,7 +66,11 @@
         "wrongPrefix": "Falsch. Richtige Antwort: ",
         "scoreLabel": "Ergebnis: {correct} / {total} richtig",
         "fillPlaceholder": "Ihre Antwort",
-        "footer": "Lerninhalte verwaltet von Mr.Thanh Tran.<br>Kontakt: Tel: +84.0989099454 - E-Mail: trungthanh0203@gmail.com"
+        "footer": "Lerninhalte verwaltet von Mr.Thanh Tran.<br>Kontakt: Tel: +84.0989099454 - E-Mail: trungthanh0203@gmail.com",
+        "tabPractice": "📝 Übungen",
+        "emptyPractice": "Für dieses Niveau sind noch keine Übungsaufgaben vorhanden.",
+        "retryBtn": "Nochmal versuchen",
+        "nextBtn": "Weiter üben"
       },
       "adminLabel": "🇩🇪 Tiếng Đức"
     },
@@ -119,7 +123,11 @@
         "wrongPrefix": "Incorrect. Correct answer: ",
         "scoreLabel": "Score: {correct} / {total} correct",
         "fillPlaceholder": "Your answer",
-        "footer": "Learning content managed by Mr.Thanh Tran.<br>Contact: Tel: +84.0989099454 - Email: trungthanh0203@gmail.com"
+        "footer": "Learning content managed by Mr.Thanh Tran.<br>Contact: Tel: +84.0989099454 - Email: trungthanh0203@gmail.com",
+        "tabPractice": "📝 Practice",
+        "emptyPractice": "No practice exercises available for this level yet.",
+        "retryBtn": "Try Again",
+        "nextBtn": "Practice More"
       },
       "adminLabel": "🇬🇧 Tiếng Anh"
     },
@@ -180,7 +188,11 @@
         "wrongPrefix": "回答错误。正确答案：",
         "scoreLabel": "得分：{correct} / {total}",
         "fillPlaceholder": "请输入答案",
-        "footer": "学习内容由 Mr.Thanh Tran 管理。<br>联系方式：电话 +84.0989099454 - 邮箱 trungthanh0203@gmail.com"
+        "footer": "学习内容由 Mr.Thanh Tran 管理。<br>联系方式：电话 +84.0989099454 - 邮箱 trungthanh0203@gmail.com",
+        "tabPractice": "📝 练习",
+        "emptyPractice": "该级别暂无练习题。",
+        "retryBtn": "重新做",
+        "nextBtn": "继续练习"
       },
       "adminLabel": "🇨🇳 Tiếng Trung (HSK)"
     }
