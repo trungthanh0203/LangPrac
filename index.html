@@ -50,13 +50,13 @@ body{margin:0;font-family:Arial,"Segoe UI",sans-serif;background:var(--bg-page);
 /* ---------- Thanh người dùng ---------- */
 .header-grid{display:flex;align-items:center;gap:12px;}
 .header-logo{flex:0 0 auto;display:flex;align-items:center;}
-.header-logo img{height:42px;width:auto;max-width:120px;display:block;border-radius:8px;object-fit:contain;}
+.header-logo img{height:78px;width:auto;max-width:160px;display:block;border-radius:8px;object-fit:contain;}
 .header-center{flex:1 1 auto;min-width:0;}
 .header-voice{flex:0 0 auto;}
 .header-voice select{padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.4);font-size:12.5px;background:rgba(255,255,255,0.15);font-weight:700;color:#fff;cursor:pointer;}
 .header-voice select option{color:#1a2332;background:#fff;}
 @media (max-width:600px){
-  .header-logo img{height:32px;max-width:80px;}
+  .header-logo img{height:52px;max-width:100px;}
   .header-grid{gap:8px;}
   .header-voice select{font-size:11.5px;padding:5px 6px;}
 }
@@ -466,10 +466,10 @@ document.getElementById("sel-topic").addEventListener("change", e=>{ topic = e.t
 // Giọng nam/nữ thật cũng tùy thuộc danh sách giọng đọc máy/trình duyệt cài sẵn.
 // ============================================================
 const VOICE_PROFILES = {
-  male_adult:   { label: "🧔 Nam lớn",  pitch: 0.82, rate: 0.85, genderHint: "male"   },
-  male_child:   { label: "👦 Bé trai",  pitch: 1.55, rate: 0.95, genderHint: "male"   },
-  female_adult: { label: "👩 Nữ lớn",   pitch: 1.05, rate: 0.85, genderHint: "female" },
-  female_child: { label: "👧 Bé gái",   pitch: 1.7,  rate: 0.95, genderHint: "female" },
+  male_adult:   { label: "🧔 Nam lớn",  pitch: 0.55, rate: 0.80, genderHint: "male"   },
+  male_child:   { label: "👦 Bé trai",  pitch: 1.85, rate: 1.10, genderHint: "male"   },
+  female_adult: { label: "👩 Nữ lớn",   pitch: 1.15, rate: 0.90, genderHint: "female" },
+  female_child: { label: "👧 Bé gái",   pitch: 1.95, rate: 1.15, genderHint: "female" },
 };
 let currentVoiceType = "female_adult";
 
@@ -510,6 +510,11 @@ function speak(text){
   u.rate = profile.rate;
   const voice = pickVoiceForLang(langCode, profile.genderHint);
   if(voice) u.voice = voice;
+  // Log chẩn đoán: mở Console (F12) để xem máy/trình duyệt hiện có bao nhiêu giọng
+  // cho ngôn ngữ đang chọn — nếu chỉ có 1 giọng, hệ thống chỉ đổi được cao độ/tốc độ
+  // (không đổi được giọng nam/nữ thật) vì máy không có giọng thứ 2 để chọn.
+  const allForLang = window.speechSynthesis.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith(langCode.split("-")[0].toLowerCase()));
+  console.log(`[Giọng đọc] Ngôn ngữ ${langCode} — đang dùng "${currentVoiceType}" (pitch=${profile.pitch}, rate=${profile.rate}). Giọng máy đang chọn: ${voice ? voice.name : "(mặc định hệ thống)"}. Tổng số giọng có sẵn cho ngôn ngữ này:`, allForLang.map(v=>v.name));
   window.speechSynthesis.speak(u);
 }
 
