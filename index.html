@@ -15,7 +15,10 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Learn" id="meta-apple-title">
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<!-- Mở kết nối sớm tới CDN + Supabase để giảm độ trễ khi tải script/gọi API thật -->
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://vuykuqmebmainyhiotfx.supabase.co" crossorigin>
+
 <style>
 :root{
   --navy:#0a2472; --navy2:#c8102e; --steel:#0a2472; --teal:#0a2472; --teal-light:#e7ecfa;
@@ -225,6 +228,10 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
   <footer class="foot" id="footer-text"></footer>
 </div>
 
+<!-- Đặt script thư viện ở cuối body (thay vì trong head) để trình duyệt vẽ xong
+     giao diện HTML/CSS phía trên trước, không phải chờ tải xong script này mới
+     render được gì — cải thiện tốc độ hiển thị lần đầu (đặc biệt trên mạng chậm). -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 const SUPABASE_URL = "https://vuykuqmebmainyhiotfx.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_8Ro-jEFQqFh7EfbXPfzWaw_V1xrkoyU";
@@ -460,10 +467,10 @@ document.getElementById("sel-type").addEventListener("change", e=>{ type = e.tar
 document.getElementById("sel-topic").addEventListener("change", e=>{ topic = e.target.value; applyTopicFilter(); if(mode==="flash"){ flashIndex=0; renderFlash(); } else { startGameRound(); } });
 
 // ============================================================
-// Chọn giọng đọc: Nam lớn / Bé trai / Nữ lớn / Bé gái
-// Trình duyệt không có sẵn giọng "trẻ em" thật — giọng bé trai/bé gái
-// được giả lập bằng cách tăng cao độ (pitch) trên nền giọng nam/nữ có sẵn.
-// Giọng nam/nữ thật cũng tùy thuộc danh sách giọng đọc máy/trình duyệt cài sẵn.
+// Chọn giọng đọc: Nam / Nữ
+// Giọng thực tế phát ra phụ thuộc danh sách giọng đọc máy/trình duyệt cài sẵn
+// cho từng ngôn ngữ — một số máy chỉ có 1 giọng/ngôn ngữ, khi đó hệ thống chỉ
+// còn thay đổi được cao độ (pitch)/tốc độ (rate) chứ không đổi được giọng gốc.
 // ============================================================
 const VOICE_PROFILES = {
   male_adult:   { label: "🧔 Nam",  pitch: 0.85, rate: 0.9, genderHint: "male"   },
@@ -508,22 +515,27 @@ function speak(text){
   u.rate = profile.rate;
   const voice = pickVoiceForLang(langCode, profile.genderHint);
   if(voice) u.voice = voice;
-  // Log chẩn đoán: mở Console (F12) để xem máy/trình duyệt hiện có bao nhiêu giọng
-  // cho ngôn ngữ đang chọn — nếu chỉ có 1 giọng, hệ thống chỉ đổi được cao độ/tốc độ
-  // (không đổi được giọng nam/nữ thật) vì máy không có giọng thứ 2 để chọn.
-  const allForLang = window.speechSynthesis.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith(langCode.split("-")[0].toLowerCase()));
-  console.log(`[Giọng đọc] Ngôn ngữ ${langCode} — đang dùng "${currentVoiceType}" (pitch=${profile.pitch}, rate=${profile.rate}). Giọng máy đang chọn: ${voice ? voice.name : "(mặc định hệ thống)"}. Tổng số giọng có sẵn cho ngôn ngữ này:`, allForLang.map(v=>v.name));
   window.speechSynthesis.speak(u);
 }
 
 let allLoadedItems = [];
+let lastLoadedKey = null; // "ngôn ngữ|trình độ|loại" của lần tải gần nhất — tránh gọi mạng lại nếu không đổi
 
 async function loadItems(){
+  const key = `${currentLanguage}|${level}|${type}`;
+  if(key === lastLoadedKey){
+    // Bộ lọc không đổi so với lần tải trước (vd chỉ chuyển qua lại giữa 2 tab
+    // Từ vựng/Trò chơi) — dùng lại dữ liệu đã có sẵn, khỏi gọi mạng lại.
+    applyTopicFilter();
+    if(mode === "flash"){ flashIndex = 0; renderFlash(); } else { startGameRound(); }
+    return;
+  }
   const area = document.getElementById("content-area");
   area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
   const { data, error } = await sb.from("vocab_items").select("*").eq("language", currentLanguage).eq("level", level).eq("type", type);
   if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
   allLoadedItems = data || [];
+  lastLoadedKey = key;
   populateTopics();
   applyTopicFilter();
   if(mode === "flash"){ flashIndex = 0; renderFlash(); } else { startGameRound(); }
@@ -687,14 +699,27 @@ function formatBlockLines(lines){
   }).join('');
 }
 
+let grammarCache = {}; // key "ngôn ngữ|trình độ" -> { lesson, exercises } đã tải, tránh gọi mạng lại
+
 async function loadGrammar(){
+  const key = `${currentLanguage}|${level}`;
   const area = document.getElementById("content-area");
+
+  if(grammarCache[key] !== undefined){
+    // Đã tải trước đó — dùng lại, chỉ xáo trộn lại thứ tự bài tập cho mỗi lần xem
+    const cached = grammarCache[key];
+    if(cached === null){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyGrammar}</div>`; return; }
+    renderGrammar(cached.lesson, shuffle(cached.exercises));
+    return;
+  }
+
   area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
   const { data: lessonData, error: lessonError } = await sb.from("grammar_lessons").select("*").eq("language", currentLanguage).eq("level", level).maybeSingle();
   if(lessonError){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${lessonError.message}</div>`; return; }
-  if(!lessonData){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyGrammar}</div>`; return; }
+  if(!lessonData){ grammarCache[key] = null; area.innerHTML = `<div class="empty-msg">${L().ui.emptyGrammar}</div>`; return; }
   const { data: exData, error: exError } = await sb.from("grammar_exercises").select("*").eq("lesson_id", lessonData.id).order("order_index");
   if(exError){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${exError.message}</div>`; return; }
+  grammarCache[key] = { lesson: lessonData, exercises: exData || [] };
   renderGrammar(lessonData, shuffle(exData || []));
 }
 
