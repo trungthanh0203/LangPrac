@@ -1,7 +1,7 @@
 {
-  "name": "Deutsch & English Learn with Mr.Thanh",
-  "short_name": "DE·EN Learn",
-  "description": "Học từ vựng, ngữ pháp và bài tập tiếng Đức & tiếng Anh cùng Mr.Thanh",
+  "name": "Learn with Mr.Thanh",
+  "short_name": "Language Practice",
+  "description": "Học từ vựng, ngữ pháp và bài tập ngoại ngữ cùng Mr.Thanh",
   "id": "/index.html",
   "start_url": "./index.html",
   "scope": "./",
