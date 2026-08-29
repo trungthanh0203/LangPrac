@@ -48,6 +48,19 @@ body{margin:0;font-family:Arial,"Segoe UI",sans-serif;background:var(--bg-page);
 .auth-msg.ok{display:block;background:var(--green-light);color:#2f7d3a;}
 
 /* ---------- Thanh người dùng ---------- */
+.header-grid{display:flex;align-items:center;gap:12px;}
+.header-logo{flex:0 0 auto;display:flex;align-items:center;}
+.header-logo img{height:42px;width:auto;max-width:120px;display:block;border-radius:8px;object-fit:contain;}
+.header-center{flex:1 1 auto;min-width:0;}
+.header-voice{flex:0 0 auto;}
+.header-voice select{padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.4);font-size:12.5px;background:rgba(255,255,255,0.15);font-weight:700;color:#fff;cursor:pointer;}
+.header-voice select option{color:#1a2332;background:#fff;}
+@media (max-width:600px){
+  .header-logo img{height:32px;max-width:80px;}
+  .header-grid{gap:8px;}
+  .header-voice select{font-size:11.5px;padding:5px 6px;}
+}
+
 .user-bar{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;font-size:12.5px;}
 .user-bar .user-email{color:#fff;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;opacity:.95;}
 .user-bar .sep{color:rgba(255,255,255,0.5);}
@@ -168,13 +181,23 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
 <!-- ================= APP CHÍNH (chỉ hiện sau khi đăng nhập) ================= -->
 <div class="wrap hidden" id="main-wrap">
   <header class="top">
-    <div class="user-bar" id="user-bar">
-      <span class="user-email" id="user-email-label"></span>
-      <span class="sep">·</span>
-      <select id="lang-select"></select>
-      <button class="btn-logout" id="btn-logout">Đăng xuất</button>
+    <div class="header-grid">
+      <div class="header-logo">
+        <img src="icons/logo.png" alt="Logo" onerror="this.style.display='none'">
+      </div>
+      <div class="header-center">
+        <div class="user-bar" id="user-bar">
+          <span class="user-email" id="user-email-label"></span>
+          <span class="sep">·</span>
+          <select id="lang-select"></select>
+          <button class="btn-logout" id="btn-logout">Đăng xuất</button>
+        </div>
+        <div class="sub" id="header-sub"></div>
+      </div>
+      <div class="header-voice">
+        <select id="voice-select" title="Chọn giọng đọc"></select>
+      </div>
     </div>
-    <div class="sub" id="header-sub"></div>
   </header>
   <div class="flag-strip" id="flag-strip"></div>
 
@@ -369,6 +392,7 @@ async function enterApp(user){
   document.getElementById("user-email-label").textContent = user.email;
 
   buildLangSelect();
+  buildVoiceSelect();
   currentLanguage = (profile && profile.selected_language && LANGS[profile.selected_language])
     ? profile.selected_language
     : LANG_ORDER[0];
@@ -435,12 +459,57 @@ document.getElementById("sel-level").addEventListener("change", e=>{ level = e.t
 document.getElementById("sel-type").addEventListener("change", e=>{ type = e.target.value; loadItems(); });
 document.getElementById("sel-topic").addEventListener("change", e=>{ topic = e.target.value; applyTopicFilter(); if(mode==="flash"){ flashIndex=0; renderFlash(); } else { startGameRound(); } });
 
+// ============================================================
+// Chọn giọng đọc: Nam lớn / Bé trai / Nữ lớn / Bé gái
+// Trình duyệt không có sẵn giọng "trẻ em" thật — giọng bé trai/bé gái
+// được giả lập bằng cách tăng cao độ (pitch) trên nền giọng nam/nữ có sẵn.
+// Giọng nam/nữ thật cũng tùy thuộc danh sách giọng đọc máy/trình duyệt cài sẵn.
+// ============================================================
+const VOICE_PROFILES = {
+  male_adult:   { label: "🧔 Nam lớn",  pitch: 0.82, rate: 0.85, genderHint: "male"   },
+  male_child:   { label: "👦 Bé trai",  pitch: 1.55, rate: 0.95, genderHint: "male"   },
+  female_adult: { label: "👩 Nữ lớn",   pitch: 1.05, rate: 0.85, genderHint: "female" },
+  female_child: { label: "👧 Bé gái",   pitch: 1.7,  rate: 0.95, genderHint: "female" },
+};
+let currentVoiceType = "female_adult";
+
+function buildVoiceSelect(){
+  const sel = document.getElementById("voice-select");
+  sel.innerHTML = Object.entries(VOICE_PROFILES).map(([key,v]) => `<option value="${key}">${v.label}</option>`).join("");
+  sel.value = currentVoiceType;
+  sel.addEventListener("change", (e)=>{ currentVoiceType = e.target.value; });
+}
+
+// "Đánh thức" danh sách giọng đọc của trình duyệt càng sớm càng tốt (nhiều trình
+// duyệt tải danh sách này bất đồng bộ, lần gọi đầu có thể trả về mảng rỗng).
+if("speechSynthesis" in window){
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
+
+function pickVoiceForLang(langCode, genderHint){
+  const voices = window.speechSynthesis.getVoices();
+  const langPrefix = langCode.split("-")[0].toLowerCase();
+  const candidates = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith(langPrefix));
+  if(candidates.length === 0) return null;
+  const maleHint = /male|nam|david|mark|stefan|yannick|thomas|paul|felix|liang|kangkang|yunyang|yunjian/i;
+  const femaleHint = /female|nu|hedda|zira|susan|anna|salli|ting|xiaoxiao|yaoyao|mei|xiaoyi|hanhan/i;
+  const hintRegex = genderHint === "male" ? maleHint : femaleHint;
+  const matched = candidates.find(v => hintRegex.test(v.name));
+  return matched || candidates[0];
+}
+
 function speak(text){
   if(!('speechSynthesis' in window)) return;
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = L().speechLang;
-  u.rate = 0.9;
+  const langCode = L().speechLang;
+  const profile = VOICE_PROFILES[currentVoiceType];
+  u.lang = langCode;
+  u.pitch = profile.pitch;
+  u.rate = profile.rate;
+  const voice = pickVoiceForLang(langCode, profile.genderHint);
+  if(voice) u.voice = voice;
   window.speechSynthesis.speak(u);
 }
 
