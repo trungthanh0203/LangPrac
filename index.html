@@ -150,6 +150,28 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
 .order-chip-selected{background:var(--teal-light);border-color:var(--teal);}
 .order-placeholder{color:var(--text-3);font-size:12.5px;font-style:italic;}
 .grammar-score{margin-top:16px;font-weight:700;font-size:15px;text-align:center;color:var(--navy2);}
+
+/* Đọc & Nói - đoạn văn */
+.reading-passage{background:var(--bg-page);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:18px;}
+.reading-passage-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+.reading-passage-title{font-size:16px;margin:0;color:var(--navy2);}
+.reading-passage-text{line-height:1.9;font-size:14.5px;color:var(--text-1);}
+.passage-sentence{cursor:pointer;border-radius:4px;padding:1px 2px;}
+.passage-sentence:hover{background:var(--teal-light);}
+.passage-sentence.playing{background:var(--teal-light);font-weight:700;}
+
+/* Nói - hội thoại */
+.role-picker{background:var(--bg-page);border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
+.dialogue-wrap .reading-passage-title{margin-bottom:14px;}
+.dialogue-line{border:2px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:10px;max-width:85%;opacity:0.5;}
+.dialogue-line.dialogue-current{opacity:1;border-color:var(--teal);}
+.dialogue-line.dialogue-done{opacity:0.75;}
+.dialogue-line.dialogue-app{background:var(--bg-page);margin-right:auto;}
+.dialogue-line.dialogue-user{background:var(--teal-light);margin-left:auto;}
+.dialogue-speaker{font-size:11.5px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;}
+.dialogue-text{font-size:14.5px;line-height:1.5;color:var(--text-1);}
+.dialogue-your-turn{margin-top:8px;font-size:12.5px;font-weight:600;color:var(--navy2);}
+.dialogue-line .btn{margin-top:10px;}
 </style>
 </head>
 <body>
@@ -224,6 +246,14 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
       </select>
       <select id="sel-topic"></select>
     </div>
+    <div id="practice-filters" style="display:none;">
+      <select id="sel-practice-kind">
+        <option id="opt-kind-writing" value="writing"></option>
+        <option id="opt-kind-reading" value="reading"></option>
+        <option id="opt-kind-speaking-passage" value="speaking_passage"></option>
+        <option id="opt-kind-speaking-dialogue" value="speaking_dialogue"></option>
+      </select>
+    </div>
   </div>
 
   <div class="card" id="content-area">
@@ -255,6 +285,7 @@ let mode = "flash";
 let level = "";
 let type = "word";
 let topic = "all";
+let practiceKind = "writing"; // "writing" | "reading" | "speaking_passage" | "speaking_dialogue"
 let items = [];
 let flashIndex = 0;
 let CURRENT_USER = null;
@@ -447,6 +478,10 @@ function applyLanguageUI(){
   document.getElementById("tab-practice").textContent = u.tabPractice;
   document.getElementById("opt-word").textContent = u.optWord;
   document.getElementById("opt-sentence").textContent = u.optSentence;
+  document.getElementById("opt-kind-writing").textContent = u.kindWriting;
+  document.getElementById("opt-kind-reading").textContent = u.kindReading;
+  document.getElementById("opt-kind-speaking-passage").textContent = u.kindSpeakingPassage;
+  document.getElementById("opt-kind-speaking-dialogue").textContent = u.kindSpeakingDialogue;
   document.getElementById("footer-text").innerHTML = u.footer;
 
   const levelSel = document.getElementById("sel-level");
@@ -468,6 +503,7 @@ function setActiveTab(){
   document.getElementById("tab-grammar").classList.toggle("active", mode==="grammar");
   document.getElementById("tab-practice").classList.toggle("active", mode==="practice");
   document.getElementById("vocab-filters").style.display = (mode==="grammar" || mode==="practice") ? "none" : "contents";
+  document.getElementById("practice-filters").style.display = (mode==="practice") ? "block" : "none";
 }
 // Tải lại đúng nội dung theo tab đang active — dùng ở mọi nơi có thể đổi ngôn ngữ/trình độ/...
 // mà KHÔNG đổi tab, để tránh gọi nhầm loadItems() (tải Từ vựng/Trò chơi) khi đang ở tab Ngữ pháp/Luyện tập.
@@ -482,6 +518,7 @@ document.getElementById("sel-level").addEventListener("change", e=>{
 });
 document.getElementById("sel-type").addEventListener("change", e=>{ type = e.target.value; loadItems(); });
 document.getElementById("sel-topic").addEventListener("change", e=>{ topic = e.target.value; applyTopicFilter(); if(mode==="flash"){ flashIndex=0; renderFlash(); } else { startGameRound(); } });
+document.getElementById("sel-practice-kind").addEventListener("change", e=>{ practiceKind = e.target.value; loadPractice(); });
 
 // ============================================================
 // Chọn giọng đọc: Nam / Nữ
@@ -521,8 +558,9 @@ function pickVoiceForLang(langCode, genderHint){
   return matched || candidates[0];
 }
 
-function speak(text){
-  if(!('speechSynthesis' in window)) return;
+function speak(text, opts){
+  opts = opts || {};
+  if(!('speechSynthesis' in window)){ if(opts.onend) opts.onend(); return; }
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   const langCode = L().speechLang;
@@ -530,8 +568,10 @@ function speak(text){
   u.lang = langCode;
   u.pitch = profile.pitch;
   u.rate = profile.rate;
-  const voice = pickVoiceForLang(langCode, profile.genderHint);
+  const genderHint = opts.genderHint || profile.genderHint;
+  const voice = pickVoiceForLang(langCode, genderHint);
   if(voice) u.voice = voice;
+  if(opts.onend) u.onend = opts.onend;
   window.speechSynthesis.speak(u);
 }
 
@@ -773,6 +813,19 @@ function exerciseCategory(type){
 
 let practicePoolCache = {}; // key "ngôn ngữ|trình độ" -> toàn bộ bài tập của trình độ đó (chưa lọc)
 let currentPracticeItems = []; // bộ câu hỏi đang hiển thị (giữ cố định để nút "Làm lại" dùng đúng bộ này)
+let currentPracticePreHtml = ""; // HTML phụ hiện phía trên danh sách bài tập (đoạn văn đọc/nói)
+let practiceNextAction = null; // hàm gọi khi bấm nút "Tiếp theo/Đoạn khác" — tuỳ theo dạng luyện tập đang chọn
+
+// ---- Đọc (Reading) & Nói - Đọc đoạn văn (Speaking passage) ----
+let readingPoolCache = {}; // key "ngôn ngữ|trình độ" -> [đoạn văn]
+let PASSAGE_SENTENCES_CACHE = {}; // "id đoạn văn" -> mảng câu đã tách, dùng khi phát âm thanh
+
+// ---- Nói - Hội thoại (Speaking dialogue) ----
+let dialoguePoolCache = {}; // key "ngôn ngữ|trình độ" -> [hội thoại]
+let currentDialogue = null;
+let currentDialogueLines = [];
+let dialogueUserRole = null; // "A" hoặc "B" — vai người học chọn đọc
+let dialogueIndex = 0;
 
 function buildPracticeSet(pool){
   const result = [];
@@ -784,6 +837,13 @@ function buildPracticeSet(pool){
 }
 
 async function loadPractice(){
+  if(practiceKind === "reading"){ await loadReadingPractice(); }
+  else if(practiceKind === "speaking_passage"){ await loadSpeakingPassage(); }
+  else if(practiceKind === "speaking_dialogue"){ await loadSpeakingDialogue(); }
+  else { await loadWritingPractice(); }
+}
+
+async function loadWritingPractice(){
   const key = `${currentLanguage}|${level}`;
   const area = document.getElementById("content-area");
 
@@ -806,7 +866,8 @@ function startNewPracticeSet(pool){
   const area = document.getElementById("content-area");
   if(!pool || pool.length === 0){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyPractice}</div>`; return; }
   currentPracticeItems = buildPracticeSet(pool);
-  renderPractice(currentPracticeItems);
+  practiceNextAction = () => startNewPracticeSet(pool);
+  renderPractice(currentPracticeItems, "");
 }
 
 let orderStates = {}; // ex.id -> { bank: [{text,uid}], answer: [{text,uid}] } — trạng thái bài "sắp xếp câu"
@@ -841,9 +902,11 @@ function wireOrderChips(exId){
   });
 }
 
-function renderPractice(items){
+function renderPractice(items, preHtml, nextLabel){
   const area = document.getElementById("content-area");
   const u = L().ui;
+  currentPracticeItems = items;
+  currentPracticePreHtml = preHtml || "";
   orderStates = {}; // mỗi lần hiện bài (kể cả "Làm lại") đều xáo lại bài sắp xếp câu từ đầu
 
   const exHtml = items.map((ex, idx)=>{
@@ -875,16 +938,21 @@ function renderPractice(items){
       </div>`;
   }).join("");
 
-  area.innerHTML = `
+  const hasItems = items.length > 0;
+  const exerciseSectionHtml = hasItems ? `
     <div class="exercise-section" style="border-top:none;margin-top:0;padding-top:0;">
       <h3 class="exercise-heading">${u.exerciseHeading}</h3>
       <div class="exercise-list">${exHtml}</div>
       <button class="btn" id="btn-check-practice">${u.checkBtn}</button>
       <div class="grammar-score" id="practice-score"></div>
-      <div id="practice-after-actions" style="display:none;text-align:center;margin-top:14px;">
-        <button class="btn" id="btn-practice-retry" style="margin-right:10px;">${u.retryBtn}</button>
-        <button class="btn" id="btn-practice-next">${u.nextBtn}</button>
-      </div>
+    </div>` : "";
+
+  area.innerHTML = `
+    ${currentPracticePreHtml}
+    ${exerciseSectionHtml}
+    <div id="practice-after-actions" style="display:${hasItems ? "none" : "block"};text-align:center;margin-top:14px;">
+      ${hasItems ? `<button class="btn" id="btn-practice-retry" style="margin-right:10px;">${u.retryBtn}</button>` : ""}
+      <button class="btn" id="btn-practice-next">${nextLabel || u.nextBtn}</button>
     </div>
   `;
   items.forEach(ex=>{
@@ -893,9 +961,12 @@ function renderPractice(items){
   document.querySelectorAll(".flash-speak[data-listen]").forEach(btn=>{
     btn.addEventListener("click", ()=> speak(btn.dataset.listen));
   });
-  document.getElementById("btn-check-practice").addEventListener("click", checkPracticeAnswers);
-  document.getElementById("btn-practice-retry").addEventListener("click", ()=> renderPractice(currentPracticeItems));
-  document.getElementById("btn-practice-next").addEventListener("click", ()=> startNewPracticeSet(practicePoolCache[`${currentLanguage}|${level}`]));
+  if(hasItems){
+    document.getElementById("btn-check-practice").addEventListener("click", checkPracticeAnswers);
+    document.getElementById("btn-practice-retry").addEventListener("click", ()=> renderPractice(currentPracticeItems, currentPracticePreHtml, nextLabel));
+  }
+  document.getElementById("btn-practice-next").addEventListener("click", ()=> { if(practiceNextAction) practiceNextAction(); });
+  wirePassageAudio();
 }
 
 function checkPracticeAnswers(){
@@ -928,6 +999,211 @@ function checkPracticeAnswers(){
   if(scoreEl) scoreEl.textContent = fmt(u.scoreLabel, {correct: correctCount, total: currentPracticeItems.length});
   document.getElementById("btn-check-practice").style.display = "none";
   document.getElementById("practice-after-actions").style.display = "block";
+}
+
+// ============================================================
+// Đọc (Reading) & Nói - Đọc đoạn văn (Speaking passage)
+// Cả 2 dùng chung bảng reading_passages; Đọc có thêm câu hỏi (reading_questions).
+// ============================================================
+function splitSentences(text){
+  return String(text||"").split(/(?<=[.!?。！？])\s+/).map(s=>s.trim()).filter(Boolean);
+}
+
+function passageBlockHtml(passage){
+  const pid = String(passage.id);
+  const sentences = splitSentences(passage.passage_text);
+  PASSAGE_SENTENCES_CACHE[pid] = sentences;
+  const u = L().ui;
+  const sentHtml = sentences.map((s,i)=>`<span class="passage-sentence" data-passage-id="${pid}" data-sent-idx="${i}">${escHtml(s)}</span>`).join(" ");
+  return `
+    <div class="reading-passage">
+      <div class="reading-passage-head">
+        <h3 class="reading-passage-title">${escHtml(passage.title)}</h3>
+        <button type="button" class="btn" id="btn-listen-passage" data-passage-id="${pid}">${u.listenFullBtn}</button>
+      </div>
+      <div class="reading-passage-text">${sentHtml}</div>
+    </div>`;
+}
+
+function playSentenceSequence(passageId, sentences, idx, singleOnly){
+  if(idx >= sentences.length) return;
+  document.querySelectorAll(`.passage-sentence[data-passage-id="${passageId}"]`).forEach(e=>e.classList.remove("playing"));
+  const el = document.querySelector(`.passage-sentence[data-passage-id="${passageId}"][data-sent-idx="${idx}"]`);
+  if(el) el.classList.add("playing");
+  speak(sentences[idx], { onend: () => {
+    if(el) el.classList.remove("playing");
+    if(!singleOnly) playSentenceSequence(passageId, sentences, idx+1, false);
+  }});
+}
+
+// Gắn sự kiện cho nút nghe/câu văn — gọi lại an toàn mỗi lần renderPractice (không có gì để gắn thì bỏ qua).
+function wirePassageAudio(){
+  const fullBtn = document.getElementById("btn-listen-passage");
+  if(fullBtn){
+    fullBtn.addEventListener("click", ()=>{
+      const pid = fullBtn.dataset.passageId;
+      playSentenceSequence(pid, PASSAGE_SENTENCES_CACHE[pid] || [], 0, false);
+    });
+  }
+  document.querySelectorAll(".passage-sentence").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      const pid = el.dataset.passageId;
+      const idx = parseInt(el.dataset.sentIdx, 10);
+      playSentenceSequence(pid, PASSAGE_SENTENCES_CACHE[pid] || [], idx, true);
+    });
+  });
+}
+
+async function loadReadingPassagePool(){
+  const key = `${currentLanguage}|${level}`;
+  if(readingPoolCache[key] === undefined){
+    const { data, error } = await sb.from("reading_passages").select("*").eq("language", currentLanguage).eq("level", level);
+    if(error) return { error };
+    readingPoolCache[key] = data || [];
+  }
+  return { pool: readingPoolCache[key] };
+}
+
+async function loadReadingPractice(){
+  const area = document.getElementById("content-area");
+  area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
+  const { pool, error } = await loadReadingPassagePool();
+  if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
+  if(pool.length === 0){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyReading}</div>`; return; }
+  await pickRandomReadingPassage(pool);
+}
+
+async function pickRandomReadingPassage(pool){
+  const area = document.getElementById("content-area");
+  const passage = pool[Math.floor(Math.random()*pool.length)];
+  area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
+  const { data: questions, error } = await sb.from("reading_questions").select("*").eq("passage_id", passage.id).order("order_index");
+  if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
+  practiceNextAction = () => pickRandomReadingPassage(pool);
+  renderPractice(questions || [], passageBlockHtml(passage), L().ui.anotherPassageBtn);
+}
+
+async function loadSpeakingPassage(){
+  const area = document.getElementById("content-area");
+  area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
+  const { pool, error } = await loadReadingPassagePool();
+  if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
+  if(pool.length === 0){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyReading}</div>`; return; }
+  pickRandomSpeakingPassage(pool);
+}
+
+function pickRandomSpeakingPassage(pool){
+  const passage = pool[Math.floor(Math.random()*pool.length)];
+  practiceNextAction = () => pickRandomSpeakingPassage(pool);
+  renderPractice([], passageBlockHtml(passage), L().ui.anotherPassageBtn);
+}
+
+// ============================================================
+// Nói - Hội thoại (Speaking dialogue): app đọc 1 vai, người học tự đọc vai còn lại.
+// ============================================================
+function dialogueRoleLabel(role, dialogue){
+  return role === "A" ? (dialogue.role_a_name || "A") : (dialogue.role_b_name || "B");
+}
+
+async function loadSpeakingDialogue(){
+  const key = `${currentLanguage}|${level}`;
+  const area = document.getElementById("content-area");
+  area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
+  if(dialoguePoolCache[key] === undefined){
+    const { data, error } = await sb.from("dialogues").select("*").eq("language", currentLanguage).eq("level", level);
+    if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
+    dialoguePoolCache[key] = data || [];
+  }
+  const pool = dialoguePoolCache[key];
+  if(pool.length === 0){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyDialogue}</div>`; return; }
+  const dialogue = pool[Math.floor(Math.random()*pool.length)];
+  const { data: lines, error: linesError } = await sb.from("dialogue_lines").select("*").eq("dialogue_id", dialogue.id).order("order_index");
+  if(linesError){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${linesError.message}</div>`; return; }
+  renderDialogueRolePicker(dialogue, lines || []);
+}
+
+function renderDialogueRolePicker(dialogue, lines){
+  const area = document.getElementById("content-area");
+  const u = L().ui;
+  area.innerHTML = `
+    <div class="reading-passage">
+      <h3 class="reading-passage-title">${escHtml(dialogue.title)}</h3>
+      ${dialogue.scenario ? `<p style="color:var(--text-2);margin:0;">${escHtml(dialogue.scenario)}</p>` : ""}
+    </div>
+    <div class="role-picker">
+      <p style="font-weight:700;margin:0 0 10px;">${u.chooseRolePrompt}</p>
+      <label class="exercise-option"><input type="radio" name="dialogue-role" value="A" checked> ${escHtml(dialogueRoleLabel("A", dialogue))}</label>
+      <label class="exercise-option"><input type="radio" name="dialogue-role" value="B"> ${escHtml(dialogueRoleLabel("B", dialogue))}</label>
+      <div style="margin-top:14px;">
+        <button class="btn" id="btn-start-dialogue">${u.startDialogueBtn}</button>
+      </div>
+    </div>`;
+  document.getElementById("btn-start-dialogue").addEventListener("click", ()=>{
+    const checked = document.querySelector('input[name="dialogue-role"]:checked');
+    dialogueUserRole = checked ? checked.value : "A";
+    dialogueIndex = 0;
+    currentDialogue = dialogue;
+    currentDialogueLines = lines;
+    renderDialogueStep();
+  });
+}
+
+function renderDialogueStep(){
+  const area = document.getElementById("content-area");
+  const u = L().ui;
+  const dialogue = currentDialogue;
+  const lines = currentDialogueLines;
+  const finished = dialogueIndex >= lines.length;
+
+  const linesHtml = lines.map((ln, idx)=>{
+    const isUserLine = ln.speaker === dialogueUserRole;
+    const roleName = dialogueRoleLabel(ln.speaker, dialogue);
+    const state = idx < dialogueIndex ? "done" : (idx === dialogueIndex ? "current" : "upcoming");
+    let actionHtml = "";
+    if(state === "current" && isUserLine){
+      actionHtml = `<div class="dialogue-your-turn">${u.yourTurnLabel}</div><button class="btn" id="btn-dialogue-continue">${u.continueBtn}</button>`;
+    } else if(state === "current" && !isUserLine){
+      actionHtml = `<button class="btn" id="btn-dialogue-continue" style="display:none;">${u.continueBtn}</button>`;
+    }
+    return `
+      <div class="dialogue-line dialogue-${isUserLine?"user":"app"} dialogue-${state}" id="dialogue-line-${idx}">
+        <div class="dialogue-speaker">${escHtml(roleName)}${isUserLine ? " 🎙️" : " 🔊"}</div>
+        <div class="dialogue-text">${escHtml(ln.line_text)}</div>
+        ${actionHtml}
+      </div>`;
+  }).join("");
+
+  area.innerHTML = `
+    <div class="dialogue-wrap">
+      <h3 class="reading-passage-title">${escHtml(dialogue.title)}</h3>
+      <div class="dialogue-lines">${linesHtml}</div>
+      ${finished ? `
+        <div style="text-align:center;margin-top:16px;">
+          <p style="font-weight:700;color:var(--green);">${u.dialogueDoneMsg}</p>
+          <button class="btn" id="btn-dialogue-restart" style="margin-right:10px;">${u.restartDialogueBtn}</button>
+          <button class="btn" id="btn-dialogue-another">${u.anotherDialogueBtn}</button>
+        </div>` : ""}
+    </div>`;
+
+  if(finished){
+    document.getElementById("btn-dialogue-restart").addEventListener("click", ()=>{ dialogueIndex=0; renderDialogueStep(); });
+    document.getElementById("btn-dialogue-another").addEventListener("click", ()=> loadSpeakingDialogue());
+    return;
+  }
+
+  const currentLine = lines[dialogueIndex];
+  const isUserLine = currentLine.speaker === dialogueUserRole;
+  const continueBtn = document.getElementById("btn-dialogue-continue");
+  continueBtn.addEventListener("click", ()=>{ dialogueIndex++; renderDialogueStep(); });
+
+  if(!isUserLine){
+    // App tự đọc lời thoại của mình, xong mới hiện nút Tiếp tục để người học chủ động qua câu kế.
+    const genderHint = currentLine.speaker === "A" ? "female" : "male";
+    speak(currentLine.line_text, { genderHint, onend: () => { continueBtn.style.display = "inline-block"; } });
+  }
+
+  const el = document.getElementById(`dialogue-line-${dialogueIndex}`);
+  if(el) el.scrollIntoView({behavior:"smooth", block:"center"});
 }
 
 boot();

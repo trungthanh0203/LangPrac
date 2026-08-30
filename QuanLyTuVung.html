@@ -118,6 +118,8 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
     <div class="section-tabs">
       <button id="sec-vocab" class="active">📚 Từ vựng</button>
       <button id="sec-grammar">📘 Ngữ pháp</button>
+      <button id="sec-reading">📖 Đọc</button>
+      <button id="sec-dialogue">🗣️ Hội thoại</button>
     </div>
 
     <div id="vocab-section">
@@ -216,6 +218,109 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
         <div class="result-msg" id="ex-import-result"></div>
       </div>
     </div>
+
+    <div id="reading-section" style="display:none;">
+      <div class="card">
+        <h3>Đoạn văn (Đọc & Nói-Đọc đoạn văn dùng chung, nhiều đoạn / trình độ)</h3>
+        <div class="filters" style="margin-bottom:14px;">
+          <select id="r-language" style="color:var(--text-1);background:#fff;border:1px solid var(--border);"></select>
+          <select id="r-level" style="color:var(--text-1);background:#fff;border:1px solid var(--border);"></select>
+          <button class="btn btn-primary" id="btn-add-passage">+ Thêm đoạn văn</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Tiêu đề</th><th>Số câu hỏi</th><th></th></tr></thead>
+            <tbody id="passage-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" id="rq-card" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <h3 style="margin:0;">Câu hỏi đọc hiểu cho: <span id="rq-passage-title" style="color:var(--teal);"></span></h3>
+          <button class="btn btn-primary" id="btn-add-rq">+ Thêm câu hỏi</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Loại</th><th>Câu hỏi</th><th>Đáp án đúng</th><th></th></tr></thead>
+            <tbody id="rq-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Nhập nhanh đoạn văn từ CSV</h3>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">
+          Cấu trúc cột: <code>language,level,title,passage_text</code> — mỗi dòng là 1 đoạn văn mới (không ghi đè, trùng tiêu đề sẽ tự bỏ qua).
+        </div>
+        <textarea id="passage-csv-input" placeholder='language,level,title,passage_text&#10;en,A1,"My Family","This is my family. I have..."'></textarea>
+        <div style="margin-top:10px;"><button class="btn btn-primary" id="btn-import-passage">Nhập vào hệ thống</button></div>
+        <div class="result-msg" id="passage-import-result"></div>
+      </div>
+
+      <div class="card">
+        <h3>Nhập nhanh câu hỏi đọc hiểu từ CSV</h3>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">
+          Cấu trúc cột: <code>language,level,passage_title,type,question,options,correct_answer,explanation,order_index</code><br>
+          &bull; <b>passage_title</b> phải khớp CHÍNH XÁC với tiêu đề đoạn văn đã tạo ở trên (cùng ngôn ngữ + trình độ) — sai/thiếu sẽ bị bỏ qua kèm báo lỗi.
+        </div>
+        <textarea id="rq-csv-input" placeholder='language,level,passage_title,type,question,options,correct_answer,explanation,order_index&#10;en,A1,My Family,multiple_choice,How many brothers does she have?,"one,two,three",two,,1'></textarea>
+        <div style="margin-top:10px;"><button class="btn btn-primary" id="btn-import-rq">Nhập vào hệ thống</button></div>
+        <div class="result-msg" id="rq-import-result"></div>
+      </div>
+    </div>
+
+    <div id="dialogue-section" style="display:none;">
+      <div class="card">
+        <h3>Hội thoại (nhiều bài / trình độ)</h3>
+        <div class="filters" style="margin-bottom:14px;">
+          <select id="d-language" style="color:var(--text-1);background:#fff;border:1px solid var(--border);"></select>
+          <select id="d-level" style="color:var(--text-1);background:#fff;border:1px solid var(--border);"></select>
+          <button class="btn btn-primary" id="btn-add-dialogue">+ Thêm hội thoại</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Tiêu đề</th><th>Vai A</th><th>Vai B</th><th>Số câu thoại</th><th></th></tr></thead>
+            <tbody id="dialogue-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" id="line-card" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <h3 style="margin:0;">Câu thoại cho: <span id="line-dialogue-title" style="color:var(--teal);"></span></h3>
+          <button class="btn btn-primary" id="btn-add-line">+ Thêm câu thoại</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Vai</th><th>Lời thoại</th><th></th></tr></thead>
+            <tbody id="line-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Nhập nhanh hội thoại từ CSV</h3>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">
+          Cấu trúc cột: <code>language,level,title,scenario,role_a_name,role_b_name</code> — <b>scenario</b> không bắt buộc.
+        </div>
+        <textarea id="dialogue-csv-input" placeholder='language,level,title,scenario,role_a_name,role_b_name&#10;en,A2,"At the Cafe","Ordering a drink",Barista,Customer'></textarea>
+        <div style="margin-top:10px;"><button class="btn btn-primary" id="btn-import-dialogue">Nhập vào hệ thống</button></div>
+        <div class="result-msg" id="dialogue-import-result"></div>
+      </div>
+
+      <div class="card">
+        <h3>Nhập nhanh câu thoại từ CSV</h3>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">
+          Cấu trúc cột: <code>language,level,dialogue_title,speaker,line_text,order_index</code><br>
+          &bull; <b>dialogue_title</b> phải khớp CHÍNH XÁC với tiêu đề hội thoại đã tạo ở trên.<br>
+          &bull; <b>speaker</b>: chỉ nhận giá trị <code>A</code> hoặc <code>B</code>.
+        </div>
+        <textarea id="line-csv-input" placeholder='language,level,dialogue_title,speaker,line_text,order_index&#10;en,A2,At the Cafe,A,"Hi, what would you like to order?",1&#10;en,A2,At the Cafe,B,"I would like a cappuccino, please.",2'></textarea>
+        <div style="margin-top:10px;"><button class="btn btn-primary" id="btn-import-line">Nhập vào hệ thống</button></div>
+        <div class="result-msg" id="line-import-result"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -281,6 +386,30 @@ function buildLanguageDropdowns(){
   const gLang = document.getElementById("g-language");
   gLang.innerHTML = LANGS_ORDER.map(code=>`<option value="${code}">${LANGS_CFG[code].adminLabel}</option>`).join("");
   rebuildGLevelOptions();
+
+  // Bộ chọn ngôn ngữ/trình độ trong phần Đọc
+  const rLang = document.getElementById("r-language");
+  rLang.innerHTML = LANGS_ORDER.map(code=>`<option value="${code}">${LANGS_CFG[code].adminLabel}</option>`).join("");
+  rebuildRLevelOptions();
+
+  // Bộ chọn ngôn ngữ/trình độ trong phần Hội thoại
+  const dLang = document.getElementById("d-language");
+  dLang.innerHTML = LANGS_ORDER.map(code=>`<option value="${code}">${LANGS_CFG[code].adminLabel}</option>`).join("");
+  rebuildDLevelOptions();
+}
+
+function rebuildRLevelOptions(){
+  const lang = document.getElementById("r-language").value;
+  const sel = document.getElementById("r-level");
+  const levels = LANGS_CFG[lang]?.levels || [];
+  sel.innerHTML = levels.map(lv=>`<option value="${lv.code}">${lv.label}</option>`).join("");
+}
+
+function rebuildDLevelOptions(){
+  const lang = document.getElementById("d-language").value;
+  const sel = document.getElementById("d-level");
+  const levels = LANGS_CFG[lang]?.levels || [];
+  sel.innerHTML = levels.map(lv=>`<option value="${lv.code}">${lv.label}</option>`).join("");
 }
 
 function rebuildLevelFilterOptions(){
@@ -636,19 +765,23 @@ document.getElementById("btn-import").addEventListener("click", async ()=>{
 // ============================================================
 // Chuyển đổi giữa 2 khu vực quản trị: Từ vựng / Ngữ pháp
 // ============================================================
-document.getElementById("sec-vocab").addEventListener("click", ()=>{
-  document.getElementById("sec-vocab").classList.add("active");
-  document.getElementById("sec-grammar").classList.remove("active");
-  document.getElementById("vocab-section").style.display = "block";
-  document.getElementById("grammar-section").style.display = "none";
-});
-document.getElementById("sec-grammar").addEventListener("click", ()=>{
-  document.getElementById("sec-grammar").classList.add("active");
-  document.getElementById("sec-vocab").classList.remove("active");
-  document.getElementById("vocab-section").style.display = "none";
-  document.getElementById("grammar-section").style.display = "block";
-  loadLesson();
-});
+// ============================================================
+// Chuyển đổi giữa 4 khu vực quản trị: Từ vựng / Ngữ pháp / Đọc / Hội thoại
+// ============================================================
+const ALL_SECTIONS = ["vocab", "grammar", "reading", "dialogue"];
+function switchSection(active){
+  ALL_SECTIONS.forEach(name=>{
+    document.getElementById(`sec-${name}`).classList.toggle("active", name===active);
+    document.getElementById(`${name}-section`).style.display = (name===active) ? "block" : "none";
+  });
+  if(active === "grammar") loadLesson();
+  else if(active === "reading") loadPassages();
+  else if(active === "dialogue") loadDialogues();
+}
+document.getElementById("sec-vocab").addEventListener("click", ()=> switchSection("vocab"));
+document.getElementById("sec-grammar").addEventListener("click", ()=> switchSection("grammar"));
+document.getElementById("sec-reading").addEventListener("click", ()=> switchSection("reading"));
+document.getElementById("sec-dialogue").addEventListener("click", ()=> switchSection("dialogue"));
 
 // ============================================================
 // Bài học ngữ pháp (1 bài / ngôn ngữ / trình độ)
@@ -658,6 +791,10 @@ let CURRENT_EXERCISES = [];
 
 document.getElementById("g-language").addEventListener("change", ()=>{ rebuildGLevelOptions(); loadLesson(); });
 document.getElementById("g-level").addEventListener("change", loadLesson);
+document.getElementById("r-language").addEventListener("change", ()=>{ rebuildRLevelOptions(); loadPassages(); });
+document.getElementById("r-level").addEventListener("change", loadPassages);
+document.getElementById("d-language").addEventListener("change", ()=>{ rebuildDLevelOptions(); loadDialogues(); });
+document.getElementById("d-level").addEventListener("change", loadDialogues);
 
 async function loadLesson(){
   const language = document.getElementById("g-language").value;
@@ -979,6 +1116,710 @@ document.getElementById("btn-import-ex").addEventListener("click", async ()=>{
       + (errors.length ? ("\nCác dòng bị bỏ qua do lỗi định dạng:\n" + errors.join("\n")) : "");
     document.getElementById("ex-csv-input").value = "";
     if(CURRENT_LESSON) await loadExercises(CURRENT_LESSON.id);
+  } catch(err){
+    resultEl.className = "result-msg err";
+    resultEl.textContent = "Có lỗi bất ngờ xảy ra: " + (err && err.message ? err.message : String(err));
+    console.error(err);
+  } finally {
+    btn.disabled = false; btn.textContent = "Nhập vào hệ thống";
+  }
+});
+
+// ============================================================
+// ĐỌC: Đoạn văn (nhiều đoạn / ngôn ngữ / trình độ)
+// ============================================================
+let CURRENT_PASSAGES = [];
+let CURRENT_PASSAGE = null;
+let CURRENT_RQ = [];
+
+async function loadPassages(){
+  const language = document.getElementById("r-language").value;
+  const level = document.getElementById("r-level").value;
+  document.getElementById("rq-card").style.display = "none";
+  CURRENT_PASSAGE = null;
+  const { data, error } = await sb.from("reading_passages")
+    .select("*, reading_questions(count)")
+    .eq("language", language).eq("level", level)
+    .order("order_index");
+  if(error){ alert("Lỗi khi tải đoạn văn: " + error.message); return; }
+  CURRENT_PASSAGES = data || [];
+  renderPassages();
+}
+
+function renderPassages(){
+  document.getElementById("passage-table-body").innerHTML = CURRENT_PASSAGES.map(p=>{
+    const qCount = (p.reading_questions && p.reading_questions[0] && p.reading_questions[0].count) || 0;
+    return `
+    <tr>
+      <td>${escHtmlAdmin(p.title)}</td>
+      <td>${qCount}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-sm" onclick="selectPassage(${p.id})">Câu hỏi</button>
+        <button class="btn-sm" onclick="openEditPassage(${p.id})">Sửa</button>
+        <button class="btn-sm danger" onclick="deletePassage(${p.id})">Xoá</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+function escHtmlAdmin(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+function passageFieldForm(record){
+  const r = record || { title:"", passage_text:"" };
+  return `
+    <div class="field-row"><label>Tiêu đề</label><input data-f="title" value="${(r.title||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Nội dung đoạn văn</label><textarea data-f="passage_text" style="min-height:180px;">${r.passage_text||''}</textarea></div>
+  `;
+}
+
+function openAddPassage(){
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Thêm đoạn văn</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="passage-form">${passageFieldForm(null)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Thêm</button></div>
+    </form>`;
+  wirePassageForm(null);
+}
+window.openEditPassage = function(id){
+  const record = CURRENT_PASSAGES.find(p=>p.id===id);
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Sửa đoạn văn</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="passage-form">${passageFieldForm(record)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Lưu</button></div>
+    </form>`;
+  wirePassageForm(record);
+};
+window.deletePassage = async function(id){
+  if(!confirm("Xoá đoạn văn này? (các câu hỏi đọc hiểu gắn theo cũng sẽ bị xoá)")) return;
+  const { error } = await sb.from("reading_passages").delete().eq("id", id);
+  if(error){ alert("Lỗi: " + error.message); return; }
+  await loadPassages();
+};
+function wirePassageForm(record){
+  document.getElementById("overlay").classList.add("show");
+  document.getElementById("m-close").onclick = closeModal;
+  document.getElementById("m-cancel").onclick = closeModal;
+  document.getElementById("passage-form").onsubmit = async (e)=>{
+    e.preventDefault();
+    const language = document.getElementById("r-language").value;
+    const level = document.getElementById("r-level").value;
+    const form = e.target;
+    const payload = { language, level };
+    form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+    if(!payload.title || !payload.passage_text){ alert("Vui lòng nhập đủ tiêu đề và nội dung."); return; }
+    let error;
+    if(record){ ({ error } = await sb.from("reading_passages").update(payload).eq("id", record.id)); }
+    else { ({ error } = await sb.from("reading_passages").insert(payload)); }
+    if(error){ alert("Lỗi: " + error.message); return; }
+    closeModal();
+    await loadPassages();
+  };
+}
+document.getElementById("btn-add-passage").addEventListener("click", openAddPassage);
+
+// ---- Câu hỏi đọc hiểu, gắn với 1 đoạn văn đang chọn ----
+window.selectPassage = async function(id){
+  CURRENT_PASSAGE = CURRENT_PASSAGES.find(p=>p.id===id);
+  document.getElementById("rq-card").style.display = "block";
+  document.getElementById("rq-passage-title").textContent = CURRENT_PASSAGE.title;
+  await loadRQ(id);
+};
+async function loadRQ(passageId){
+  const { data, error } = await sb.from("reading_questions").select("*").eq("passage_id", passageId).order("order_index");
+  if(error){ alert("Lỗi khi tải câu hỏi: " + error.message); return; }
+  CURRENT_RQ = data || [];
+  renderRQ();
+}
+function renderRQ(){
+  document.getElementById("rq-table-body").innerHTML = CURRENT_RQ.map((ex,idx)=>`
+    <tr>
+      <td>${idx+1}</td>
+      <td><span class="badge">${ex.type === "multiple_choice" ? "Trắc nghiệm" : "Điền từ"}</span></td>
+      <td>${escHtmlAdmin(ex.question)}</td>
+      <td>${escHtmlAdmin(ex.correct_answer)}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-sm" onclick="openEditRQ(${ex.id})">Sửa</button>
+        <button class="btn-sm danger" onclick="deleteRQ(${ex.id})">Xoá</button>
+      </td>
+    </tr>`).join("");
+}
+function rqFieldForm(record){
+  const r = record || { type:"multiple_choice", question:"", options:"", correct_answer:"", explanation:"", order_index: CURRENT_RQ.length + 1 };
+  return `
+    <div class="field-row"><label>Loại câu hỏi</label>
+      <select data-f="type">
+        <option value="multiple_choice" ${r.type==='multiple_choice'?"selected":""}>Trắc nghiệm</option>
+        <option value="fill_blank" ${r.type==='fill_blank'?"selected":""}>Điền vào chỗ trống</option>
+      </select>
+    </div>
+    <div class="field-row"><label>Câu hỏi</label><input data-f="question" value="${(r.question||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Các lựa chọn (cách nhau bởi dấu phẩy — chỉ cần cho trắc nghiệm)</label><input data-f="options" value="${(r.options||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Đáp án đúng</label><input data-f="correct_answer" value="${(r.correct_answer||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Giải thích (không bắt buộc)</label><input data-f="explanation" value="${(r.explanation||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Thứ tự</label><input data-f="order_index" type="number" value="${r.order_index||0}"></div>
+  `;
+}
+function openAddRQ(){
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Thêm câu hỏi</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="rq-form">${rqFieldForm(null)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Thêm</button></div>
+    </form>`;
+  wireRQForm(null);
+}
+window.openEditRQ = function(id){
+  const record = CURRENT_RQ.find(e=>e.id===id);
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Sửa câu hỏi</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="rq-form">${rqFieldForm(record)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Lưu</button></div>
+    </form>`;
+  wireRQForm(record);
+};
+window.deleteRQ = async function(id){
+  if(!confirm("Xoá câu hỏi này?")) return;
+  const { error } = await sb.from("reading_questions").delete().eq("id", id);
+  if(error){ alert("Lỗi: " + error.message); return; }
+  await loadRQ(CURRENT_PASSAGE.id);
+};
+function wireRQForm(record){
+  document.getElementById("overlay").classList.add("show");
+  document.getElementById("m-close").onclick = closeModal;
+  document.getElementById("m-cancel").onclick = closeModal;
+  document.getElementById("rq-form").onsubmit = async (e)=>{
+    e.preventDefault();
+    if(!CURRENT_PASSAGE){ alert("Chưa chọn đoạn văn."); return; }
+    const form = e.target;
+    const payload = { passage_id: CURRENT_PASSAGE.id };
+    form.querySelectorAll("[data-f]").forEach(el=>{
+      payload[el.dataset.f] = el.dataset.f === "order_index" ? (parseInt(el.value,10) || 0) : el.value;
+    });
+    let error;
+    if(record){ ({ error } = await sb.from("reading_questions").update(payload).eq("id", record.id)); }
+    else { ({ error } = await sb.from("reading_questions").insert(payload)); }
+    if(error){ alert("Lỗi: " + error.message); return; }
+    closeModal();
+    await loadRQ(CURRENT_PASSAGE.id);
+  };
+}
+document.getElementById("btn-add-rq").addEventListener("click", openAddRQ);
+
+// ---- Nhập nhanh đoạn văn từ CSV ----
+async function fetchExistingPassageKeys(rows){
+  const pairs = Array.from(new Set(rows.map(r => r.language+"|"+r.level)));
+  const existing = new Set();
+  for(const pair of pairs){
+    const [language, level] = pair.split("|");
+    const { data, error } = await sb.from("reading_passages").select("title").eq("language", language).eq("level", level);
+    if(error) continue;
+    (data||[]).forEach(d => existing.add(pair + "|" + normalizeText(d.title)));
+  }
+  return existing;
+}
+
+document.getElementById("btn-import-passage").addEventListener("click", async ()=>{
+  const raw = document.getElementById("passage-csv-input").value.trim();
+  const resultEl = document.getElementById("passage-import-result");
+  const btn = document.getElementById("btn-import-passage");
+  resultEl.className = "result-msg";
+  if(!raw){ return; }
+  btn.disabled = true; btn.textContent = "Đang nhập...";
+  try {
+    const allRows = parseCsvRows(raw);
+    if(allRows.length < 2){ resultEl.className = "result-msg err"; resultEl.textContent = "Cần ít nhất 1 dòng tiêu đề + 1 dòng dữ liệu."; return; }
+    const headers = allRows[0].map(h=>h.toLowerCase());
+    const required = ["language","level","title","passage_text"];
+    const missing = required.filter(r=>!headers.includes(r));
+    if(missing.length){ resultEl.className = "result-msg err"; resultEl.textContent = "Thiếu cột bắt buộc: " + missing.join(", "); return; }
+
+    const rows = [];
+    const errors = [];
+    for(let i=1;i<allRows.length;i++){
+      const cols = allRows[i];
+      const obj = {};
+      headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+      if(!obj.language || !obj.level || !obj.title || !obj.passage_text){
+        errors.push(`Dòng dữ liệu #${i}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
+        continue;
+      }
+      if(!LANGS_CFG[obj.language]){
+        errors.push(`Dòng dữ liệu #${i}: ngôn ngữ "${obj.language}" không có trong languages.json, đã bỏ qua.`);
+        continue;
+      }
+      if(!LANGS_CFG[obj.language].levels.some(lv=>lv.code===obj.level)){
+        errors.push(`Dòng dữ liệu #${i}: trình độ "${obj.level}" không hợp lệ cho ngôn ngữ "${obj.language}", đã bỏ qua.`);
+        continue;
+      }
+      rows.push({ language: obj.language, level: obj.level, title: obj.title, passage_text: obj.passage_text });
+    }
+    if(rows.length === 0){
+      resultEl.className = "result-msg err";
+      resultEl.textContent = "Không có dòng nào hợp lệ để nhập.\n" + errors.join("\n");
+      return;
+    }
+
+    const existingKeys = await fetchExistingPassageKeys(rows);
+    const newRows = [];
+    let dupCount = 0;
+    rows.forEach(r=>{
+      const key = r.language+"|"+r.level+"|"+normalizeText(r.title);
+      if(existingKeys.has(key)){ dupCount++; return; }
+      existingKeys.add(key);
+      newRows.push(r);
+    });
+    if(newRows.length === 0){
+      resultEl.className = "result-msg err";
+      resultEl.textContent = `Cả ${rows.length} đoạn văn đều đã tồn tại sẵn (trùng tiêu đề), không có gì để nhập thêm.`;
+      return;
+    }
+
+    const { error } = await sb.from("reading_passages").insert(newRows);
+    if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
+    resultEl.className = "result-msg ok";
+    resultEl.textContent = `Đã nhập thành công ${newRows.length} đoạn văn.`
+      + (dupCount ? ` Bỏ qua ${dupCount} đoạn đã tồn tại sẵn (trùng tiêu đề).` : "")
+      + (errors.length ? ("\nCác dòng bị bỏ qua do lỗi định dạng:\n" + errors.join("\n")) : "");
+    document.getElementById("passage-csv-input").value = "";
+    await loadPassages();
+  } catch(err){
+    resultEl.className = "result-msg err";
+    resultEl.textContent = "Có lỗi bất ngờ xảy ra: " + (err && err.message ? err.message : String(err));
+    console.error(err);
+  } finally {
+    btn.disabled = false; btn.textContent = "Nhập vào hệ thống";
+  }
+});
+
+// ---- Nhập nhanh câu hỏi đọc hiểu từ CSV (tra passage_id theo language+level+title) ----
+document.getElementById("btn-import-rq").addEventListener("click", async ()=>{
+  const raw = document.getElementById("rq-csv-input").value.trim();
+  const resultEl = document.getElementById("rq-import-result");
+  const btn = document.getElementById("btn-import-rq");
+  resultEl.className = "result-msg";
+  if(!raw){ return; }
+  btn.disabled = true; btn.textContent = "Đang nhập...";
+  try {
+    const lines = raw.split(/\r?\n/).filter(l=>l.trim());
+    if(lines.length < 2){ resultEl.className = "result-msg err"; resultEl.textContent = "Cần ít nhất 1 dòng tiêu đề + 1 dòng dữ liệu."; return; }
+    const headers = parseCsvLine(lines[0]).map(h=>h.toLowerCase());
+    const required = ["language","level","passage_title","type","question","correct_answer"];
+    const missing = required.filter(r=>!headers.includes(r));
+    if(missing.length){ resultEl.className = "result-msg err"; resultEl.textContent = "Thiếu cột bắt buộc: " + missing.join(", "); return; }
+
+    const parsed = [];
+    const errors = [];
+    for(let i=1;i<lines.length;i++){
+      const cols = parseCsvLine(lines[i]);
+      const obj = {};
+      headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+      if(!obj.language || !obj.level || !obj.passage_title || !obj.type || !obj.question || !obj.correct_answer){
+        errors.push(`Dòng ${i+1}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
+        continue;
+      }
+      if(!LANGS_CFG[obj.language]){ errors.push(`Dòng ${i+1}: ngôn ngữ "${obj.language}" không hợp lệ, đã bỏ qua.`); continue; }
+      if(!LANGS_CFG[obj.language].levels.some(lv=>lv.code===obj.level)){ errors.push(`Dòng ${i+1}: trình độ "${obj.level}" không hợp lệ, đã bỏ qua.`); continue; }
+      if(!["multiple_choice","fill_blank"].includes(obj.type)){ errors.push(`Dòng ${i+1}: loại "${obj.type}" không hợp lệ, đã bỏ qua.`); continue; }
+      obj.order_index = parseInt(obj.order_index, 10) || i;
+      parsed.push(obj);
+    }
+    if(parsed.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = "Không có dòng nào hợp lệ để nhập.\n" + errors.join("\n"); return; }
+
+    // Tra passage_id theo (language, level, title)
+    const pairs = Array.from(new Set(parsed.map(r => r.language+"|"+r.level)));
+    const passageMap = {}; // "lang|level|normalizedTitle" -> id
+    for(const pair of pairs){
+      const [language, level] = pair.split("|");
+      const { data, error: lookupError } = await sb.from("reading_passages").select("id, title").eq("language", language).eq("level", level);
+      if(lookupError){ resultEl.className = "result-msg err"; resultEl.textContent = `Lỗi khi tra cứu đoạn văn (${language}/${level}): ${lookupError.message}`; return; }
+      (data||[]).forEach(p => { passageMap[pair+"|"+normalizeText(p.title)] = p.id; });
+    }
+
+    const rows = [];
+    parsed.forEach((obj, idx) => {
+      const key = obj.language+"|"+obj.level+"|"+normalizeText(obj.passage_title);
+      if(!passageMap[key]){
+        errors.push(`Dòng dữ liệu #${idx+1}: không tìm thấy đoạn văn "${obj.passage_title}" (${obj.language}/${obj.level}), đã bỏ qua.`);
+        return;
+      }
+      rows.push({
+        passage_id: passageMap[key], type: obj.type, question: obj.question,
+        options: obj.options || "", correct_answer: obj.correct_answer,
+        explanation: obj.explanation || "", order_index: obj.order_index
+      });
+    });
+    if(rows.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = "Không có dòng nào nhập được.\n" + errors.join("\n"); return; }
+
+    const passageIds = Array.from(new Set(rows.map(r=>r.passage_id)));
+    const existingKeys = await fetchExistingExerciseKeysGeneric("reading_questions", "passage_id", passageIds);
+    const newRows = [];
+    let dupCount = 0;
+    rows.forEach(r=>{
+      const key = r.passage_id + "|" + exerciseDedupeKey(r.question, r.correct_answer);
+      if(existingKeys.has(key)){ dupCount++; return; }
+      existingKeys.add(key);
+      newRows.push(r);
+    });
+    if(newRows.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = `Cả ${rows.length} câu đều đã tồn tại sẵn, không có gì để nhập thêm.`; return; }
+
+    const { error } = await sb.from("reading_questions").insert(newRows);
+    if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
+    resultEl.className = "result-msg ok";
+    resultEl.textContent = `Đã nhập thành công ${newRows.length} câu hỏi.`
+      + (dupCount ? ` Bỏ qua ${dupCount} câu đã tồn tại sẵn.` : "")
+      + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
+    document.getElementById("rq-csv-input").value = "";
+    if(CURRENT_PASSAGE) await loadRQ(CURRENT_PASSAGE.id);
+  } catch(err){
+    resultEl.className = "result-msg err";
+    resultEl.textContent = "Có lỗi bất ngờ xảy ra: " + (err && err.message ? err.message : String(err));
+    console.error(err);
+  } finally {
+    btn.disabled = false; btn.textContent = "Nhập vào hệ thống";
+  }
+});
+
+// Hàm chống trùng dùng chung cho các bảng "câu hỏi/câu thoại gắn với 1 mục cha"
+// (parentCol: tên cột khoá ngoại, vd "passage_id" hoặc "dialogue_id")
+async function fetchExistingExerciseKeysGeneric(table, parentCol, parentIds){
+  const existing = new Set();
+  for(const id of parentIds){
+    const { data, error } = await sb.from(table).select("question, correct_answer").eq(parentCol, id);
+    if(error) continue;
+    (data||[]).forEach(d => existing.add(id + "|" + exerciseDedupeKey(d.question, d.correct_answer)));
+  }
+  return existing;
+}
+
+// ============================================================
+// HỘI THOẠI: nhiều bài / ngôn ngữ / trình độ
+// ============================================================
+let CURRENT_DIALOGUES = [];
+let CURRENT_DIALOGUE = null;
+let CURRENT_LINES = [];
+
+async function loadDialogues(){
+  const language = document.getElementById("d-language").value;
+  const level = document.getElementById("d-level").value;
+  document.getElementById("line-card").style.display = "none";
+  CURRENT_DIALOGUE = null;
+  const { data, error } = await sb.from("dialogues")
+    .select("*, dialogue_lines(count)")
+    .eq("language", language).eq("level", level)
+    .order("order_index");
+  if(error){ alert("Lỗi khi tải hội thoại: " + error.message); return; }
+  CURRENT_DIALOGUES = data || [];
+  renderDialoguesTable();
+}
+function renderDialoguesTable(){
+  document.getElementById("dialogue-table-body").innerHTML = CURRENT_DIALOGUES.map(d=>{
+    const lCount = (d.dialogue_lines && d.dialogue_lines[0] && d.dialogue_lines[0].count) || 0;
+    return `
+    <tr>
+      <td>${escHtmlAdmin(d.title)}</td>
+      <td>${escHtmlAdmin(d.role_a_name)}</td>
+      <td>${escHtmlAdmin(d.role_b_name)}</td>
+      <td>${lCount}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-sm" onclick="selectDialogue(${d.id})">Câu thoại</button>
+        <button class="btn-sm" onclick="openEditDialogue(${d.id})">Sửa</button>
+        <button class="btn-sm danger" onclick="deleteDialogue(${d.id})">Xoá</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+function dialogueFieldForm(record){
+  const r = record || { title:"", scenario:"", role_a_name:"A", role_b_name:"B" };
+  return `
+    <div class="field-row"><label>Tiêu đề</label><input data-f="title" value="${(r.title||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Bối cảnh (không bắt buộc)</label><input data-f="scenario" value="${(r.scenario||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Tên vai A</label><input data-f="role_a_name" value="${(r.role_a_name||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Tên vai B</label><input data-f="role_b_name" value="${(r.role_b_name||'').replace(/"/g,'&quot;')}"></div>
+  `;
+}
+function openAddDialogue(){
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Thêm hội thoại</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="dialogue-form">${dialogueFieldForm(null)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Thêm</button></div>
+    </form>`;
+  wireDialogueForm(null);
+}
+window.openEditDialogue = function(id){
+  const record = CURRENT_DIALOGUES.find(d=>d.id===id);
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Sửa hội thoại</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="dialogue-form">${dialogueFieldForm(record)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Lưu</button></div>
+    </form>`;
+  wireDialogueForm(record);
+};
+window.deleteDialogue = async function(id){
+  if(!confirm("Xoá hội thoại này? (các câu thoại gắn theo cũng sẽ bị xoá)")) return;
+  const { error } = await sb.from("dialogues").delete().eq("id", id);
+  if(error){ alert("Lỗi: " + error.message); return; }
+  await loadDialogues();
+};
+function wireDialogueForm(record){
+  document.getElementById("overlay").classList.add("show");
+  document.getElementById("m-close").onclick = closeModal;
+  document.getElementById("m-cancel").onclick = closeModal;
+  document.getElementById("dialogue-form").onsubmit = async (e)=>{
+    e.preventDefault();
+    const language = document.getElementById("d-language").value;
+    const level = document.getElementById("d-level").value;
+    const form = e.target;
+    const payload = { language, level };
+    form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+    if(!payload.title || !payload.role_a_name || !payload.role_b_name){ alert("Vui lòng nhập đủ tiêu đề và tên 2 vai."); return; }
+    let error;
+    if(record){ ({ error } = await sb.from("dialogues").update(payload).eq("id", record.id)); }
+    else { ({ error } = await sb.from("dialogues").insert(payload)); }
+    if(error){ alert("Lỗi: " + error.message); return; }
+    closeModal();
+    await loadDialogues();
+  };
+}
+document.getElementById("btn-add-dialogue").addEventListener("click", openAddDialogue);
+
+// ---- Câu thoại, gắn với 1 hội thoại đang chọn ----
+window.selectDialogue = async function(id){
+  CURRENT_DIALOGUE = CURRENT_DIALOGUES.find(d=>d.id===id);
+  document.getElementById("line-card").style.display = "block";
+  document.getElementById("line-dialogue-title").textContent = CURRENT_DIALOGUE.title;
+  await loadLines(id);
+};
+async function loadLines(dialogueId){
+  const { data, error } = await sb.from("dialogue_lines").select("*").eq("dialogue_id", dialogueId).order("order_index");
+  if(error){ alert("Lỗi khi tải câu thoại: " + error.message); return; }
+  CURRENT_LINES = data || [];
+  renderLines();
+}
+function renderLines(){
+  document.getElementById("line-table-body").innerHTML = CURRENT_LINES.map((ln,idx)=>{
+    const roleName = ln.speaker === "A" ? CURRENT_DIALOGUE.role_a_name : CURRENT_DIALOGUE.role_b_name;
+    return `
+    <tr>
+      <td>${idx+1}</td>
+      <td><span class="badge">${escHtmlAdmin(roleName)} (${ln.speaker})</span></td>
+      <td>${escHtmlAdmin(ln.line_text)}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-sm" onclick="openEditLine(${ln.id})">Sửa</button>
+        <button class="btn-sm danger" onclick="deleteLine(${ln.id})">Xoá</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+function lineFieldForm(record){
+  const r = record || { speaker:"A", line_text:"", order_index: CURRENT_LINES.length + 1 };
+  const roleAName = CURRENT_DIALOGUE ? CURRENT_DIALOGUE.role_a_name : "A";
+  const roleBName = CURRENT_DIALOGUE ? CURRENT_DIALOGUE.role_b_name : "B";
+  return `
+    <div class="field-row"><label>Vai nói</label>
+      <select data-f="speaker">
+        <option value="A" ${r.speaker==='A'?"selected":""}>${escHtmlAdmin(roleAName)} (A)</option>
+        <option value="B" ${r.speaker==='B'?"selected":""}>${escHtmlAdmin(roleBName)} (B)</option>
+      </select>
+    </div>
+    <div class="field-row"><label>Lời thoại</label><input data-f="line_text" value="${(r.line_text||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Thứ tự</label><input data-f="order_index" type="number" value="${r.order_index||0}"></div>
+  `;
+}
+function openAddLine(){
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Thêm câu thoại</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="line-form">${lineFieldForm(null)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Thêm</button></div>
+    </form>`;
+  wireLineForm(null);
+}
+window.openEditLine = function(id){
+  const record = CURRENT_LINES.find(l=>l.id===id);
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Sửa câu thoại</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="line-form">${lineFieldForm(record)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Lưu</button></div>
+    </form>`;
+  wireLineForm(record);
+};
+window.deleteLine = async function(id){
+  if(!confirm("Xoá câu thoại này?")) return;
+  const { error } = await sb.from("dialogue_lines").delete().eq("id", id);
+  if(error){ alert("Lỗi: " + error.message); return; }
+  await loadLines(CURRENT_DIALOGUE.id);
+};
+function wireLineForm(record){
+  document.getElementById("overlay").classList.add("show");
+  document.getElementById("m-close").onclick = closeModal;
+  document.getElementById("m-cancel").onclick = closeModal;
+  document.getElementById("line-form").onsubmit = async (e)=>{
+    e.preventDefault();
+    if(!CURRENT_DIALOGUE){ alert("Chưa chọn hội thoại."); return; }
+    const form = e.target;
+    const payload = { dialogue_id: CURRENT_DIALOGUE.id };
+    form.querySelectorAll("[data-f]").forEach(el=>{
+      payload[el.dataset.f] = el.dataset.f === "order_index" ? (parseInt(el.value,10) || 0) : el.value;
+    });
+    let error;
+    if(record){ ({ error } = await sb.from("dialogue_lines").update(payload).eq("id", record.id)); }
+    else { ({ error } = await sb.from("dialogue_lines").insert(payload)); }
+    if(error){ alert("Lỗi: " + error.message); return; }
+    closeModal();
+    await loadLines(CURRENT_DIALOGUE.id);
+  };
+}
+document.getElementById("btn-add-line").addEventListener("click", openAddLine);
+
+// ---- Nhập nhanh hội thoại từ CSV ----
+async function fetchExistingDialogueKeys(rows){
+  const pairs = Array.from(new Set(rows.map(r => r.language+"|"+r.level)));
+  const existing = new Set();
+  for(const pair of pairs){
+    const [language, level] = pair.split("|");
+    const { data, error } = await sb.from("dialogues").select("title").eq("language", language).eq("level", level);
+    if(error) continue;
+    (data||[]).forEach(d => existing.add(pair + "|" + normalizeText(d.title)));
+  }
+  return existing;
+}
+document.getElementById("btn-import-dialogue").addEventListener("click", async ()=>{
+  const raw = document.getElementById("dialogue-csv-input").value.trim();
+  const resultEl = document.getElementById("dialogue-import-result");
+  const btn = document.getElementById("btn-import-dialogue");
+  resultEl.className = "result-msg";
+  if(!raw){ return; }
+  btn.disabled = true; btn.textContent = "Đang nhập...";
+  try {
+    const allRows = parseCsvRows(raw);
+    if(allRows.length < 2){ resultEl.className = "result-msg err"; resultEl.textContent = "Cần ít nhất 1 dòng tiêu đề + 1 dòng dữ liệu."; return; }
+    const headers = allRows[0].map(h=>h.toLowerCase());
+    const required = ["language","level","title","role_a_name","role_b_name"];
+    const missing = required.filter(r=>!headers.includes(r));
+    if(missing.length){ resultEl.className = "result-msg err"; resultEl.textContent = "Thiếu cột bắt buộc: " + missing.join(", "); return; }
+
+    const rows = [];
+    const errors = [];
+    for(let i=1;i<allRows.length;i++){
+      const cols = allRows[i];
+      const obj = {};
+      headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+      if(!obj.language || !obj.level || !obj.title || !obj.role_a_name || !obj.role_b_name){
+        errors.push(`Dòng dữ liệu #${i}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
+        continue;
+      }
+      if(!LANGS_CFG[obj.language]){ errors.push(`Dòng dữ liệu #${i}: ngôn ngữ "${obj.language}" không hợp lệ, đã bỏ qua.`); continue; }
+      if(!LANGS_CFG[obj.language].levels.some(lv=>lv.code===obj.level)){ errors.push(`Dòng dữ liệu #${i}: trình độ "${obj.level}" không hợp lệ, đã bỏ qua.`); continue; }
+      rows.push({ language: obj.language, level: obj.level, title: obj.title, scenario: obj.scenario || "", role_a_name: obj.role_a_name, role_b_name: obj.role_b_name });
+    }
+    if(rows.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = "Không có dòng nào hợp lệ để nhập.\n" + errors.join("\n"); return; }
+
+    const existingKeys = await fetchExistingDialogueKeys(rows);
+    const newRows = [];
+    let dupCount = 0;
+    rows.forEach(r=>{
+      const key = r.language+"|"+r.level+"|"+normalizeText(r.title);
+      if(existingKeys.has(key)){ dupCount++; return; }
+      existingKeys.add(key);
+      newRows.push(r);
+    });
+    if(newRows.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = `Cả ${rows.length} hội thoại đều đã tồn tại sẵn (trùng tiêu đề), không có gì để nhập thêm.`; return; }
+
+    const { error } = await sb.from("dialogues").insert(newRows);
+    if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
+    resultEl.className = "result-msg ok";
+    resultEl.textContent = `Đã nhập thành công ${newRows.length} hội thoại.`
+      + (dupCount ? ` Bỏ qua ${dupCount} hội thoại đã tồn tại sẵn (trùng tiêu đề).` : "")
+      + (errors.length ? ("\nCác dòng bị bỏ qua do lỗi định dạng:\n" + errors.join("\n")) : "");
+    document.getElementById("dialogue-csv-input").value = "";
+    await loadDialogues();
+  } catch(err){
+    resultEl.className = "result-msg err";
+    resultEl.textContent = "Có lỗi bất ngờ xảy ra: " + (err && err.message ? err.message : String(err));
+    console.error(err);
+  } finally {
+    btn.disabled = false; btn.textContent = "Nhập vào hệ thống";
+  }
+});
+
+// ---- Nhập nhanh câu thoại từ CSV (tra dialogue_id theo language+level+title) ----
+document.getElementById("btn-import-line").addEventListener("click", async ()=>{
+  const raw = document.getElementById("line-csv-input").value.trim();
+  const resultEl = document.getElementById("line-import-result");
+  const btn = document.getElementById("btn-import-line");
+  resultEl.className = "result-msg";
+  if(!raw){ return; }
+  btn.disabled = true; btn.textContent = "Đang nhập...";
+  try {
+    const lines = raw.split(/\r?\n/).filter(l=>l.trim());
+    if(lines.length < 2){ resultEl.className = "result-msg err"; resultEl.textContent = "Cần ít nhất 1 dòng tiêu đề + 1 dòng dữ liệu."; return; }
+    const headers = parseCsvLine(lines[0]).map(h=>h.toLowerCase());
+    const required = ["language","level","dialogue_title","speaker","line_text"];
+    const missing = required.filter(r=>!headers.includes(r));
+    if(missing.length){ resultEl.className = "result-msg err"; resultEl.textContent = "Thiếu cột bắt buộc: " + missing.join(", "); return; }
+
+    const parsed = [];
+    const errors = [];
+    for(let i=1;i<lines.length;i++){
+      const cols = parseCsvLine(lines[i]);
+      const obj = {};
+      headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+      if(!obj.language || !obj.level || !obj.dialogue_title || !obj.speaker || !obj.line_text){
+        errors.push(`Dòng ${i+1}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
+        continue;
+      }
+      if(!LANGS_CFG[obj.language]){ errors.push(`Dòng ${i+1}: ngôn ngữ "${obj.language}" không hợp lệ, đã bỏ qua.`); continue; }
+      if(!LANGS_CFG[obj.language].levels.some(lv=>lv.code===obj.level)){ errors.push(`Dòng ${i+1}: trình độ "${obj.level}" không hợp lệ, đã bỏ qua.`); continue; }
+      if(!["A","B"].includes(obj.speaker)){ errors.push(`Dòng ${i+1}: vai "${obj.speaker}" không hợp lệ (phải là A hoặc B), đã bỏ qua.`); continue; }
+      obj.order_index = parseInt(obj.order_index, 10) || i;
+      parsed.push(obj);
+    }
+    if(parsed.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = "Không có dòng nào hợp lệ để nhập.\n" + errors.join("\n"); return; }
+
+    const pairs = Array.from(new Set(parsed.map(r => r.language+"|"+r.level)));
+    const dialogueMap = {};
+    for(const pair of pairs){
+      const [language, level] = pair.split("|");
+      const { data, error: lookupError } = await sb.from("dialogues").select("id, title").eq("language", language).eq("level", level);
+      if(lookupError){ resultEl.className = "result-msg err"; resultEl.textContent = `Lỗi khi tra cứu hội thoại (${language}/${level}): ${lookupError.message}`; return; }
+      (data||[]).forEach(d => { dialogueMap[pair+"|"+normalizeText(d.title)] = d.id; });
+    }
+
+    const rows = [];
+    parsed.forEach((obj, idx) => {
+      const key = obj.language+"|"+obj.level+"|"+normalizeText(obj.dialogue_title);
+      if(!dialogueMap[key]){
+        errors.push(`Dòng dữ liệu #${idx+1}: không tìm thấy hội thoại "${obj.dialogue_title}" (${obj.language}/${obj.level}), đã bỏ qua.`);
+        return;
+      }
+      rows.push({ dialogue_id: dialogueMap[key], speaker: obj.speaker, line_text: obj.line_text, order_index: obj.order_index });
+    });
+    if(rows.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = "Không có dòng nào nhập được.\n" + errors.join("\n"); return; }
+
+    // Chống trùng theo (dialogue_id, nội dung câu thoại)
+    const dialogueIds = Array.from(new Set(rows.map(r=>r.dialogue_id)));
+    const existing = new Set();
+    for(const id of dialogueIds){
+      const { data, error } = await sb.from("dialogue_lines").select("line_text").eq("dialogue_id", id);
+      if(error) continue;
+      (data||[]).forEach(d => existing.add(id + "|" + normalizeText(d.line_text)));
+    }
+    const newRows = [];
+    let dupCount = 0;
+    rows.forEach(r=>{
+      const key = r.dialogue_id + "|" + normalizeText(r.line_text);
+      if(existing.has(key)){ dupCount++; return; }
+      existing.add(key);
+      newRows.push(r);
+    });
+    if(newRows.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = `Cả ${rows.length} câu thoại đều đã tồn tại sẵn, không có gì để nhập thêm.`; return; }
+
+    const { error } = await sb.from("dialogue_lines").insert(newRows);
+    if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
+    resultEl.className = "result-msg ok";
+    resultEl.textContent = `Đã nhập thành công ${newRows.length} câu thoại.`
+      + (dupCount ? ` Bỏ qua ${dupCount} câu đã tồn tại sẵn.` : "")
+      + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
+    document.getElementById("line-csv-input").value = "";
+    if(CURRENT_DIALOGUE) await loadLines(CURRENT_DIALOGUE.id);
   } catch(err){
     resultEl.className = "result-msg err";
     resultEl.textContent = "Có lỗi bất ngờ xảy ra: " + (err && err.message ? err.message : String(err));
