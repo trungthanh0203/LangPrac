@@ -168,14 +168,14 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
     </div>
 
     <form id="login-form">
-      <div class="auth-field"><label>Tên hoặc Email</label><input type="email" id="login-email" required autocomplete="email"></div>
+      <div class="auth-field"><label>Email</label><input type="email" id="login-email" required autocomplete="email"></div>
       <div class="auth-field"><label>Mật khẩu</label><input type="password" id="login-password" required autocomplete="current-password"></div>
       <button type="submit" class="auth-submit" id="login-submit">Đăng nhập</button>
       <div class="auth-msg" id="login-msg"></div>
     </form>
 
     <form id="register-form" class="hidden">
-      <div class="auth-field"><label>Tên hoặc Email</label><input type="email" id="reg-email" required autocomplete="email"></div>
+      <div class="auth-field"><label>Email</label><input type="email" id="reg-email" required autocomplete="email"></div>
       <div class="auth-field"><label>Mật khẩu (tối thiểu 6 ký tự)</label><input type="password" id="reg-password" required minlength="6" autocomplete="new-password"></div>
       <div class="auth-field"><label>Nhập lại mật khẩu</label><input type="password" id="reg-password2" required autocomplete="new-password"></div>
       <div class="auth-field"><label>Số điện thoại</label><input type="tel" id="reg-phone" required autocomplete="tel"></div>
@@ -424,7 +424,7 @@ function buildLangSelect(){
 async function onLanguageSelectChange(e){
   currentLanguage = e.target.value;
   applyLanguageUI();
-  loadItems();
+  reloadCurrentMode();
   // Lưu lại lựa chọn ngôn ngữ cho lần đăng nhập sau
   if(CURRENT_USER){
     await sb.from("profiles").update({ selected_language: currentLanguage }).eq("id", CURRENT_USER.id);
@@ -469,11 +469,16 @@ function setActiveTab(){
   document.getElementById("tab-practice").classList.toggle("active", mode==="practice");
   document.getElementById("vocab-filters").style.display = (mode==="grammar" || mode==="practice") ? "none" : "contents";
 }
-document.getElementById("sel-level").addEventListener("change", e=>{
-  level = e.target.value;
+// Tải lại đúng nội dung theo tab đang active — dùng ở mọi nơi có thể đổi ngôn ngữ/trình độ/...
+// mà KHÔNG đổi tab, để tránh gọi nhầm loadItems() (tải Từ vựng/Trò chơi) khi đang ở tab Ngữ pháp/Luyện tập.
+function reloadCurrentMode(){
   if(mode==="grammar"){ loadGrammar(); }
   else if(mode==="practice"){ loadPractice(); }
   else { loadItems(); }
+}
+document.getElementById("sel-level").addEventListener("change", e=>{
+  level = e.target.value;
+  reloadCurrentMode();
 });
 document.getElementById("sel-type").addEventListener("change", e=>{ type = e.target.value; loadItems(); });
 document.getElementById("sel-topic").addEventListener("change", e=>{ topic = e.target.value; applyTopicFilter(); if(mode==="flash"){ flashIndex=0; renderFlash(); } else { startGameRound(); } });
