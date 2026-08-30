@@ -510,6 +510,40 @@ function parseCsvRows(text){
   return rows.map(r => r.map(s => s.trim())).filter(r => !(r.length === 1 && r[0] === ""));
 }
 
+// ============================================================
+// Chống nhập trùng: so khớp nội dung đã có sẵn trong CSDL trước khi insert
+// ============================================================
+function normalizeText(s){ return String(s||"").trim().toLowerCase().replace(/\s+/g," "); }
+
+// Tra các từ/câu đã tồn tại cho từng cặp (language, level, type) xuất hiện trong dữ liệu sắp nhập
+async function fetchExistingVocabKeys(rows){
+  const triples = Array.from(new Set(rows.map(r => r.language+"|"+r.level+"|"+r.type)));
+  const existing = new Set();
+  for(const t of triples){
+    const [language, level, type] = t.split("|");
+    const { data, error } = await sb.from("vocab_items").select("de_text").eq("language", language).eq("level", level).eq("type", type);
+    if(error) continue; // best-effort: nếu tra lỗi thì bỏ qua, không chặn việc nhập
+    (data||[]).forEach(d => existing.add(t + "|" + normalizeText(d.de_text)));
+  }
+  return existing;
+}
+
+// Với bài tập ngữ pháp: 1 số loại (vd sentence_ordering) không có "question" riêng,
+// nên khi đó dùng correct_answer để so khớp thay thế.
+function exerciseDedupeKey(question, correctAnswer){
+  const q = String(question||"").trim();
+  return normalizeText(q || correctAnswer);
+}
+async function fetchExistingExerciseKeys(lessonIds){
+  const existing = new Set();
+  for(const id of lessonIds){
+    const { data, error } = await sb.from("grammar_exercises").select("question, correct_answer").eq("lesson_id", id);
+    if(error) continue;
+    (data||[]).forEach(d => existing.add(id + "|" + exerciseDedupeKey(d.question, d.correct_answer)));
+  }
+  return existing;
+}
+
 document.getElementById("btn-import").addEventListener("click", async ()=>{
   const raw = document.getElementById("csv-input").value.trim();
   const resultEl = document.getElementById("import-result");
@@ -560,14 +594,34 @@ document.getElementById("btn-import").addEventListener("click", async ()=>{
       return;
     }
 
-    const { error } = await sb.from("vocab_items").insert(rows);
+    // Chống trùng: bỏ qua các dòng đã tồn tại sẵn trong CSDL (cùng ngôn ngữ/trình độ/loại/nội dung),
+    // đồng thời tự loại trùng lặp ngay trong chính đoạn CSV vừa dán vào.
+    const existingKeys = await fetchExistingVocabKeys(rows);
+    const newRows = [];
+    let dupCount = 0;
+    rows.forEach(r=>{
+      const key = r.language+"|"+r.level+"|"+r.type+"|"+normalizeText(r.de_text);
+      if(existingKeys.has(key)){ dupCount++; return; }
+      existingKeys.add(key);
+      newRows.push(r);
+    });
+
+    if(newRows.length === 0){
+      resultEl.className = "result-msg err";
+      resultEl.textContent = `Cả ${rows.length} dòng đều đã tồn tại sẵn trong hệ thống, không có gì để nhập thêm.` + (errors.length ? ("\n" + errors.join("\n")) : "");
+      return;
+    }
+
+    const { error } = await sb.from("vocab_items").insert(newRows);
     if(error){
       resultEl.className = "result-msg err";
       resultEl.textContent = "Lỗi khi nhập: " + error.message;
       return;
     }
     resultEl.className = "result-msg ok";
-    resultEl.textContent = `Đã nhập thành công ${rows.length} dòng.` + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
+    resultEl.textContent = `Đã nhập thành công ${newRows.length} dòng.`
+      + (dupCount ? ` Bỏ qua ${dupCount} dòng đã tồn tại sẵn.` : "")
+      + (errors.length ? ("\nCác dòng bị bỏ qua do lỗi định dạng:\n" + errors.join("\n")) : "");
     document.getElementById("csv-input").value = "";
     await loadData();
   } catch(err){
@@ -894,14 +948,35 @@ document.getElementById("btn-import-ex").addEventListener("click", async ()=>{
       return;
     }
 
-    const { error } = await sb.from("grammar_exercises").insert(rows);
+    // Chống trùng: bỏ qua các câu bài tập đã tồn tại sẵn trong cùng bài học,
+    // đồng thời tự loại trùng lặp ngay trong chính đoạn CSV vừa dán vào.
+    const lessonIds = Array.from(new Set(rows.map(r=>r.lesson_id)));
+    const existingExKeys = await fetchExistingExerciseKeys(lessonIds);
+    const newRows = [];
+    let dupCount = 0;
+    rows.forEach(r=>{
+      const key = r.lesson_id + "|" + exerciseDedupeKey(r.question, r.correct_answer);
+      if(existingExKeys.has(key)){ dupCount++; return; }
+      existingExKeys.add(key);
+      newRows.push(r);
+    });
+
+    if(newRows.length === 0){
+      resultEl.className = "result-msg err";
+      resultEl.textContent = `Cả ${rows.length} câu đều đã tồn tại sẵn trong bài học tương ứng, không có gì để nhập thêm.` + (errors.length ? ("\n" + errors.join("\n")) : "");
+      return;
+    }
+
+    const { error } = await sb.from("grammar_exercises").insert(newRows);
     if(error){
       resultEl.className = "result-msg err";
       resultEl.textContent = "Lỗi khi nhập: " + error.message;
       return;
     }
     resultEl.className = "result-msg ok";
-    resultEl.textContent = `Đã nhập thành công ${rows.length} bài tập.` + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
+    resultEl.textContent = `Đã nhập thành công ${newRows.length} bài tập.`
+      + (dupCount ? ` Bỏ qua ${dupCount} câu đã tồn tại sẵn.` : "")
+      + (errors.length ? ("\nCác dòng bị bỏ qua do lỗi định dạng:\n" + errors.join("\n")) : "");
     document.getElementById("ex-csv-input").value = "";
     if(CURRENT_LESSON) await loadExercises(CURRENT_LESSON.id);
   } catch(err){
