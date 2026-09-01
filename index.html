@@ -50,6 +50,19 @@ body{margin:0;font-family:Arial,"Segoe UI",sans-serif;background:var(--bg-page);
 .auth-msg.err{display:block;background:var(--red-light);color:#a33;}
 .auth-msg.ok{display:block;background:var(--green-light);color:#2f7d3a;}
 
+.install-guide{max-width:920px;margin:0 auto 50px;padding:0 20px;}
+.install-guide-title{text-align:center;color:var(--navy2);font-size:16px;margin:0 0 16px;}
+.install-guide-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+.install-col{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:18px 16px;box-shadow:var(--shadow);}
+.install-icon{font-size:24px;margin-bottom:6px;}
+.install-col h4{margin:0 0 10px;font-size:14px;color:var(--navy2);}
+.install-col ol{margin:0;padding-left:20px;font-size:12.5px;color:var(--text-1);line-height:1.6;}
+.install-col li{margin-bottom:5px;}
+.install-result{font-size:12px;color:var(--text-2);font-style:italic;margin:8px 0 0;}
+@media (max-width:720px){
+  .install-guide-grid{grid-template-columns:1fr;}
+}
+
 /* ---------- Thanh người dùng ---------- */
 .header-grid{display:flex;align-items:center;gap:12px;}
 .header-logo{flex:0 0 auto;display:flex;align-items:center;}
@@ -208,6 +221,42 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
   </div>
 </div>
 
+<div class="install-guide hidden" id="install-guide-section">
+  <h3 class="install-guide-title">📲 Cài app về máy để dùng tiện hơn</h3>
+  <div class="install-guide-grid">
+    <div class="install-col">
+      <div class="install-icon">💻</div>
+      <h4>Máy tính (Chrome / Edge)</h4>
+      <ol>
+        <li>Mở trang web này bằng Chrome hoặc Edge.</li>
+        <li>Ở cuối thanh địa chỉ, bấm vào biểu tượng "Cài đặt" (hình máy tính có mũi tên).</li>
+        <li>Bấm "Cài đặt" trong hộp thoại hiện ra.</li>
+      </ol>
+      <p class="install-result">→ App sẽ có icon riêng trên màn hình/Dock, mở lên không cần trình duyệt.</p>
+    </div>
+    <div class="install-col">
+      <div class="install-icon">🤖</div>
+      <h4>Điện thoại Android (Chrome)</h4>
+      <ol>
+        <li>Mở trang web này bằng Chrome.</li>
+        <li>Chờ vài giây, banner "Thêm vào Màn hình chính" sẽ tự hiện — bấm vào đó. Nếu không thấy, bấm menu 3 chấm ở góc trên → chọn "Cài đặt ứng dụng".</li>
+        <li>Bấm "Cài đặt" hoặc "Thêm".</li>
+      </ol>
+      <p class="install-result">→ Icon app xuất hiện ngay ở màn hình chính điện thoại.</p>
+    </div>
+    <div class="install-col">
+      <div class="install-icon">🍎</div>
+      <h4>iPhone / iPad (Safari)</h4>
+      <ol>
+        <li>Mở trang web này bằng <b>Safari</b> (bắt buộc — Chrome trên iPhone không cài được).</li>
+        <li>Bấm nút Chia sẻ (hình vuông có mũi tên đi lên) ở thanh dưới cùng.</li>
+        <li>Kéo xuống, chọn "Thêm vào MH chính" (Add to Home Screen) → bấm "Thêm".</li>
+      </ol>
+      <p class="install-result">→ App có icon riêng, mở toàn màn hình như ứng dụng thật.</p>
+    </div>
+  </div>
+</div>
+
 <!-- ================= APP CHÍNH (chỉ hiện sau khi đăng nhập) ================= -->
 <div class="wrap hidden" id="main-wrap">
   <header class="top">
@@ -354,6 +403,7 @@ function applyGlobalTheme(){
 function showAuthScreen(){
   document.getElementById("main-wrap").classList.add("hidden");
   document.getElementById("auth-screen").classList.remove("hidden");
+  document.getElementById("install-guide-section").classList.remove("hidden");
 }
 
 document.getElementById("auth-tab-login").addEventListener("click", ()=>{
@@ -431,6 +481,7 @@ async function enterApp(user){
   CURRENT_PROFILE = profile;
 
   document.getElementById("auth-screen").classList.add("hidden");
+  document.getElementById("install-guide-section").classList.add("hidden");
   document.getElementById("main-wrap").classList.remove("hidden");
   document.getElementById("user-email-label").textContent = user.email;
 
