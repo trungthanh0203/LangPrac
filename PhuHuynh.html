@@ -96,6 +96,19 @@ const SUPABASE_URL = "https://vuykuqmebmainyhiotfx.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_8Ro-jEFQqFh7EfbXPfzWaw_V1xrkoyU";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// Tên/cờ hiển thị cho từng ngôn ngữ khi liệt kê điểm — nạp từ languages.json
+// (giống index.html) để tự nhận ngôn ngữ mới nếu sau này được thêm vào đó.
+let LANGS = {};
+async function loadLangsConfig(){
+  const res = await fetch("languages.json");
+  const cfg = await res.json();
+  LANGS = cfg.languages || {};
+}
+function langLabel(code){
+  return (LANGS[code] && LANGS[code].switchLabel) || code;
+}
+const langsConfigPromise = loadLangsConfig(); // bắt đầu tải ngay, await trước khi render để tránh race
+
 function showScreen(name){
   document.getElementById("login-screen").style.display = name==="login" ? "block" : "none";
   document.getElementById("denied-screen").style.display = name==="denied" ? "block" : "none";
@@ -150,6 +163,7 @@ async function afterLogin(){
 async function loadDashboard(parentId){
   const area = document.getElementById("dashboard-area");
   area.innerHTML = `<div class="loading-msg">Đang tải…</div>`;
+  await langsConfigPromise;
 
   const { data: links, error: linkError } = await sb.from("parent_links").select("student_id").eq("parent_id", parentId);
   if(linkError){ area.innerHTML = `<div class="empty-msg">Lỗi tải dữ liệu: ${linkError.message}</div>`; return; }
@@ -200,7 +214,7 @@ async function buildStudentBlock(studentId, studentEmail, dateStr){
         const percent = r.total_count ? Math.round((r.correct_count/r.total_count)*100) : 0;
         return `<div class="stats-row">
           <span>${new Date(r.created_at).toLocaleString()}</span>
-          <span>${kindLabel} · ${r.level}</span>
+          <span>${kindLabel} · ${escHtml(r.level)} · ${escHtml(langLabel(r.language))}</span>
           <span class="stats-row-score">${r.correct_count}/${r.total_count} (${percent}%)</span>
         </div>`;
       }).join("")
@@ -236,7 +250,7 @@ async function buildStudentBlock(studentId, studentEmail, dateStr){
           : "";
         return `<div class="activity-row quiz">
           <div class="activity-quiz-head">
-            <span>${timeStr} — Làm bài ${kindLabel} (${escHtml(q.level)})</span>
+            <span>${timeStr} — Làm bài ${kindLabel} · ${escHtml(q.level)} · ${escHtml(langLabel(q.language))}</span>
             <span class="activity-quiz-score">${q.correct_count}/${q.total_count} (${percent}%)</span>
           </div>
           ${breakdownHtml}

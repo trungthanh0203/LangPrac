@@ -72,6 +72,7 @@ body{margin:0;font-family:Arial,"Segoe UI",sans-serif;background:var(--bg-page);
 .header-voice{flex:0 0 auto;display:flex;flex-direction:column;gap:6px;}
 .header-voice button{padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.4);font-size:12px;background:rgba(255,255,255,0.15);font-weight:700;color:#fff;cursor:pointer;white-space:nowrap;}
 .header-voice button:hover{background:rgba(255,255,255,0.25);}
+.header-voice button.active{background:#fff;color:var(--navy2);border-color:#fff;}
 @media (max-width:600px){
   .header-logo img{height:52px;max-width:100px;}
   .header-grid{gap:8px;}
@@ -292,7 +293,6 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
     <button id="tab-game"></button>
     <button id="tab-grammar"></button>
     <button id="tab-practice"></button>
-    <button id="tab-stats"></button>
   </div>
 
   <div class="selectors">
@@ -564,7 +564,6 @@ function applyLanguageUI(){
   document.getElementById("tab-game").textContent = u.tabGame;
   document.getElementById("tab-grammar").textContent = u.tabGrammar;
   document.getElementById("tab-practice").textContent = u.tabPractice;
-  document.getElementById("tab-stats").textContent = u.tabStats;
   document.getElementById("btn-header-stats").textContent = u.tabStats;
   document.getElementById("opt-word").textContent = u.optWord;
   document.getElementById("opt-sentence").textContent = u.optSentence;
@@ -587,14 +586,13 @@ document.getElementById("tab-flash").addEventListener("click", ()=>{ mode="flash
 document.getElementById("tab-game").addEventListener("click", ()=>{ mode="game"; setActiveTab(); loadItems(); });
 document.getElementById("tab-grammar").addEventListener("click", ()=>{ mode="grammar"; setActiveTab(); loadGrammar(); });
 document.getElementById("tab-practice").addEventListener("click", ()=>{ mode="practice"; setActiveTab(); loadPractice(); });
-document.getElementById("tab-stats").addEventListener("click", ()=>{ mode="stats"; setActiveTab(); loadStats(); });
 document.getElementById("btn-header-stats").addEventListener("click", ()=>{ mode="stats"; setActiveTab(); loadStats(); });
 function setActiveTab(){
   document.getElementById("tab-flash").classList.toggle("active", mode==="flash");
   document.getElementById("tab-game").classList.toggle("active", mode==="game");
   document.getElementById("tab-grammar").classList.toggle("active", mode==="grammar");
   document.getElementById("tab-practice").classList.toggle("active", mode==="practice");
-  document.getElementById("tab-stats").classList.toggle("active", mode==="stats");
+  document.getElementById("btn-header-stats").classList.toggle("active", mode==="stats");
   document.getElementById("vocab-filters").style.display = (mode==="grammar" || mode==="practice" || mode==="stats") ? "none" : "contents";
   document.getElementById("practice-filters").style.display = (mode==="practice") ? "block" : "none";
 }
@@ -1152,11 +1150,12 @@ async function loadStats(){
 
   const rowsHtml = data.map(r=>{
     const kindLabel = r.practice_kind === "writing" ? u.kindWriting : u.kindReading;
+    const langLabel = (LANGS[r.language] && LANGS[r.language].switchLabel) || r.language;
     const percent = r.total_count ? Math.round((r.correct_count/r.total_count)*100) : 0;
     const dateStr = new Date(r.created_at).toLocaleString();
     return `<div class="stats-row">
       <span>${dateStr}</span>
-      <span>${kindLabel} · ${r.level}</span>
+      <span>${kindLabel} · ${r.level} · ${langLabel}</span>
       <span class="stats-row-score">${r.correct_count}/${r.total_count} (${percent}%)</span>
     </div>`;
   }).join("");
