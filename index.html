@@ -1139,7 +1139,7 @@ async function loadStats(){
     .select("*")
     .eq("user_id", CURRENT_USER.id)
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(20);
   if(error){ area.innerHTML = `<div class="empty-msg">${u.errorPrefix}${error.message}</div>`; return; }
   if(!data || data.length === 0){ area.innerHTML = `<div class="empty-msg">${u.statsEmpty}</div>`; return; }
 
