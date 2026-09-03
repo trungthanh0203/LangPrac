@@ -40,6 +40,16 @@ header.top h1{font-size:18px;margin:0;font-weight:700;}
 .stats-row{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:9px 4px;border-bottom:1px solid var(--border);font-size:13px;}
 .stats-row-score{font-weight:700;color:var(--navy2);}
 .activity-row{padding:7px 4px;border-bottom:1px solid var(--border);font-size:12.5px;color:var(--text-2);}
+.activity-row.quiz{padding:10px 4px;}
+.activity-quiz-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--text-1);}
+.activity-quiz-score{font-weight:700;color:var(--navy2);}
+.activity-quiz-breakdown{margin:6px 0 0 14px;font-size:12px;color:var(--text-2);}
+.activity-quiz-breakdown div{padding:2px 0;}
+.date-filter-bar{display:flex;align-items:center;gap:10px;margin-bottom:var(--gap);flex-wrap:wrap;}
+.date-filter-bar label{font-size:12.5px;color:var(--text-2);font-weight:600;}
+.date-filter-bar input[type=date]{padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;}
+.day-total-strip{background:var(--teal-light);border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:12px;text-align:center;}
+.day-total-strip b{color:var(--navy2);}
 </style>
 </head>
 <body>
@@ -74,6 +84,10 @@ header.top h1{font-size:18px;margin:0;font-weight:700;}
     <h1>👪 Bảng theo dõi học tập</h1>
     <button class="btn btn-outline" id="btn-logout">Đăng xuất</button>
   </header>
+  <div class="date-filter-bar">
+    <label for="activity-date-filter">Xem hoạt động ngày:</label>
+    <input type="date" id="activity-date-filter">
+  </div>
   <div id="dashboard-area"><div class="loading-msg">Đang tải…</div></div>
 </div>
 
@@ -102,12 +116,24 @@ document.getElementById("btn-logout").addEventListener("click", doLogout);
 document.getElementById("btn-logout-denied").addEventListener("click", doLogout);
 async function doLogout(){ await sb.auth.signOut(); showScreen("login"); }
 
+let CURRENT_PARENT_ID = null;
+
+function todayLocalDateStr(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
 async function afterLogin(){
   const { data: { user } } = await sb.auth.getUser();
   if(!user){ showScreen("login"); return; }
   const { data: profile } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
   if(!profile || profile.role !== "parent"){ showScreen("denied"); return; }
   showScreen("main");
+  CURRENT_PARENT_ID = user.id;
+  const dateInput = document.getElementById("activity-date-filter");
+  dateInput.value = todayLocalDateStr();
+  dateInput.addEventListener("change", ()=> loadDashboard(CURRENT_PARENT_ID));
   loadDashboard(user.id);
 }
 
@@ -129,11 +155,12 @@ async function loadDashboard(parentId){
   if(linkError){ area.innerHTML = `<div class="empty-msg">Lỗi tải dữ liệu: ${linkError.message}</div>`; return; }
   if(!links || !links.length){ area.innerHTML = `<div class="empty-msg">Chưa có học sinh nào được liên kết với tài khoản này.</div>`; return; }
 
+  const dateStr = document.getElementById("activity-date-filter").value || todayLocalDateStr();
   const studentIds = links.map(l => l.student_id);
   const { data: profiles } = await sb.from("profiles").select("id,email").in("id", studentIds);
   const emailOf = Object.fromEntries((profiles||[]).map(p=>[p.id, p.email]));
 
-  const blocks = await Promise.all(studentIds.map(id => buildStudentBlock(id, emailOf[id] || id)));
+  const blocks = await Promise.all(studentIds.map(id => buildStudentBlock(id, emailOf[id] || id, dateStr)));
   area.innerHTML = blocks.join("");
 }
 
@@ -143,10 +170,20 @@ function escHtml(s){
   return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
-async function buildStudentBlock(studentId, studentEmail){
-  const [{ data: quizzes }, { data: activity }] = await Promise.all([
+const ACTIVITY_LABELS = { login:"Đăng nhập", logout:"Đăng xuất", language_change:"Đổi ngôn ngữ học", app_hidden:"Rời khỏi app", app_visible:"Quay lại app" };
+const EX_TYPE_LABELS = {
+  multiple_choice: "Trắc nghiệm", fill_blank: "Điền từ", sentence_ordering: "Sắp xếp câu",
+  listening_choice: "Nghe & chọn", synonym_antonym: "Đồng/Trái nghĩa", odd_one_out: "Từ khác nhóm", word_form: "Biến đổi từ"
+};
+
+async function buildStudentBlock(studentId, studentEmail, dateStr){
+  const dayStart = new Date(`${dateStr}T00:00:00`).toISOString();
+  const dayEnd = new Date(`${dateStr}T23:59:59.999`).toISOString();
+
+  const [{ data: quizzes }, { data: dayQuizzes }, { data: dayActivity }] = await Promise.all([
     sb.from("quiz_results").select("*").eq("user_id", studentId).order("created_at", { ascending: false }).limit(50),
-    sb.from("activity_log").select("*").eq("user_id", studentId).order("created_at", { ascending: false }).limit(10)
+    sb.from("quiz_results").select("*").eq("user_id", studentId).gte("created_at", dayStart).lte("created_at", dayEnd),
+    sb.from("activity_log").select("*").eq("user_id", studentId).gte("created_at", dayStart).lte("created_at", dayEnd)
   ]);
 
   const studentLabel = escHtml(studentEmail);
@@ -169,15 +206,48 @@ async function buildStudentBlock(studentId, studentEmail){
       }).join("")
     : `<div class="empty-msg">Học sinh chưa làm bài kiểm tra nào.</div>`;
 
-  const activityLabels = { login:"Đăng nhập", logout:"Đăng xuất", language_change:"Đổi ngôn ngữ học", app_hidden:"Rời khỏi app", app_visible:"Quay lại app" };
-  const activityRowsHtml = (activity && activity.length)
-    ? activity.map(a=>`<div class="activity-row">${new Date(a.created_at).toLocaleString()} — ${activityLabels[a.event_type] || a.event_type}${a.language ? " (" + a.language + ")" : ""}</div>`).join("")
-    : `<div class="empty-msg">Chưa có hoạt động nào được ghi nhận.</div>`;
+  // Gộp hoạt động (đăng nhập/đăng xuất/đổi ngôn ngữ/ẩn-hiện) + kết quả bài kiểm tra
+  // của đúng ngày đang xem thành 1 dòng thời gian duy nhất, sắp theo thời gian thực.
+  const timelineItems = [
+    ...(dayActivity||[]).map(a=>({ t: a.created_at, kind: "activity", data: a })),
+    ...(dayQuizzes||[]).map(q=>({ t: q.created_at, kind: "quiz", data: q }))
+  ].sort((a,b)=> new Date(a.t) - new Date(b.t));
+
+  const dayTotalCorrect = (dayQuizzes||[]).reduce((s,r)=>s+r.correct_count, 0);
+  const dayTotalQuestions = (dayQuizzes||[]).reduce((s,r)=>s+r.total_count, 0);
+  const dayTotalHtml = (dayQuizzes && dayQuizzes.length)
+    ? `<div class="day-total-strip">Tổng ngày: <b>${dayTotalCorrect}/${dayTotalQuestions}</b>${dayTotalQuestions ? ` (${Math.round(dayTotalCorrect/dayTotalQuestions*100)}%)` : ""} · ${dayQuizzes.length} bài đã làm</div>`
+    : "";
+
+  const timelineHtml = timelineItems.length
+    ? timelineItems.map(item=>{
+        const timeStr = new Date(item.t).toLocaleTimeString("vi-VN", { hour:"2-digit", minute:"2-digit" });
+        if(item.kind === "activity"){
+          const a = item.data;
+          return `<div class="activity-row">${timeStr} — ${ACTIVITY_LABELS[a.event_type] || a.event_type}${a.language ? " (" + escHtml(a.language) + ")" : ""}</div>`;
+        }
+        const q = item.data;
+        const kindLabel = q.practice_kind === "writing" ? "✍️ Viết" : "📖 Đọc";
+        const percent = q.total_count ? Math.round((q.correct_count/q.total_count)*100) : 0;
+        const breakdown = q.type_breakdown && typeof q.type_breakdown === "object" ? q.type_breakdown : null;
+        const breakdownHtml = breakdown
+          ? `<div class="activity-quiz-breakdown">${Object.entries(breakdown).map(([type,v])=>
+              `<div>• ${escHtml(EX_TYPE_LABELS[type] || type)}: ${v.correct}/${v.total}</div>`).join("")}</div>`
+          : "";
+        return `<div class="activity-row quiz">
+          <div class="activity-quiz-head">
+            <span>${timeStr} — Làm bài ${kindLabel} (${escHtml(q.level)})</span>
+            <span class="activity-quiz-score">${q.correct_count}/${q.total_count} (${percent}%)</span>
+          </div>
+          ${breakdownHtml}
+        </div>`;
+      }).join("")
+    : `<div class="empty-msg">Không có hoạt động nào trong ngày này.</div>`;
 
   return `
     <div class="card">
       <h2>${studentLabel}</h2>
-      <div class="sub">Kết quả học tập</div>
+      <div class="sub">Kết quả học tập (50 lần gần nhất)</div>
       <div class="stats-summary">
         <div class="stats-summary-item"><b>${results.length}</b>bài đã làm</div>
         <div class="stats-summary-item"><b>${avgPercent}%</b>điểm trung bình</div>
@@ -187,7 +257,9 @@ async function buildStudentBlock(studentId, studentEmail){
     </div>
     <div class="card">
       <h2 style="font-size:14px;">Hoạt động gần đây — ${studentLabel}</h2>
-      <div class="activity-list">${activityRowsHtml}</div>
+      <div class="sub">Ngày ${dateStr.split("-").reverse().join("/")}</div>
+      ${dayTotalHtml}
+      <div class="activity-list">${timelineHtml}</div>
     </div>
   `;
 }
