@@ -87,7 +87,13 @@
         "continueBtn": "Weiter ▶",
         "dialogueDoneMsg": "🎉 Dialog beendet!",
         "anotherDialogueBtn": "Anderer Dialog",
-        "restartDialogueBtn": "Von vorne beginnen"
+        "restartDialogueBtn": "Von vorne beginnen",
+        "tabStats": "📊 Statistik",
+        "statsTitle": "📊 Deine Lernstatistik",
+        "statsEmpty": "Du hast noch keine Übung abgeschlossen — die Statistik erscheint nach der ersten Prüfung.",
+        "statsCountLabel": " Übungen gemacht",
+        "statsAvgLabel": " Ø richtige Antworten",
+        "statsWeekLabel": " diese Woche"
       },
       "adminLabel": "🇩🇪 Tiếng Đức"
     },
@@ -161,7 +167,13 @@
         "continueBtn": "Continue ▶",
         "dialogueDoneMsg": "🎉 Dialogue complete!",
         "anotherDialogueBtn": "Another dialogue",
-        "restartDialogueBtn": "Restart"
+        "restartDialogueBtn": "Restart",
+        "tabStats": "📊 Stats",
+        "statsTitle": "📊 Your Learning Stats",
+        "statsEmpty": "You haven't completed any exercise yet — stats will appear after your first check.",
+        "statsCountLabel": " exercises done",
+        "statsAvgLabel": " avg. correct",
+        "statsWeekLabel": " this week"
       },
       "adminLabel": "🇬🇧 Tiếng Anh"
     },
@@ -243,7 +255,13 @@
         "continueBtn": "继续 ▶",
         "dialogueDoneMsg": "🎉 对话结束！",
         "anotherDialogueBtn": "换一个对话",
-        "restartDialogueBtn": "重新开始"
+        "restartDialogueBtn": "重新开始",
+        "tabStats": "📊 学习统计",
+        "statsTitle": "📊 你的学习统计",
+        "statsEmpty": "你还没有完成任何练习——完成第一次测验后这里会显示统计。",
+        "statsCountLabel": " 次练习",
+        "statsAvgLabel": " 平均正确率",
+        "statsWeekLabel": " 本周完成"
       },
       "adminLabel": "🇨🇳 Tiếng Trung (HSK)"
     }

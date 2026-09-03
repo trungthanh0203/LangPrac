@@ -165,6 +165,13 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
 .order-placeholder{color:var(--text-3);font-size:12.5px;font-style:italic;}
 .grammar-score{margin-top:16px;font-weight:700;font-size:15px;text-align:center;color:var(--navy2);}
 
+/* Thống kê */
+.stats-summary{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px;}
+.stats-summary-item{flex:1;min-width:120px;background:var(--teal-light);border-radius:12px;padding:14px;text-align:center;}
+.stats-summary-item b{display:block;font-size:22px;color:var(--navy2);}
+.stats-row{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 4px;border-bottom:1px solid var(--border);font-size:13.5px;}
+.stats-row-score{font-weight:700;color:var(--navy2);}
+
 /* Đọc & Nói - đoạn văn */
 .reading-passage{background:var(--bg-page);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:18px;}
 .reading-passage-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
@@ -286,6 +293,7 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
     <button id="tab-game"></button>
     <button id="tab-grammar"></button>
     <button id="tab-practice"></button>
+    <button id="tab-stats"></button>
   </div>
 
   <div class="selectors">
@@ -341,6 +349,15 @@ let items = [];
 let flashIndex = 0;
 let CURRENT_USER = null;
 let CURRENT_PROFILE = null;
+let CURRENT_SESSION_ID = null; // sinh mới mỗi lần đăng nhập, dùng để nhóm các dòng activity_log cùng 1 phiên
+
+// Ghi 1 dòng hoạt động vào activity_log — không chặn UI nếu lỗi (best-effort, chỉ log ra console).
+async function logActivity(eventType, extraFields){
+  if(!CURRENT_USER) return;
+  const row = { user_id: CURRENT_USER.id, event_type: eventType, session_id: CURRENT_SESSION_ID, ...(extraFields||{}) };
+  const { error } = await sb.from("activity_log").insert(row);
+  if(error) console.warn("logActivity failed:", eventType, error.message);
+}
 
 function L(){ return LANGS[currentLanguage]; }
 function fmt(str, vars){ return str.replace(/\{(\w+)\}/g, (_, k) => (vars[k] !== undefined ? vars[k] : "")); }
@@ -364,6 +381,7 @@ async function boot(){
   const { data: { session } } = await sb.auth.getSession();
   if(session){
     if(await isAdminUser(session.user.id)){ window.location.href = "QuanLyTuVung.html"; return; }
+    if(await isParentUser(session.user.id)){ window.location.href = "PhuHuynh.html"; return; }
     await enterApp(session.user);
   }
   else { showAuthScreen(); }
@@ -378,6 +396,11 @@ async function boot(){
 async function isAdminUser(userId){
   const { data } = await sb.from("admins").select("user_id").eq("user_id", userId).limit(1);
   return !!(data && data.length);
+}
+
+async function isParentUser(userId){
+  const { data } = await sb.from("profiles").select("role").eq("id", userId).maybeSingle();
+  return !!(data && data.role === "parent");
 }
 
 function applyGlobalTheme(){
@@ -433,6 +456,7 @@ document.getElementById("login-form").addEventListener("submit", async (e)=>{
   btn.disabled = false; btn.textContent = "Đăng nhập";
   if(error){ msg.className = "auth-msg err"; msg.textContent = error.message; return; }
   if(await isAdminUser(data.user.id)){ window.location.href = "QuanLyTuVung.html"; return; }
+  if(await isParentUser(data.user.id)){ window.location.href = "PhuHuynh.html"; return; }
   await enterApp(data.user);
 });
 
@@ -470,11 +494,19 @@ document.getElementById("register-form").addEventListener("submit", async (e)=>{
 });
 
 document.getElementById("btn-logout").addEventListener("click", async ()=>{
+  await logActivity("logout");
   await sb.auth.signOut();
-  CURRENT_USER = null; CURRENT_PROFILE = null;
+  CURRENT_USER = null; CURRENT_PROFILE = null; CURRENT_SESSION_ID = null;
   document.getElementById("main-wrap").classList.add("hidden");
   document.getElementById("login-form").reset();
   showAuthScreen();
+});
+
+document.addEventListener("visibilitychange", ()=>{
+  // Xấp xỉ "đang học"/"không học": không có idle-timer thật, chỉ ghi lại lúc
+  // người dùng chuyển tab/thu nhỏ app (app_hidden) và lúc quay lại (app_visible).
+  if(!CURRENT_USER) return;
+  logActivity(document.hidden ? "app_hidden" : "app_visible", { language: currentLanguage });
 });
 
 async function enterApp(user){
@@ -495,6 +527,9 @@ async function enterApp(user){
   document.getElementById("lang-select").value = currentLanguage;
   level = LANGS[currentLanguage].levels[0].code;
 
+  CURRENT_SESSION_ID = crypto.randomUUID();
+  logActivity("login", { language: currentLanguage });
+
   applyLanguageUI();
   loadItems();
 }
@@ -512,6 +547,7 @@ async function onLanguageSelectChange(e){
   // Lưu lại lựa chọn ngôn ngữ cho lần đăng nhập sau
   if(CURRENT_USER){
     await sb.from("profiles").update({ selected_language: currentLanguage }).eq("id", CURRENT_USER.id);
+    logActivity("language_change", { language: currentLanguage });
   }
 }
 
@@ -529,6 +565,7 @@ function applyLanguageUI(){
   document.getElementById("tab-game").textContent = u.tabGame;
   document.getElementById("tab-grammar").textContent = u.tabGrammar;
   document.getElementById("tab-practice").textContent = u.tabPractice;
+  document.getElementById("tab-stats").textContent = u.tabStats;
   document.getElementById("opt-word").textContent = u.optWord;
   document.getElementById("opt-sentence").textContent = u.optSentence;
   document.getElementById("opt-kind-writing").textContent = u.kindWriting;
@@ -550,12 +587,14 @@ document.getElementById("tab-flash").addEventListener("click", ()=>{ mode="flash
 document.getElementById("tab-game").addEventListener("click", ()=>{ mode="game"; setActiveTab(); loadItems(); });
 document.getElementById("tab-grammar").addEventListener("click", ()=>{ mode="grammar"; setActiveTab(); loadGrammar(); });
 document.getElementById("tab-practice").addEventListener("click", ()=>{ mode="practice"; setActiveTab(); loadPractice(); });
+document.getElementById("tab-stats").addEventListener("click", ()=>{ mode="stats"; setActiveTab(); loadStats(); });
 function setActiveTab(){
   document.getElementById("tab-flash").classList.toggle("active", mode==="flash");
   document.getElementById("tab-game").classList.toggle("active", mode==="game");
   document.getElementById("tab-grammar").classList.toggle("active", mode==="grammar");
   document.getElementById("tab-practice").classList.toggle("active", mode==="practice");
-  document.getElementById("vocab-filters").style.display = (mode==="grammar" || mode==="practice") ? "none" : "contents";
+  document.getElementById("tab-stats").classList.toggle("active", mode==="stats");
+  document.getElementById("vocab-filters").style.display = (mode==="grammar" || mode==="practice" || mode==="stats") ? "none" : "contents";
   document.getElementById("practice-filters").style.display = (mode==="practice") ? "block" : "none";
 }
 // Tải lại đúng nội dung theo tab đang active — dùng ở mọi nơi có thể đổi ngôn ngữ/trình độ/...
@@ -563,6 +602,7 @@ function setActiveTab(){
 function reloadCurrentMode(){
   if(mode==="grammar"){ loadGrammar(); }
   else if(mode==="practice"){ loadPractice(); }
+  else if(mode==="stats"){ loadStats(); }
   else { loadItems(); }
 }
 document.getElementById("sel-level").addEventListener("change", e=>{
@@ -868,6 +908,7 @@ let practicePoolCache = {}; // key "ngôn ngữ|trình độ" -> toàn bộ bài
 let currentPracticeItems = []; // bộ câu hỏi đang hiển thị (giữ cố định để nút "Làm lại" dùng đúng bộ này)
 let currentPracticePreHtml = ""; // HTML phụ hiện phía trên danh sách bài tập (đoạn văn đọc/nói)
 let practiceNextAction = null; // hàm gọi khi bấm nút "Tiếp theo/Đoạn khác" — tuỳ theo dạng luyện tập đang chọn
+let currentPracticeSourceId = null; // lesson_id (writing) hoặc passage_id (reading) của bộ câu hỏi đang hiển thị, dùng khi lưu quiz_results
 
 // ---- Đọc (Reading) & Nói - Đọc đoạn văn (Speaking passage) ----
 let readingPoolCache = {}; // key "ngôn ngữ|trình độ" -> [đoạn văn]
@@ -889,27 +930,41 @@ function buildPracticeSet(pool){
   return result;
 }
 
+// Đánh số mỗi lần loadPractice() được gọi — nếu người học đổi dạng luyện tập/ngôn
+// ngữ/trình độ trước khi 1 fetch cũ kịp xong, kết quả trả về muộn của fetch cũ sẽ
+// tự nhận ra mình đã lỗi thời (myReq !== practiceRequestSeq) và không ghi đè state.
+let practiceRequestSeq = 0;
+
 async function loadPractice(){
-  if(practiceKind === "reading"){ await loadReadingPractice(); }
-  else if(practiceKind === "speaking_passage"){ await loadSpeakingPassage(); }
-  else if(practiceKind === "speaking_dialogue"){ await loadSpeakingDialogue(); }
-  else { await loadWritingPractice(); }
+  const myReq = ++practiceRequestSeq;
+  currentPracticeSourceId = null; // reset — chỉ writing/reading (2 dạng có chấm điểm) mới set lại bên dưới
+  if(practiceKind === "reading"){ await loadReadingPractice(myReq); }
+  else if(practiceKind === "speaking_passage"){ await loadSpeakingPassage(myReq); }
+  else if(practiceKind === "speaking_dialogue"){ await loadSpeakingDialogue(myReq); }
+  else { await loadWritingPractice(myReq); }
 }
 
-async function loadWritingPractice(){
+let practiceLessonIdCache = {}; // key "ngôn ngữ|trình độ" -> lesson_id, song song với practicePoolCache
+
+async function loadWritingPractice(myReq){
   const key = `${currentLanguage}|${level}`;
   const area = document.getElementById("content-area");
 
   if(practicePoolCache[key] !== undefined){
+    currentPracticeSourceId = practiceLessonIdCache[key] || null;
     startNewPracticeSet(practicePoolCache[key]);
     return;
   }
 
   area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
   const { data: lessonData, error: lessonError } = await sb.from("grammar_lessons").select("id").eq("language", currentLanguage).eq("level", level).maybeSingle();
+  if(myReq !== practiceRequestSeq) return; // đã có yêu cầu mới hơn — bỏ kết quả này
   if(lessonError){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${lessonError.message}</div>`; return; }
   if(!lessonData){ practicePoolCache[key] = []; area.innerHTML = `<div class="empty-msg">${L().ui.emptyPractice}</div>`; return; }
+  currentPracticeSourceId = lessonData.id;
+  practiceLessonIdCache[key] = lessonData.id;
   const { data: exData, error: exError } = await sb.from("grammar_exercises").select("*").eq("lesson_id", lessonData.id);
+  if(myReq !== practiceRequestSeq) return;
   if(exError){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${exError.message}</div>`; return; }
   practicePoolCache[key] = exData || [];
   startNewPracticeSet(practicePoolCache[key]);
@@ -1022,7 +1077,7 @@ function renderPractice(items, preHtml, nextLabel){
   wirePassageAudio();
 }
 
-function checkPracticeAnswers(){
+async function checkPracticeAnswers(){
   const u = L().ui;
   let correctCount = 0;
   currentPracticeItems.forEach(ex=>{
@@ -1052,6 +1107,63 @@ function checkPracticeAnswers(){
   if(scoreEl) scoreEl.textContent = fmt(u.scoreLabel, {correct: correctCount, total: currentPracticeItems.length});
   document.getElementById("btn-check-practice").style.display = "none";
   document.getElementById("practice-after-actions").style.display = "block";
+
+  if(CURRENT_USER && (practiceKind === "writing" || practiceKind === "reading") && currentPracticeItems.length > 0){
+    const { error } = await sb.from("quiz_results").insert({
+      user_id: CURRENT_USER.id,
+      language: currentLanguage,
+      level: level,
+      practice_kind: practiceKind,
+      source_id: currentPracticeSourceId,
+      correct_count: correctCount,
+      total_count: currentPracticeItems.length
+    });
+    if(error) console.warn("Lưu quiz_results thất bại:", error.message);
+  }
+}
+
+// ============================================================
+// Thống kê — lịch sử điểm kiểm tra (Luyện tập → Viết/Đọc) của chính học sinh
+// ============================================================
+async function loadStats(){
+  const u = L().ui;
+  const area = document.getElementById("content-area");
+  area.innerHTML = `<div class="loading-msg">${u.loading}</div>`;
+
+  const { data, error } = await sb.from("quiz_results")
+    .select("*")
+    .eq("user_id", CURRENT_USER.id)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if(error){ area.innerHTML = `<div class="empty-msg">${u.errorPrefix}${error.message}</div>`; return; }
+  if(!data || data.length === 0){ area.innerHTML = `<div class="empty-msg">${u.statsEmpty}</div>`; return; }
+
+  const totalCorrect = data.reduce((s,r)=>s+r.correct_count, 0);
+  const totalQuestions = data.reduce((s,r)=>s+r.total_count, 0);
+  const avgPercent = totalQuestions ? Math.round((totalCorrect/totalQuestions)*100) : 0;
+  const weekAgoMs = Date.now() - 7*24*60*60*1000;
+  const thisWeekCount = data.filter(r => new Date(r.created_at).getTime() >= weekAgoMs).length;
+
+  const rowsHtml = data.map(r=>{
+    const kindLabel = r.practice_kind === "writing" ? u.kindWriting : u.kindReading;
+    const percent = r.total_count ? Math.round((r.correct_count/r.total_count)*100) : 0;
+    const dateStr = new Date(r.created_at).toLocaleString();
+    return `<div class="stats-row">
+      <span>${dateStr}</span>
+      <span>${kindLabel} · ${r.level}</span>
+      <span class="stats-row-score">${r.correct_count}/${r.total_count} (${percent}%)</span>
+    </div>`;
+  }).join("");
+
+  area.innerHTML = `
+    <h2 style="color:var(--navy2);margin-top:0;">${u.statsTitle}</h2>
+    <div class="stats-summary">
+      <div class="stats-summary-item"><b>${data.length}</b>${u.statsCountLabel}</div>
+      <div class="stats-summary-item"><b>${avgPercent}%</b>${u.statsAvgLabel}</div>
+      <div class="stats-summary-item"><b>${thisWeekCount}</b>${u.statsWeekLabel}</div>
+    </div>
+    <div class="stats-list">${rowsHtml}</div>
+  `;
 }
 
 // ============================================================
@@ -1117,29 +1229,34 @@ async function loadReadingPassagePool(){
   return { pool: readingPoolCache[key] };
 }
 
-async function loadReadingPractice(){
+async function loadReadingPractice(myReq){
   const area = document.getElementById("content-area");
   area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
   const { pool, error } = await loadReadingPassagePool();
+  if(myReq !== practiceRequestSeq) return;
   if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
   if(pool.length === 0){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyReading}</div>`; return; }
-  await pickRandomReadingPassage(pool);
+  await pickRandomReadingPassage(pool, myReq);
 }
 
-async function pickRandomReadingPassage(pool){
+async function pickRandomReadingPassage(pool, myReq){
+  if(myReq === undefined) myReq = ++practiceRequestSeq; // gọi từ nút "Đoạn khác" — tính như 1 yêu cầu mới
   const area = document.getElementById("content-area");
   const passage = pool[Math.floor(Math.random()*pool.length)];
   area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
   const { data: questions, error } = await sb.from("reading_questions").select("*").eq("passage_id", passage.id).order("order_index");
+  if(myReq !== practiceRequestSeq) return;
   if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
+  currentPracticeSourceId = passage.id;
   practiceNextAction = () => pickRandomReadingPassage(pool);
   renderPractice(questions || [], passageBlockHtml(passage), L().ui.anotherPassageBtn);
 }
 
-async function loadSpeakingPassage(){
+async function loadSpeakingPassage(myReq){
   const area = document.getElementById("content-area");
   area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
   const { pool, error } = await loadReadingPassagePool();
+  if(myReq !== practiceRequestSeq) return;
   if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
   if(pool.length === 0){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyReading}</div>`; return; }
   pickRandomSpeakingPassage(pool);
@@ -1158,12 +1275,14 @@ function dialogueRoleLabel(role, dialogue){
   return role === "A" ? (dialogue.role_a_name || "A") : (dialogue.role_b_name || "B");
 }
 
-async function loadSpeakingDialogue(){
+async function loadSpeakingDialogue(myReq){
+  if(myReq === undefined) myReq = ++practiceRequestSeq; // gọi từ nút "Hội thoại khác"
   const key = `${currentLanguage}|${level}`;
   const area = document.getElementById("content-area");
   area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
   if(dialoguePoolCache[key] === undefined){
     const { data, error } = await sb.from("dialogues").select("*").eq("language", currentLanguage).eq("level", level);
+    if(myReq !== practiceRequestSeq) return;
     if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
     dialoguePoolCache[key] = data || [];
   }
@@ -1171,6 +1290,7 @@ async function loadSpeakingDialogue(){
   if(pool.length === 0){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyDialogue}</div>`; return; }
   const dialogue = pool[Math.floor(Math.random()*pool.length)];
   const { data: lines, error: linesError } = await sb.from("dialogue_lines").select("*").eq("dialogue_id", dialogue.id).order("order_index");
+  if(myReq !== practiceRequestSeq) return;
   if(linesError){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${linesError.message}</div>`; return; }
   renderDialogueRolePicker(dialogue, lines || []);
 }

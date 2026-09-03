@@ -120,6 +120,7 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
       <button id="sec-grammar">📘 Ngữ pháp</button>
       <button id="sec-reading">📖 Đọc</button>
       <button id="sec-dialogue">🗣️ Hội thoại</button>
+      <button id="sec-parents">👪 Phụ huynh</button>
     </div>
 
     <div id="vocab-section">
@@ -319,6 +320,33 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
         <textarea id="line-csv-input" placeholder='language,level,dialogue_title,speaker,line_text,order_index&#10;en,A2,At the Cafe,A,"Hi, what would you like to order?",1&#10;en,A2,At the Cafe,B,"I would like a cappuccino, please.",2'></textarea>
         <div style="margin-top:10px;"><button class="btn btn-primary" id="btn-import-line">Nhập vào hệ thống</button></div>
         <div class="result-msg" id="line-import-result"></div>
+      </div>
+    </div>
+
+    <div id="parents-section" style="display:none;">
+      <div class="card">
+        <h3>Tạo tài khoản phụ huynh mới</h3>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">
+          Tài khoản phụ huynh dùng để đăng nhập vào <code>PhuHuynh.html</code>, xem thống kê
+          học tập của 1 học sinh cụ thể. Việc tạo tài khoản gọi 1 hàm server riêng (không dùng
+          key công khai của trang này) nên cần đã cấu hình <code>SUPABASE_SERVICE_ROLE_KEY</code>
+          trên Cloudflare Pages — xem tài liệu bàn giao.
+        </div>
+        <div class="field-row"><label>Email phụ huynh</label><input id="p-email" type="email" placeholder="phuhuynh@email.com"></div>
+        <div class="field-row"><label>Mật khẩu</label><input id="p-password" type="text" placeholder="Tối thiểu 6 ký tự"></div>
+        <div class="field-row"><label>Liên kết với học sinh</label><select id="p-student"></select></div>
+        <div style="margin-top:10px;"><button class="btn btn-primary" id="btn-create-parent">Tạo tài khoản phụ huynh</button></div>
+        <div class="result-msg" id="parent-create-result"></div>
+      </div>
+
+      <div class="card">
+        <h3>Danh sách phụ huynh đã liên kết (<span id="parent-link-count">0</span>)</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Email phụ huynh</th><th>Email học sinh</th><th>Ngày tạo</th><th></th></tr></thead>
+            <tbody id="parent-table-body"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -768,7 +796,7 @@ document.getElementById("btn-import").addEventListener("click", async ()=>{
 // ============================================================
 // Chuyển đổi giữa 4 khu vực quản trị: Từ vựng / Ngữ pháp / Đọc / Hội thoại
 // ============================================================
-const ALL_SECTIONS = ["vocab", "grammar", "reading", "dialogue"];
+const ALL_SECTIONS = ["vocab", "grammar", "reading", "dialogue", "parents"];
 function switchSection(active){
   ALL_SECTIONS.forEach(name=>{
     document.getElementById(`sec-${name}`).classList.toggle("active", name===active);
@@ -777,11 +805,92 @@ function switchSection(active){
   if(active === "grammar") loadLesson();
   else if(active === "reading") loadPassages();
   else if(active === "dialogue") loadDialogues();
+  else if(active === "parents") loadParents();
 }
 document.getElementById("sec-vocab").addEventListener("click", ()=> switchSection("vocab"));
 document.getElementById("sec-grammar").addEventListener("click", ()=> switchSection("grammar"));
 document.getElementById("sec-reading").addEventListener("click", ()=> switchSection("reading"));
 document.getElementById("sec-dialogue").addEventListener("click", ()=> switchSection("dialogue"));
+document.getElementById("sec-parents").addEventListener("click", ()=> switchSection("parents"));
+
+// ============================================================
+// Phụ huynh — tạo tài khoản (qua Cloudflare Pages Function /api/create-parent,
+// vì cần service_role key không được nhúng ở đây) + liên kết với 1 học sinh.
+// ============================================================
+async function loadParents(){
+  const studentSel = document.getElementById("p-student");
+  const { data: students, error: studentsError } = await sb.from("profiles").select("id,email").eq("role","student").order("email");
+  if(studentsError){
+    studentSel.innerHTML = `<option value="">(Lỗi tải danh sách: ${escHtmlAdmin(studentsError.message)})</option>`;
+  } else {
+    studentSel.innerHTML = (students||[]).map(s=>`<option value="${s.id}">${escHtmlAdmin(s.email||s.id)}</option>`).join("");
+  }
+
+  const { data: links, error } = await sb.from("parent_links").select("id,parent_id,student_id,created_at").order("created_at",{ascending:false});
+  const tbody = document.getElementById("parent-table-body");
+  if(error){ tbody.innerHTML = `<tr><td colspan="4">Lỗi tải dữ liệu: ${escHtmlAdmin(error.message)}</td></tr>`; return; }
+  if(!links || !links.length){
+    tbody.innerHTML = `<tr><td colspan="4">Chưa có liên kết phụ huynh nào.</td></tr>`;
+    document.getElementById("parent-link-count").textContent = "0";
+    return;
+  }
+
+  const ids = [...new Set(links.flatMap(l=>[l.parent_id, l.student_id]))];
+  const { data: profs } = await sb.from("profiles").select("id,email").in("id", ids);
+  const emailOf = Object.fromEntries((profs||[]).map(p=>[p.id, p.email]));
+
+  document.getElementById("parent-link-count").textContent = links.length;
+  tbody.innerHTML = links.map(l=>`
+    <tr>
+      <td>${escHtmlAdmin(emailOf[l.parent_id] || l.parent_id)}</td>
+      <td>${escHtmlAdmin(emailOf[l.student_id] || l.student_id)}</td>
+      <td>${new Date(l.created_at).toLocaleDateString()}</td>
+      <td><button class="btn btn-outline" data-del-link="${l.id}">Xoá liên kết</button></td>
+    </tr>`).join("");
+  tbody.querySelectorAll("[data-del-link]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      if(!confirm("Xoá liên kết phụ huynh - học sinh này?")) return;
+      const { error: delError } = await sb.from("parent_links").delete().eq("id", btn.dataset.delLink);
+      if(delError){ alert("Xoá thất bại: " + delError.message); return; }
+      loadParents();
+    });
+  });
+}
+
+document.getElementById("btn-create-parent").addEventListener("click", async ()=>{
+  const email = document.getElementById("p-email").value.trim();
+  const password = document.getElementById("p-password").value;
+  const studentId = document.getElementById("p-student").value;
+  const resultEl = document.getElementById("parent-create-result");
+  resultEl.textContent = "";
+  if(!email || !password || !studentId){ resultEl.textContent = "Điền đủ email, mật khẩu và chọn 1 học sinh."; return; }
+
+  const btn = document.getElementById("btn-create-parent");
+  btn.disabled = true; btn.textContent = "Đang tạo...";
+  try{
+    const { data: { session } } = await sb.auth.getSession();
+    if(!session){ resultEl.textContent = "Phiên đăng nhập đã hết hạn — vui lòng đăng xuất rồi đăng nhập lại."; return; }
+    const res = await fetch("/api/create-parent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
+      body: JSON.stringify({ email, password })
+    });
+    const body = await res.json();
+    if(!res.ok){ resultEl.textContent = "Lỗi: " + (body.error || res.statusText); return; }
+
+    const { error: linkError } = await sb.from("parent_links").insert({ parent_id: body.userId, student_id: studentId });
+    if(linkError){ resultEl.textContent = "Đã tạo tài khoản nhưng liên kết với học sinh thất bại: " + linkError.message; return; }
+
+    resultEl.textContent = "✅ Đã tạo tài khoản phụ huynh và liên kết thành công.";
+    document.getElementById("p-email").value = "";
+    document.getElementById("p-password").value = "";
+    loadParents();
+  } catch(err){
+    resultEl.textContent = "Lỗi kết nối tới server function: " + err.message;
+  } finally {
+    btn.disabled = false; btn.textContent = "Tạo tài khoản phụ huynh";
+  }
+});
 
 // ============================================================
 // Bài học ngữ pháp (1 bài / ngôn ngữ / trình độ)
