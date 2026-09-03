@@ -121,6 +121,10 @@
         {
           "code": "B2",
           "label": "B2"
+        },
+        {
+          "code": "SAT",
+          "label": "SAT"
         }
       ],
       "ui": {
