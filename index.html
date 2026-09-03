@@ -937,7 +937,7 @@ function buildPracticeSet(pool){
     const candidates = shuffle(pool.filter(ex => ex.type === seq.type));
     result.push(...candidates.slice(0, seq.count));
   });
-  return result;
+  return shuffle(result); // xáo cả thứ tự các dạng bài với nhau, không để luôn nhóm theo đúng thứ tự PRACTICE_SEQUENCE
 }
 
 // Đánh số mỗi lần loadPractice() được gọi — nếu người học đổi dạng luyện tập/ngôn
@@ -1038,7 +1038,7 @@ function renderPractice(items, preHtml, nextLabel){
       bodyHtml = orderExerciseHtml(ex.id);
     } else if(ex.type === "listening_choice"){
       questionLabel = "🎧 " + u.listeningPrompt;
-      const opts = (ex.options || "").split(",").map(o=>o.trim()).filter(Boolean);
+      const opts = shuffle((ex.options || "").split(",").map(o=>o.trim()).filter(Boolean));
       bodyHtml = `<button type="button" class="flash-speak" data-listen="${escHtml(ex.question)}" style="margin-bottom:10px;">🔊</button>`
         + opts.map(o=>`<label class="exercise-option"><input type="radio" name="ex-${ex.id}" value="${escHtml(o)}"> ${escHtml(o)}</label>`).join("");
     } else if(ex.type === "listening_dictation"){
@@ -1046,7 +1046,7 @@ function renderPractice(items, preHtml, nextLabel){
       bodyHtml = `<button type="button" class="flash-speak" data-listen="${escHtml(ex.question)}" style="margin-bottom:10px;">🔊</button>`
         + `<input type="text" class="exercise-input" id="input-${ex.id}" placeholder="${u.fillPlaceholder}">`;
     } else if(cat === "choice"){
-      const opts = (ex.options || "").split(",").map(o=>o.trim()).filter(Boolean);
+      const opts = shuffle((ex.options || "").split(",").map(o=>o.trim()).filter(Boolean));
       bodyHtml = opts.map(o=>`<label class="exercise-option"><input type="radio" name="ex-${ex.id}" value="${escHtml(o)}"> ${escHtml(o)}</label>`).join("");
     } else {
       bodyHtml = `<input type="text" class="exercise-input" id="input-${ex.id}" placeholder="${u.fillPlaceholder}">`;
@@ -1271,7 +1271,7 @@ async function pickRandomReadingPassage(pool, myReq){
   if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
   currentPracticeSourceId = passage.id;
   practiceNextAction = () => pickRandomReadingPassage(pool);
-  renderPractice(questions || [], passageBlockHtml(passage), L().ui.anotherPassageBtn);
+  renderPractice(shuffle(questions || []), passageBlockHtml(passage), L().ui.anotherPassageBtn);
 }
 
 // ============================================================
@@ -1346,7 +1346,7 @@ async function pickRandomListeningPassage(pool, myReq){
   if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
   currentPracticeSourceId = passage.id;
   practiceNextAction = () => pickRandomListeningPassage(pool);
-  renderPractice(questions || [], listeningPassageBlockHtml(passage), L().ui.anotherPassageBtn);
+  renderPractice(shuffle(questions || []), listeningPassageBlockHtml(passage), L().ui.anotherPassageBtn);
 }
 
 // ============================================================
