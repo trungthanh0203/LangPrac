@@ -69,13 +69,13 @@ body{margin:0;font-family:Arial,"Segoe UI",sans-serif;background:var(--bg-page);
 .header-logo{flex:0 0 auto;display:flex;align-items:center;}
 .header-logo img{height:78px;width:auto;max-width:160px;display:block;border-radius:8px;object-fit:contain;}
 .header-center{flex:1 1 auto;min-width:0;}
-.header-voice{flex:0 0 auto;}
-.header-voice select{padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.4);font-size:12.5px;background:rgba(255,255,255,0.15);font-weight:700;color:#fff;cursor:pointer;}
-.header-voice select option{color:#1a2332;background:#fff;}
+.header-voice{flex:0 0 auto;display:flex;flex-direction:column;gap:6px;}
+.header-voice button{padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.4);font-size:12px;background:rgba(255,255,255,0.15);font-weight:700;color:#fff;cursor:pointer;white-space:nowrap;}
+.header-voice button:hover{background:rgba(255,255,255,0.25);}
 @media (max-width:600px){
   .header-logo img{height:52px;max-width:100px;}
   .header-grid{gap:8px;}
-  .header-voice select{font-size:11.5px;padding:5px 6px;}
+  .header-voice button{font-size:11px;padding:5px 6px;}
 }
 
 .user-bar{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;font-size:12.5px;}
@@ -83,8 +83,6 @@ body{margin:0;font-family:Arial,"Segoe UI",sans-serif;background:var(--bg-page);
 .user-bar .sep{color:rgba(255,255,255,0.5);}
 .user-bar select{padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.4);font-size:12.5px;background:rgba(255,255,255,0.15);font-weight:700;color:#fff;}
 .user-bar select option{color:#1a2332;background:#fff;}
-.user-bar .btn-logout{padding:6px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.1);font-size:12px;color:#fff;cursor:pointer;}
-.user-bar .btn-logout:hover{background:rgba(255,255,255,0.25);}
 
 header.top{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#fff;border-radius:var(--radius);padding:18px 24px 16px;margin-bottom:10px;text-align:center;}
 .flag-strip{height:6px;max-width:180px;margin:0 auto var(--gap);border-radius:3px;overflow:hidden;border:1px solid var(--border);}
@@ -278,11 +276,12 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
           <span class="user-email" id="user-email-label"></span>
           <span class="sep">·</span>
           <select id="lang-select"></select>
-          <button class="btn-logout" id="btn-logout">Đăng xuất</button>
+          <select id="voice-select" title="Chọn giọng đọc"></select>
         </div>
       </div>
       <div class="header-voice">
-        <select id="voice-select" title="Chọn giọng đọc"></select>
+        <button id="btn-logout">Đăng xuất</button>
+        <button id="btn-header-stats"></button>
       </div>
     </div>
   </header>
@@ -566,6 +565,7 @@ function applyLanguageUI(){
   document.getElementById("tab-grammar").textContent = u.tabGrammar;
   document.getElementById("tab-practice").textContent = u.tabPractice;
   document.getElementById("tab-stats").textContent = u.tabStats;
+  document.getElementById("btn-header-stats").textContent = u.tabStats;
   document.getElementById("opt-word").textContent = u.optWord;
   document.getElementById("opt-sentence").textContent = u.optSentence;
   document.getElementById("opt-kind-writing").textContent = u.kindWriting;
@@ -588,6 +588,7 @@ document.getElementById("tab-game").addEventListener("click", ()=>{ mode="game";
 document.getElementById("tab-grammar").addEventListener("click", ()=>{ mode="grammar"; setActiveTab(); loadGrammar(); });
 document.getElementById("tab-practice").addEventListener("click", ()=>{ mode="practice"; setActiveTab(); loadPractice(); });
 document.getElementById("tab-stats").addEventListener("click", ()=>{ mode="stats"; setActiveTab(); loadStats(); });
+document.getElementById("btn-header-stats").addEventListener("click", ()=>{ mode="stats"; setActiveTab(); loadStats(); });
 function setActiveTab(){
   document.getElementById("tab-flash").classList.toggle("active", mode==="flash");
   document.getElementById("tab-game").classList.toggle("active", mode==="game");
