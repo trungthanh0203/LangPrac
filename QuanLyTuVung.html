@@ -119,6 +119,7 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
       <button id="sec-vocab" class="active">📚 Từ vựng</button>
       <button id="sec-grammar">📘 Ngữ pháp</button>
       <button id="sec-reading">📖 Đọc</button>
+      <button id="sec-listening">🎧 Nghe</button>
       <button id="sec-dialogue">🗣️ Hội thoại</button>
       <button id="sec-parents">👪 Phụ huynh</button>
     </div>
@@ -207,9 +208,9 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
         <h3>Nhập nhanh bài tập từ CSV</h3>
         <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">
           Cấu trúc cột (đúng thứ tự, có dòng tiêu đề): <code>language,level,type,question,options,correct_answer,explanation,order_index</code><br>
-          &bull; <b>type</b>: <code>multiple_choice</code>, <code>fill_blank</code>, <code>sentence_ordering</code> (sắp xếp câu), <code>listening_choice</code> (nghe & chọn), <code>synonym_antonym</code> (đồng/trái nghĩa), <code>odd_one_out</code> (từ khác nhóm), hoặc <code>word_form</code> (biến đổi từ).<br>
-          &bull; <b>options</b>: cách nhau bởi dấu phẩy — dùng cho các dạng trắc nghiệm/nghe/đồng nghĩa/khác nhóm; với <code>sentence_ordering</code> đây là danh sách từ bị xáo trộn; để trống với <code>fill_blank</code>/<code>word_form</code>.<br>
-          &bull; Riêng <code>listening_choice</code>: cột <b>question</b> chứa câu/từ sẽ được đọc lên (không hiển thị chữ cho người học thấy trước).<br>
+          &bull; <b>type</b>: <code>multiple_choice</code>, <code>fill_blank</code>, <code>sentence_ordering</code> (sắp xếp câu), <code>listening_choice</code> (nghe & chọn), <code>synonym_antonym</code> (đồng/trái nghĩa), <code>odd_one_out</code> (từ khác nhóm), <code>word_form</code> (biến đổi từ), <code>listening_dictation</code> (nghe – viết lại), <code>error_correction</code> (tìm và sửa lỗi sai), hoặc <code>verb_conjugation</code> (chia động từ theo ngữ cảnh).<br>
+          &bull; <b>options</b>: cách nhau bởi dấu phẩy — dùng cho các dạng trắc nghiệm/nghe/đồng nghĩa/khác nhóm; với <code>sentence_ordering</code> đây là danh sách từ bị xáo trộn; để trống với <code>fill_blank</code>/<code>word_form</code>/<code>error_correction</code>/<code>verb_conjugation</code>/<code>listening_dictation</code>.<br>
+          &bull; Riêng <code>listening_choice</code>/<code>listening_dictation</code>: cột <b>question</b> chứa câu/từ sẽ được đọc lên (không hiển thị chữ cho người học thấy trước). Với <code>listening_dictation</code>, cột <b>correct_answer</b> nên gõ đúng nguyên văn câu đó.<br>
           &bull; Bài học tương ứng (đúng ngôn ngữ + trình độ) phải được tạo/lưu ở phần trên trước — nếu chưa có, dòng đó sẽ bị bỏ qua kèm thông báo lỗi.
         </div>
         <textarea id="ex-csv-input" placeholder='language,level,type,question,options,correct_answer,explanation,order_index&#10;de,A1,multiple_choice,Ich ___ Deutsch.,"lerne,lernst,lernt,lernen",lerne,,1&#10;de,A1,fill_blank,Er ___ (sein) mein Bruder.,,ist,,2'></textarea>
@@ -222,7 +223,7 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
 
     <div id="reading-section" style="display:none;">
       <div class="card">
-        <h3>Đoạn văn (Đọc & Nói-Đọc đoạn văn dùng chung, nhiều đoạn / trình độ)</h3>
+        <h3>Đoạn văn Đọc (nhiều đoạn / trình độ)</h3>
         <div class="filters" style="margin-bottom:14px;">
           <select id="r-language" style="color:var(--text-1);background:#fff;border:1px solid var(--border);"></select>
           <select id="r-level" style="color:var(--text-1);background:#fff;border:1px solid var(--border);"></select>
@@ -268,6 +269,60 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
         <textarea id="rq-csv-input" placeholder='language,level,passage_title,type,question,options,correct_answer,explanation,order_index&#10;en,A1,My Family,multiple_choice,How many brothers does she have?,"one,two,three",two,,1'></textarea>
         <div style="margin-top:10px;"><button class="btn btn-primary" id="btn-import-rq">Nhập vào hệ thống</button></div>
         <div class="result-msg" id="rq-import-result"></div>
+      </div>
+    </div>
+
+    <div id="listening-section" style="display:none;">
+      <div class="card">
+        <h3>Đoạn văn Nghe (nhiều đoạn / trình độ — kho riêng, không dùng chung với Đọc)</h3>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">
+          Nội dung ở đây sẽ được đọc lên (TTS) cho học sinh nghe — chữ KHÔNG hiển thị trong app học, chỉ hiện ở đây cho admin quản lý.
+        </div>
+        <div class="filters" style="margin-bottom:14px;">
+          <select id="li-language" style="color:var(--text-1);background:#fff;border:1px solid var(--border);"></select>
+          <select id="li-level" style="color:var(--text-1);background:#fff;border:1px solid var(--border);"></select>
+          <button class="btn btn-primary" id="btn-add-lipassage">+ Thêm đoạn văn</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Tiêu đề</th><th>Số câu hỏi</th><th></th></tr></thead>
+            <tbody id="lipassage-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" id="lq-card" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <h3 style="margin:0;">Câu hỏi nghe hiểu cho: <span id="lq-passage-title" style="color:var(--teal);"></span></h3>
+          <button class="btn btn-primary" id="btn-add-lq">+ Thêm câu hỏi</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Loại</th><th>Câu hỏi</th><th>Đáp án đúng</th><th></th></tr></thead>
+            <tbody id="lq-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Nhập nhanh đoạn văn Nghe từ CSV</h3>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">
+          Cấu trúc cột: <code>language,level,title,passage_text</code> — mỗi dòng là 1 đoạn văn mới (không ghi đè, trùng tiêu đề sẽ tự bỏ qua).
+        </div>
+        <textarea id="lipassage-csv-input" placeholder='language,level,title,passage_text&#10;en,A1,"My Family","This is my family. I have..."'></textarea>
+        <div style="margin-top:10px;"><button class="btn btn-primary" id="btn-import-lipassage">Nhập vào hệ thống</button></div>
+        <div class="result-msg" id="lipassage-import-result"></div>
+      </div>
+
+      <div class="card">
+        <h3>Nhập nhanh câu hỏi nghe hiểu từ CSV</h3>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">
+          Cấu trúc cột: <code>language,level,passage_title,type,question,options,correct_answer,explanation,order_index</code><br>
+          &bull; <b>passage_title</b> phải khớp CHÍNH XÁC với tiêu đề đoạn văn Nghe đã tạo ở trên (cùng ngôn ngữ + trình độ) — sai/thiếu sẽ bị bỏ qua kèm báo lỗi.
+        </div>
+        <textarea id="lq-csv-input" placeholder='language,level,passage_title,type,question,options,correct_answer,explanation,order_index&#10;en,A1,My Family,multiple_choice,How many brothers does she have?,"one,two,three",two,,1'></textarea>
+        <div style="margin-top:10px;"><button class="btn btn-primary" id="btn-import-lq">Nhập vào hệ thống</button></div>
+        <div class="result-msg" id="lq-import-result"></div>
       </div>
     </div>
 
@@ -380,6 +435,9 @@ const EX_TYPE_LABELS = {
   synonym_antonym: "Đồng/Trái nghĩa",
   odd_one_out: "Từ khác nhóm",
   word_form: "Biến đổi từ",
+  listening_dictation: "Nghe – Viết lại",
+  error_correction: "Tìm và sửa lỗi sai",
+  verb_conjugation: "Chia động từ theo ngữ cảnh",
 };
 let LANGS_ORDER = [];
 
@@ -420,6 +478,11 @@ function buildLanguageDropdowns(){
   rLang.innerHTML = LANGS_ORDER.map(code=>`<option value="${code}">${LANGS_CFG[code].adminLabel}</option>`).join("");
   rebuildRLevelOptions();
 
+  // Bộ chọn ngôn ngữ/trình độ trong phần Nghe
+  const liLang = document.getElementById("li-language");
+  liLang.innerHTML = LANGS_ORDER.map(code=>`<option value="${code}">${LANGS_CFG[code].adminLabel}</option>`).join("");
+  rebuildLiLevelOptions();
+
   // Bộ chọn ngôn ngữ/trình độ trong phần Hội thoại
   const dLang = document.getElementById("d-language");
   dLang.innerHTML = LANGS_ORDER.map(code=>`<option value="${code}">${LANGS_CFG[code].adminLabel}</option>`).join("");
@@ -429,6 +492,13 @@ function buildLanguageDropdowns(){
 function rebuildRLevelOptions(){
   const lang = document.getElementById("r-language").value;
   const sel = document.getElementById("r-level");
+  const levels = LANGS_CFG[lang]?.levels || [];
+  sel.innerHTML = levels.map(lv=>`<option value="${lv.code}">${lv.label}</option>`).join("");
+}
+
+function rebuildLiLevelOptions(){
+  const lang = document.getElementById("li-language").value;
+  const sel = document.getElementById("li-level");
   const levels = LANGS_CFG[lang]?.levels || [];
   sel.innerHTML = levels.map(lv=>`<option value="${lv.code}">${lv.label}</option>`).join("");
 }
@@ -796,7 +866,7 @@ document.getElementById("btn-import").addEventListener("click", async ()=>{
 // ============================================================
 // Chuyển đổi giữa 4 khu vực quản trị: Từ vựng / Ngữ pháp / Đọc / Hội thoại
 // ============================================================
-const ALL_SECTIONS = ["vocab", "grammar", "reading", "dialogue", "parents"];
+const ALL_SECTIONS = ["vocab", "grammar", "reading", "listening", "dialogue", "parents"];
 function switchSection(active){
   ALL_SECTIONS.forEach(name=>{
     document.getElementById(`sec-${name}`).classList.toggle("active", name===active);
@@ -804,12 +874,14 @@ function switchSection(active){
   });
   if(active === "grammar") loadLesson();
   else if(active === "reading") loadPassages();
+  else if(active === "listening") loadLiPassages();
   else if(active === "dialogue") loadDialogues();
   else if(active === "parents") loadParents();
 }
 document.getElementById("sec-vocab").addEventListener("click", ()=> switchSection("vocab"));
 document.getElementById("sec-grammar").addEventListener("click", ()=> switchSection("grammar"));
 document.getElementById("sec-reading").addEventListener("click", ()=> switchSection("reading"));
+document.getElementById("sec-listening").addEventListener("click", ()=> switchSection("listening"));
 document.getElementById("sec-dialogue").addEventListener("click", ()=> switchSection("dialogue"));
 document.getElementById("sec-parents").addEventListener("click", ()=> switchSection("parents"));
 
@@ -902,6 +974,8 @@ document.getElementById("g-language").addEventListener("change", ()=>{ rebuildGL
 document.getElementById("g-level").addEventListener("change", loadLesson);
 document.getElementById("r-language").addEventListener("change", ()=>{ rebuildRLevelOptions(); loadPassages(); });
 document.getElementById("r-level").addEventListener("change", loadPassages);
+document.getElementById("li-language").addEventListener("change", ()=>{ rebuildLiLevelOptions(); loadLiPassages(); });
+document.getElementById("li-level").addEventListener("change", loadLiPassages);
 document.getElementById("d-language").addEventListener("change", ()=>{ rebuildDLevelOptions(); loadDialogues(); });
 document.getElementById("d-level").addEventListener("change", loadDialogues);
 
@@ -980,11 +1054,14 @@ function exFieldForm(record){
         <option value="synonym_antonym" ${r.type==='synonym_antonym'?"selected":""}>Đồng nghĩa/Trái nghĩa</option>
         <option value="odd_one_out" ${r.type==='odd_one_out'?"selected":""}>Từ khác nhóm</option>
         <option value="word_form" ${r.type==='word_form'?"selected":""}>Biến đổi từ</option>
+        <option value="listening_dictation" ${r.type==='listening_dictation'?"selected":""}>Nghe – Viết lại</option>
+        <option value="error_correction" ${r.type==='error_correction'?"selected":""}>Tìm và sửa lỗi sai</option>
+        <option value="verb_conjugation" ${r.type==='verb_conjugation'?"selected":""}>Chia động từ theo ngữ cảnh</option>
       </select>
     </div>
-    <div class="field-row"><label>Câu hỏi</label><input data-f="question" value="${(r.question||'').replace(/"/g,'&quot;')}"></div>
-    <div class="field-row"><label>Các lựa chọn (cách nhau bởi dấu phẩy — chỉ cần cho trắc nghiệm)</label><input data-f="options" value="${(r.options||'').replace(/"/g,'&quot;')}"></div>
-    <div class="field-row"><label>Đáp án đúng</label><input data-f="correct_answer" value="${(r.correct_answer||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Câu hỏi (riêng "Nghe – Viết lại": đây là câu sẽ được đọc lên, KHÔNG hiện chữ cho học sinh thấy)</label><input data-f="question" value="${(r.question||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Các lựa chọn (cách nhau bởi dấu phẩy — chỉ cần cho trắc nghiệm/nghe & chọn)</label><input data-f="options" value="${(r.options||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Đáp án đúng (riêng "Nghe – Viết lại": gõ đúng nguyên văn câu ở ô Câu hỏi)</label><input data-f="correct_answer" value="${(r.correct_answer||'').replace(/"/g,'&quot;')}"></div>
     <div class="field-row"><label>Giải thích (hiện ra sau khi chấm, không bắt buộc)</label><input data-f="explanation" value="${(r.explanation||'').replace(/"/g,'&quot;')}"></div>
     <div class="field-row"><label>Thứ tự</label><input data-f="order_index" type="number" value="${r.order_index||0}"></div>
   `;
@@ -1142,7 +1219,7 @@ document.getElementById("btn-import-ex").addEventListener("click", async ()=>{
         errors.push(`Dòng ${i+1}: trình độ "${obj.level}" không hợp lệ cho ngôn ngữ "${obj.language}", đã bỏ qua.`);
         continue;
       }
-      if(!["multiple_choice","fill_blank","sentence_ordering","listening_choice","synonym_antonym","odd_one_out","word_form"].includes(obj.type)){
+      if(!Object.keys(EX_TYPE_LABELS).includes(obj.type)){
         errors.push(`Dòng ${i+1}: loại "${obj.type}" không hợp lệ, đã bỏ qua.`);
         continue;
       }
@@ -1578,6 +1655,358 @@ document.getElementById("btn-import-rq").addEventListener("click", async ()=>{
       + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
     document.getElementById("rq-csv-input").value = "";
     if(CURRENT_PASSAGE) await loadRQ(CURRENT_PASSAGE.id);
+  } catch(err){
+    resultEl.className = "result-msg err";
+    resultEl.textContent = "Có lỗi bất ngờ xảy ra: " + (err && err.message ? err.message : String(err));
+    console.error(err);
+  } finally {
+    btn.disabled = false; btn.textContent = "Nhập vào hệ thống";
+  }
+});
+
+// ============================================================
+// Nghe (Listening) — kho riêng (listening_passages/listening_questions), CRUD
+// giống hệt Đọc (mục ngay trên), chỉ đổi tên bảng/biến/id phần tử để không đụng nhau.
+// ============================================================
+let CURRENT_LI_PASSAGES = [];
+let CURRENT_LI_PASSAGE = null;
+let CURRENT_LQ = [];
+
+async function loadLiPassages(){
+  const language = document.getElementById("li-language").value;
+  const level = document.getElementById("li-level").value;
+  document.getElementById("lq-card").style.display = "none";
+  CURRENT_LI_PASSAGE = null;
+  const { data, error } = await sb.from("listening_passages")
+    .select("*, listening_questions(count)")
+    .eq("language", language).eq("level", level)
+    .order("order_index");
+  if(error){ alert("Lỗi khi tải đoạn văn nghe: " + error.message); return; }
+  CURRENT_LI_PASSAGES = data || [];
+  renderLiPassages();
+}
+
+function renderLiPassages(){
+  document.getElementById("lipassage-table-body").innerHTML = CURRENT_LI_PASSAGES.map(p=>{
+    const qCount = (p.listening_questions && p.listening_questions[0] && p.listening_questions[0].count) || 0;
+    return `
+    <tr>
+      <td>${escHtmlAdmin(p.title)}</td>
+      <td>${qCount}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-sm" onclick="selectLiPassage(${p.id})">Câu hỏi</button>
+        <button class="btn-sm" onclick="openEditLiPassage(${p.id})">Sửa</button>
+        <button class="btn-sm danger" onclick="deleteLiPassage(${p.id})">Xoá</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+function liPassageFieldForm(record){
+  const r = record || { title:"", passage_text:"" };
+  return `
+    <div class="field-row"><label>Tiêu đề</label><input data-f="title" value="${(r.title||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Nội dung đoạn văn (chỉ dùng để đọc lên, KHÔNG hiện chữ cho học sinh)</label><textarea data-f="passage_text" style="min-height:180px;">${r.passage_text||''}</textarea></div>
+  `;
+}
+
+function openAddLiPassage(){
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Thêm đoạn văn nghe</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="lipassage-form">${liPassageFieldForm(null)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Thêm</button></div>
+    </form>`;
+  wireLiPassageForm(null);
+}
+window.openEditLiPassage = function(id){
+  const record = CURRENT_LI_PASSAGES.find(p=>p.id===id);
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Sửa đoạn văn nghe</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="lipassage-form">${liPassageFieldForm(record)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Lưu</button></div>
+    </form>`;
+  wireLiPassageForm(record);
+};
+window.deleteLiPassage = async function(id){
+  if(!confirm("Xoá đoạn văn nghe này? (các câu hỏi nghe hiểu gắn theo cũng sẽ bị xoá)")) return;
+  const { error } = await sb.from("listening_passages").delete().eq("id", id);
+  if(error){ alert("Lỗi: " + error.message); return; }
+  await loadLiPassages();
+};
+function wireLiPassageForm(record){
+  document.getElementById("overlay").classList.add("show");
+  document.getElementById("m-close").onclick = closeModal;
+  document.getElementById("m-cancel").onclick = closeModal;
+  document.getElementById("lipassage-form").onsubmit = async (e)=>{
+    e.preventDefault();
+    const language = document.getElementById("li-language").value;
+    const level = document.getElementById("li-level").value;
+    const form = e.target;
+    const payload = { language, level };
+    form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+    if(!payload.title || !payload.passage_text){ alert("Vui lòng nhập đủ tiêu đề và nội dung."); return; }
+    let error;
+    if(record){ ({ error } = await sb.from("listening_passages").update(payload).eq("id", record.id)); }
+    else { ({ error } = await sb.from("listening_passages").insert(payload)); }
+    if(error){ alert("Lỗi: " + error.message); return; }
+    closeModal();
+    await loadLiPassages();
+  };
+}
+document.getElementById("btn-add-lipassage").addEventListener("click", openAddLiPassage);
+
+// ---- Câu hỏi nghe hiểu, gắn với 1 đoạn văn nghe đang chọn ----
+window.selectLiPassage = async function(id){
+  CURRENT_LI_PASSAGE = CURRENT_LI_PASSAGES.find(p=>p.id===id);
+  document.getElementById("lq-card").style.display = "block";
+  document.getElementById("lq-passage-title").textContent = CURRENT_LI_PASSAGE.title;
+  await loadLQ(id);
+};
+async function loadLQ(passageId){
+  const { data, error } = await sb.from("listening_questions").select("*").eq("passage_id", passageId).order("order_index");
+  if(error){ alert("Lỗi khi tải câu hỏi: " + error.message); return; }
+  CURRENT_LQ = data || [];
+  renderLQ();
+}
+function renderLQ(){
+  document.getElementById("lq-table-body").innerHTML = CURRENT_LQ.map((ex,idx)=>`
+    <tr>
+      <td>${idx+1}</td>
+      <td><span class="badge">${ex.type === "multiple_choice" ? "Trắc nghiệm" : "Điền từ"}</span></td>
+      <td>${escHtmlAdmin(ex.question)}</td>
+      <td>${escHtmlAdmin(ex.correct_answer)}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-sm" onclick="openEditLQ(${ex.id})">Sửa</button>
+        <button class="btn-sm danger" onclick="deleteLQ(${ex.id})">Xoá</button>
+      </td>
+    </tr>`).join("");
+}
+function lqFieldForm(record){
+  const r = record || { type:"multiple_choice", question:"", options:"", correct_answer:"", explanation:"", order_index: CURRENT_LQ.length + 1 };
+  return `
+    <div class="field-row"><label>Loại câu hỏi</label>
+      <select data-f="type">
+        <option value="multiple_choice" ${r.type==='multiple_choice'?"selected":""}>Trắc nghiệm</option>
+        <option value="fill_blank" ${r.type==='fill_blank'?"selected":""}>Điền vào chỗ trống</option>
+      </select>
+    </div>
+    <div class="field-row"><label>Câu hỏi</label><input data-f="question" value="${(r.question||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Các lựa chọn (cách nhau bởi dấu phẩy — chỉ cần cho trắc nghiệm)</label><input data-f="options" value="${(r.options||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Đáp án đúng</label><input data-f="correct_answer" value="${(r.correct_answer||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Giải thích (không bắt buộc)</label><input data-f="explanation" value="${(r.explanation||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Thứ tự</label><input data-f="order_index" type="number" value="${r.order_index||0}"></div>
+  `;
+}
+function openAddLQ(){
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Thêm câu hỏi</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="lq-form">${lqFieldForm(null)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Thêm</button></div>
+    </form>`;
+  wireLQForm(null);
+}
+window.openEditLQ = function(id){
+  const record = CURRENT_LQ.find(e=>e.id===id);
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Sửa câu hỏi</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="lq-form">${lqFieldForm(record)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Lưu</button></div>
+    </form>`;
+  wireLQForm(record);
+};
+window.deleteLQ = async function(id){
+  if(!confirm("Xoá câu hỏi này?")) return;
+  const { error } = await sb.from("listening_questions").delete().eq("id", id);
+  if(error){ alert("Lỗi: " + error.message); return; }
+  await loadLQ(CURRENT_LI_PASSAGE.id);
+};
+function wireLQForm(record){
+  document.getElementById("overlay").classList.add("show");
+  document.getElementById("m-close").onclick = closeModal;
+  document.getElementById("m-cancel").onclick = closeModal;
+  document.getElementById("lq-form").onsubmit = async (e)=>{
+    e.preventDefault();
+    if(!CURRENT_LI_PASSAGE){ alert("Chưa chọn đoạn văn."); return; }
+    const form = e.target;
+    const payload = { passage_id: CURRENT_LI_PASSAGE.id };
+    form.querySelectorAll("[data-f]").forEach(el=>{
+      payload[el.dataset.f] = el.dataset.f === "order_index" ? (parseInt(el.value,10) || 0) : el.value;
+    });
+    let error;
+    if(record){ ({ error } = await sb.from("listening_questions").update(payload).eq("id", record.id)); }
+    else { ({ error } = await sb.from("listening_questions").insert(payload)); }
+    if(error){ alert("Lỗi: " + error.message); return; }
+    closeModal();
+    await loadLQ(CURRENT_LI_PASSAGE.id);
+  };
+}
+document.getElementById("btn-add-lq").addEventListener("click", openAddLQ);
+
+// ---- Nhập nhanh đoạn văn Nghe từ CSV ----
+async function fetchExistingLiPassageKeys(rows){
+  const pairs = Array.from(new Set(rows.map(r => r.language+"|"+r.level)));
+  const existing = new Set();
+  for(const pair of pairs){
+    const [language, level] = pair.split("|");
+    const { data, error } = await sb.from("listening_passages").select("title").eq("language", language).eq("level", level);
+    if(error) continue;
+    (data||[]).forEach(d => existing.add(pair + "|" + normalizeText(d.title)));
+  }
+  return existing;
+}
+
+document.getElementById("btn-import-lipassage").addEventListener("click", async ()=>{
+  const raw = document.getElementById("lipassage-csv-input").value.trim();
+  const resultEl = document.getElementById("lipassage-import-result");
+  const btn = document.getElementById("btn-import-lipassage");
+  resultEl.className = "result-msg";
+  if(!raw){ return; }
+  btn.disabled = true; btn.textContent = "Đang nhập...";
+  try {
+    const allRows = parseCsvRows(raw);
+    if(allRows.length < 2){ resultEl.className = "result-msg err"; resultEl.textContent = "Cần ít nhất 1 dòng tiêu đề + 1 dòng dữ liệu."; return; }
+    const headers = allRows[0].map(h=>h.toLowerCase());
+    const required = ["language","level","title","passage_text"];
+    const missing = required.filter(r=>!headers.includes(r));
+    if(missing.length){ resultEl.className = "result-msg err"; resultEl.textContent = "Thiếu cột bắt buộc: " + missing.join(", "); return; }
+
+    const rows = [];
+    const errors = [];
+    for(let i=1;i<allRows.length;i++){
+      const cols = allRows[i];
+      const obj = {};
+      headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+      if(!obj.language || !obj.level || !obj.title || !obj.passage_text){
+        errors.push(`Dòng dữ liệu #${i}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
+        continue;
+      }
+      if(!LANGS_CFG[obj.language]){
+        errors.push(`Dòng dữ liệu #${i}: ngôn ngữ "${obj.language}" không có trong languages.json, đã bỏ qua.`);
+        continue;
+      }
+      if(!LANGS_CFG[obj.language].levels.some(lv=>lv.code===obj.level)){
+        errors.push(`Dòng dữ liệu #${i}: trình độ "${obj.level}" không hợp lệ cho ngôn ngữ "${obj.language}", đã bỏ qua.`);
+        continue;
+      }
+      rows.push({ language: obj.language, level: obj.level, title: obj.title, passage_text: obj.passage_text });
+    }
+    if(rows.length === 0){
+      resultEl.className = "result-msg err";
+      resultEl.textContent = "Không có dòng nào hợp lệ để nhập.\n" + errors.join("\n");
+      return;
+    }
+
+    const existingKeys = await fetchExistingLiPassageKeys(rows);
+    const newRows = [];
+    let dupCount = 0;
+    rows.forEach(r=>{
+      const key = r.language+"|"+r.level+"|"+normalizeText(r.title);
+      if(existingKeys.has(key)){ dupCount++; return; }
+      existingKeys.add(key);
+      newRows.push(r);
+    });
+    if(newRows.length === 0){
+      resultEl.className = "result-msg err";
+      resultEl.textContent = `Cả ${rows.length} đoạn văn đều đã tồn tại sẵn (trùng tiêu đề), không có gì để nhập thêm.`;
+      return;
+    }
+
+    const { error } = await sb.from("listening_passages").insert(newRows);
+    if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
+    resultEl.className = "result-msg ok";
+    resultEl.textContent = `Đã nhập thành công ${newRows.length} đoạn văn.`
+      + (dupCount ? ` Bỏ qua ${dupCount} đoạn đã tồn tại sẵn (trùng tiêu đề).` : "")
+      + (errors.length ? ("\nCác dòng bị bỏ qua do lỗi định dạng:\n" + errors.join("\n")) : "");
+    document.getElementById("lipassage-csv-input").value = "";
+    await loadLiPassages();
+  } catch(err){
+    resultEl.className = "result-msg err";
+    resultEl.textContent = "Có lỗi bất ngờ xảy ra: " + (err && err.message ? err.message : String(err));
+    console.error(err);
+  } finally {
+    btn.disabled = false; btn.textContent = "Nhập vào hệ thống";
+  }
+});
+
+// ---- Nhập nhanh câu hỏi nghe hiểu từ CSV (tra passage_id theo language+level+title) ----
+document.getElementById("btn-import-lq").addEventListener("click", async ()=>{
+  const raw = document.getElementById("lq-csv-input").value.trim();
+  const resultEl = document.getElementById("lq-import-result");
+  const btn = document.getElementById("btn-import-lq");
+  resultEl.className = "result-msg";
+  if(!raw){ return; }
+  btn.disabled = true; btn.textContent = "Đang nhập...";
+  try {
+    const lines = raw.split(/\r?\n/).filter(l=>l.trim());
+    if(lines.length < 2){ resultEl.className = "result-msg err"; resultEl.textContent = "Cần ít nhất 1 dòng tiêu đề + 1 dòng dữ liệu."; return; }
+    const headers = parseCsvLine(lines[0]).map(h=>h.toLowerCase());
+    const required = ["language","level","passage_title","type","question","correct_answer"];
+    const missing = required.filter(r=>!headers.includes(r));
+    if(missing.length){ resultEl.className = "result-msg err"; resultEl.textContent = "Thiếu cột bắt buộc: " + missing.join(", "); return; }
+
+    const parsed = [];
+    const errors = [];
+    for(let i=1;i<lines.length;i++){
+      const cols = parseCsvLine(lines[i]);
+      const obj = {};
+      headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+      if(!obj.language || !obj.level || !obj.passage_title || !obj.type || !obj.question || !obj.correct_answer){
+        errors.push(`Dòng ${i+1}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
+        continue;
+      }
+      if(!LANGS_CFG[obj.language]){ errors.push(`Dòng ${i+1}: ngôn ngữ "${obj.language}" không hợp lệ, đã bỏ qua.`); continue; }
+      if(!LANGS_CFG[obj.language].levels.some(lv=>lv.code===obj.level)){ errors.push(`Dòng ${i+1}: trình độ "${obj.level}" không hợp lệ, đã bỏ qua.`); continue; }
+      if(!["multiple_choice","fill_blank"].includes(obj.type)){ errors.push(`Dòng ${i+1}: loại "${obj.type}" không hợp lệ, đã bỏ qua.`); continue; }
+      obj.order_index = parseInt(obj.order_index, 10) || i;
+      parsed.push(obj);
+    }
+    if(parsed.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = "Không có dòng nào hợp lệ để nhập.\n" + errors.join("\n"); return; }
+
+    // Tra passage_id theo (language, level, title)
+    const pairs = Array.from(new Set(parsed.map(r => r.language+"|"+r.level)));
+    const passageMap = {}; // "lang|level|normalizedTitle" -> id
+    for(const pair of pairs){
+      const [language, level] = pair.split("|");
+      const { data, error: lookupError } = await sb.from("listening_passages").select("id, title").eq("language", language).eq("level", level);
+      if(lookupError){ resultEl.className = "result-msg err"; resultEl.textContent = `Lỗi khi tra cứu đoạn văn (${language}/${level}): ${lookupError.message}`; return; }
+      (data||[]).forEach(p => { passageMap[pair+"|"+normalizeText(p.title)] = p.id; });
+    }
+
+    const rows = [];
+    parsed.forEach((obj, idx) => {
+      const key = obj.language+"|"+obj.level+"|"+normalizeText(obj.passage_title);
+      if(!passageMap[key]){
+        errors.push(`Dòng dữ liệu #${idx+1}: không tìm thấy đoạn văn "${obj.passage_title}" (${obj.language}/${obj.level}), đã bỏ qua.`);
+        return;
+      }
+      rows.push({
+        passage_id: passageMap[key], type: obj.type, question: obj.question,
+        options: obj.options || "", correct_answer: obj.correct_answer,
+        explanation: obj.explanation || "", order_index: obj.order_index
+      });
+    });
+    if(rows.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = "Không có dòng nào nhập được.\n" + errors.join("\n"); return; }
+
+    const passageIds = Array.from(new Set(rows.map(r=>r.passage_id)));
+    const existingKeys = await fetchExistingExerciseKeysGeneric("listening_questions", "passage_id", passageIds);
+    const newRows = [];
+    let dupCount = 0;
+    rows.forEach(r=>{
+      const key = r.passage_id + "|" + exerciseDedupeKey(r.question, r.correct_answer);
+      if(existingKeys.has(key)){ dupCount++; return; }
+      existingKeys.add(key);
+      newRows.push(r);
+    });
+    if(newRows.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = `Cả ${rows.length} câu đều đã tồn tại sẵn, không có gì để nhập thêm.`; return; }
+
+    const { error } = await sb.from("listening_questions").insert(newRows);
+    if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
+    resultEl.className = "result-msg ok";
+    resultEl.textContent = `Đã nhập thành công ${newRows.length} câu hỏi.`
+      + (dupCount ? ` Bỏ qua ${dupCount} câu đã tồn tại sẵn.` : "")
+      + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
+    document.getElementById("lq-csv-input").value = "";
+    if(CURRENT_LI_PASSAGE) await loadLQ(CURRENT_LI_PASSAGE.id);
   } catch(err){
     resultEl.className = "result-msg err";
     resultEl.textContent = "Có lỗi bất ngờ xảy ra: " + (err && err.message ? err.message : String(err));

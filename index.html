@@ -179,6 +179,10 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
 .passage-sentence{cursor:pointer;border-radius:4px;padding:1px 2px;}
 .passage-sentence:hover{background:var(--teal-light);}
 .passage-sentence.playing{background:var(--teal-light);font-weight:700;}
+.listening-sentence-buttons{display:flex;flex-wrap:wrap;gap:8px;}
+.listening-sentence-btn{padding:7px 12px;border-radius:16px;border:1px solid var(--border);background:#fff;font-size:13px;cursor:pointer;font-family:inherit;}
+.listening-sentence-btn:hover{border-color:var(--teal);}
+.listening-sentence-btn.playing{background:var(--teal-light);border-color:var(--teal);font-weight:700;}
 
 /* Nói - hội thoại */
 .role-picker{background:var(--bg-page);border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
@@ -308,7 +312,7 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
       <select id="sel-practice-kind">
         <option id="opt-kind-writing" value="writing"></option>
         <option id="opt-kind-reading" value="reading"></option>
-        <option id="opt-kind-speaking-passage" value="speaking_passage"></option>
+        <option id="opt-kind-listening" value="listening"></option>
         <option id="opt-kind-speaking-dialogue" value="speaking_dialogue"></option>
       </select>
     </div>
@@ -343,7 +347,7 @@ let mode = "flash";
 let level = "";
 let type = "word";
 let topic = "all";
-let practiceKind = "writing"; // "writing" | "reading" | "speaking_passage" | "speaking_dialogue"
+let practiceKind = "writing"; // "writing" | "reading" | "listening" | "speaking_dialogue"
 let items = [];
 let flashIndex = 0;
 let CURRENT_USER = null;
@@ -569,7 +573,7 @@ function applyLanguageUI(){
   document.getElementById("opt-sentence").textContent = u.optSentence;
   document.getElementById("opt-kind-writing").textContent = u.kindWriting;
   document.getElementById("opt-kind-reading").textContent = u.kindReading;
-  document.getElementById("opt-kind-speaking-passage").textContent = u.kindSpeakingPassage;
+  document.getElementById("opt-kind-listening").textContent = u.kindListening;
   document.getElementById("opt-kind-speaking-dialogue").textContent = u.kindSpeakingDialogue;
   document.getElementById("footer-text").innerHTML = u.footer;
 
@@ -886,13 +890,16 @@ function normalizeAnswer(s){ return String(s||"").trim().toLowerCase().replace(/
 // Muốn thêm loại bài mới sau này, chỉ cần thêm 1 dòng vào PRACTICE_SEQUENCE.
 // ============================================================
 const PRACTICE_SEQUENCE = [
-  { type: "multiple_choice",   count: 8 },
-  { type: "fill_blank",        count: 2 },
-  { type: "sentence_ordering", count: 2 },
-  { type: "listening_choice",  count: 2 },
-  { type: "synonym_antonym",   count: 2 },
-  { type: "odd_one_out",       count: 2 },
-  { type: "word_form",         count: 2 },
+  { type: "multiple_choice",     count: 4 },
+  { type: "fill_blank",          count: 2 },
+  { type: "sentence_ordering",   count: 2 },
+  { type: "listening_choice",    count: 2 },
+  { type: "synonym_antonym",     count: 2 },
+  { type: "odd_one_out",         count: 2 },
+  { type: "word_form",           count: 2 },
+  { type: "listening_dictation", count: 2 },
+  { type: "error_correction",    count: 2 },
+  { type: "verb_conjugation",    count: 2 },
 ];
 
 // Phân loại cách hiển thị/chấm điểm cho từng dạng bài — thêm dạng bài mới sau này
@@ -909,9 +916,13 @@ let currentPracticePreHtml = ""; // HTML phụ hiện phía trên danh sách bà
 let practiceNextAction = null; // hàm gọi khi bấm nút "Tiếp theo/Đoạn khác" — tuỳ theo dạng luyện tập đang chọn
 let currentPracticeSourceId = null; // lesson_id (writing) hoặc passage_id (reading) của bộ câu hỏi đang hiển thị, dùng khi lưu quiz_results
 
-// ---- Đọc (Reading) & Nói - Đọc đoạn văn (Speaking passage) ----
+// ---- Đọc (Reading) ----
 let readingPoolCache = {}; // key "ngôn ngữ|trình độ" -> [đoạn văn]
 let PASSAGE_SENTENCES_CACHE = {}; // "id đoạn văn" -> mảng câu đã tách, dùng khi phát âm thanh
+
+// ---- Nghe (Listening) — kho riêng, KHÔNG dùng chung reading_passages ----
+let listeningPoolCache = {}; // key "ngôn ngữ|trình độ" -> [đoạn văn nghe]
+let LISTENING_SENTENCES_CACHE = {}; // "id đoạn văn nghe" -> mảng câu đã tách, dùng khi phát âm thanh
 
 // ---- Nói - Hội thoại (Speaking dialogue) ----
 let dialoguePoolCache = {}; // key "ngôn ngữ|trình độ" -> [hội thoại]
@@ -936,9 +947,9 @@ let practiceRequestSeq = 0;
 
 async function loadPractice(){
   const myReq = ++practiceRequestSeq;
-  currentPracticeSourceId = null; // reset — chỉ writing/reading (2 dạng có chấm điểm) mới set lại bên dưới
+  currentPracticeSourceId = null; // reset — chỉ writing/reading/listening (3 dạng có chấm điểm) mới set lại bên dưới
   if(practiceKind === "reading"){ await loadReadingPractice(myReq); }
-  else if(practiceKind === "speaking_passage"){ await loadSpeakingPassage(myReq); }
+  else if(practiceKind === "listening"){ await loadListeningPractice(myReq); }
   else if(practiceKind === "speaking_dialogue"){ await loadSpeakingDialogue(myReq); }
   else { await loadWritingPractice(myReq); }
 }
@@ -1030,6 +1041,10 @@ function renderPractice(items, preHtml, nextLabel){
       const opts = (ex.options || "").split(",").map(o=>o.trim()).filter(Boolean);
       bodyHtml = `<button type="button" class="flash-speak" data-listen="${escHtml(ex.question)}" style="margin-bottom:10px;">🔊</button>`
         + opts.map(o=>`<label class="exercise-option"><input type="radio" name="ex-${ex.id}" value="${escHtml(o)}"> ${escHtml(o)}</label>`).join("");
+    } else if(ex.type === "listening_dictation"){
+      questionLabel = "🎧✍️ " + u.dictationPrompt;
+      bodyHtml = `<button type="button" class="flash-speak" data-listen="${escHtml(ex.question)}" style="margin-bottom:10px;">🔊</button>`
+        + `<input type="text" class="exercise-input" id="input-${ex.id}" placeholder="${u.fillPlaceholder}">`;
     } else if(cat === "choice"){
       const opts = (ex.options || "").split(",").map(o=>o.trim()).filter(Boolean);
       bodyHtml = opts.map(o=>`<label class="exercise-option"><input type="radio" name="ex-${ex.id}" value="${escHtml(o)}"> ${escHtml(o)}</label>`).join("");
@@ -1074,6 +1089,7 @@ function renderPractice(items, preHtml, nextLabel){
   }
   document.getElementById("btn-practice-next").addEventListener("click", ()=> { if(practiceNextAction) practiceNextAction(); });
   wirePassageAudio();
+  wireListeningAudio();
 }
 
 async function checkPracticeAnswers(){
@@ -1111,7 +1127,7 @@ async function checkPracticeAnswers(){
   document.getElementById("btn-check-practice").style.display = "none";
   document.getElementById("practice-after-actions").style.display = "block";
 
-  if(CURRENT_USER && (practiceKind === "writing" || practiceKind === "reading") && currentPracticeItems.length > 0){
+  if(CURRENT_USER && (practiceKind === "writing" || practiceKind === "reading" || practiceKind === "listening") && currentPracticeItems.length > 0){
     const { error } = await sb.from("quiz_results").insert({
       user_id: CURRENT_USER.id,
       language: currentLanguage,
@@ -1149,7 +1165,7 @@ async function loadStats(){
   const thisWeekCount = data.filter(r => new Date(r.created_at).getTime() >= weekAgoMs).length;
 
   const rowsHtml = data.map(r=>{
-    const kindLabel = r.practice_kind === "writing" ? u.kindWriting : u.kindReading;
+    const kindLabel = { writing: u.kindWriting, reading: u.kindReading, listening: u.kindListening }[r.practice_kind] || r.practice_kind;
     const langLabel = (LANGS[r.language] && LANGS[r.language].switchLabel) || r.language;
     const percent = r.total_count ? Math.round((r.correct_count/r.total_count)*100) : 0;
     const dateStr = new Date(r.created_at).toLocaleString();
@@ -1195,14 +1211,15 @@ function passageBlockHtml(passage){
     </div>`;
 }
 
-function playSentenceSequence(passageId, sentences, idx, singleOnly){
+function playSentenceSequence(passageId, sentences, idx, singleOnly, itemClass){
+  itemClass = itemClass || "passage-sentence"; // "passage-sentence" (Đọc, span) hoặc "listening-sentence-btn" (Nghe, button)
   if(idx >= sentences.length) return;
-  document.querySelectorAll(`.passage-sentence[data-passage-id="${passageId}"]`).forEach(e=>e.classList.remove("playing"));
-  const el = document.querySelector(`.passage-sentence[data-passage-id="${passageId}"][data-sent-idx="${idx}"]`);
+  document.querySelectorAll(`.${itemClass}[data-passage-id="${passageId}"]`).forEach(e=>e.classList.remove("playing"));
+  const el = document.querySelector(`.${itemClass}[data-passage-id="${passageId}"][data-sent-idx="${idx}"]`);
   if(el) el.classList.add("playing");
   speak(sentences[idx], { onend: () => {
     if(el) el.classList.remove("playing");
-    if(!singleOnly) playSentenceSequence(passageId, sentences, idx+1, false);
+    if(!singleOnly) playSentenceSequence(passageId, sentences, idx+1, false, itemClass);
   }});
 }
 
@@ -1257,20 +1274,79 @@ async function pickRandomReadingPassage(pool, myReq){
   renderPractice(questions || [], passageBlockHtml(passage), L().ui.anotherPassageBtn);
 }
 
-async function loadSpeakingPassage(myReq){
-  const area = document.getElementById("content-area");
-  area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
-  const { pool, error } = await loadReadingPassagePool();
-  if(myReq !== practiceRequestSeq) return;
-  if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
-  if(pool.length === 0){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyReading}</div>`; return; }
-  pickRandomSpeakingPassage(pool);
+// ============================================================
+// Nghe (Listening) — kho riêng (listening_passages/listening_questions), có
+// chấm điểm giống Đọc, nhưng KHÔNG hiện chữ đoạn văn — chỉ có nút nghe theo
+// từng câu + nghe toàn bài, học sinh phải nghe rồi trả lời câu hỏi.
+// ============================================================
+function listeningPassageBlockHtml(passage){
+  const pid = String(passage.id);
+  const sentences = splitSentences(passage.passage_text);
+  LISTENING_SENTENCES_CACHE[pid] = sentences;
+  const u = L().ui;
+  const sentBtnsHtml = sentences.map((s,i)=>
+    `<button type="button" class="listening-sentence-btn" data-passage-id="${pid}" data-sent-idx="${i}">🔊 ${u.sentenceLabel} ${i+1}</button>`
+  ).join(" ");
+  return `
+    <div class="reading-passage">
+      <div class="reading-passage-head">
+        <h3 class="reading-passage-title">${escHtml(passage.title)}</h3>
+        <button type="button" class="btn" id="btn-listen-full-listening" data-passage-id="${pid}">${u.listenFullBtn}</button>
+      </div>
+      <div class="listening-sentence-buttons">${sentBtnsHtml}</div>
+    </div>`;
 }
 
-function pickRandomSpeakingPassage(pool){
+// Gắn sự kiện cho các nút nghe của "Nghe" — tách hẳn id/class khỏi wirePassageAudio()
+// (Đọc) để tránh gắn trùng sự kiện hoặc đọc nhầm cache khi 2 hàm cùng chạy mỗi lần renderPractice().
+function wireListeningAudio(){
+  const fullBtn = document.getElementById("btn-listen-full-listening");
+  if(fullBtn){
+    fullBtn.addEventListener("click", ()=>{
+      const pid = fullBtn.dataset.passageId;
+      playSentenceSequence(pid, LISTENING_SENTENCES_CACHE[pid] || [], 0, false, "listening-sentence-btn");
+    });
+  }
+  document.querySelectorAll(".listening-sentence-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const pid = btn.dataset.passageId;
+      const idx = parseInt(btn.dataset.sentIdx, 10);
+      playSentenceSequence(pid, LISTENING_SENTENCES_CACHE[pid] || [], idx, true, "listening-sentence-btn");
+    });
+  });
+}
+
+async function loadListeningPassagePool(){
+  const key = `${currentLanguage}|${level}`;
+  if(listeningPoolCache[key] === undefined){
+    const { data, error } = await sb.from("listening_passages").select("*").eq("language", currentLanguage).eq("level", level);
+    if(error) return { error };
+    listeningPoolCache[key] = data || [];
+  }
+  return { pool: listeningPoolCache[key] };
+}
+
+async function loadListeningPractice(myReq){
+  const area = document.getElementById("content-area");
+  area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
+  const { pool, error } = await loadListeningPassagePool();
+  if(myReq !== practiceRequestSeq) return;
+  if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
+  if(pool.length === 0){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyListening}</div>`; return; }
+  await pickRandomListeningPassage(pool, myReq);
+}
+
+async function pickRandomListeningPassage(pool, myReq){
+  if(myReq === undefined) myReq = ++practiceRequestSeq; // gọi từ nút "Đoạn khác"
+  const area = document.getElementById("content-area");
   const passage = pool[Math.floor(Math.random()*pool.length)];
-  practiceNextAction = () => pickRandomSpeakingPassage(pool);
-  renderPractice([], passageBlockHtml(passage), L().ui.anotherPassageBtn);
+  area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
+  const { data: questions, error } = await sb.from("listening_questions").select("*").eq("passage_id", passage.id).order("order_index");
+  if(myReq !== practiceRequestSeq) return;
+  if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
+  currentPracticeSourceId = passage.id;
+  practiceNextAction = () => pickRandomListeningPassage(pool);
+  renderPractice(questions || [], listeningPassageBlockHtml(passage), L().ui.anotherPassageBtn);
 }
 
 // ============================================================
