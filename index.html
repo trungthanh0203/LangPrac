@@ -314,6 +314,7 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
         <option id="opt-kind-reading" value="reading"></option>
         <option id="opt-kind-listening" value="listening"></option>
         <option id="opt-kind-speaking-dialogue" value="speaking_dialogue"></option>
+        <option id="opt-kind-math" value="math" style="display:none;"></option>
       </select>
     </div>
   </div>
@@ -575,6 +576,7 @@ function applyLanguageUI(){
   document.getElementById("opt-kind-reading").textContent = u.kindReading;
   document.getElementById("opt-kind-listening").textContent = u.kindListening;
   document.getElementById("opt-kind-speaking-dialogue").textContent = u.kindSpeakingDialogue;
+  document.getElementById("opt-kind-math").textContent = u.kindMath;
   document.getElementById("footer-text").innerHTML = u.footer;
 
   const levelSel = document.getElementById("sel-level");
@@ -582,8 +584,23 @@ function applyLanguageUI(){
   levelSel.innerHTML = cfg.levels.map(lv => `<option value="${lv.code}">${lv.label}</option>`).join("");
   level = cfg.levels.some(lv=>lv.code===prevLevel) ? prevLevel : cfg.levels[0].code;
   levelSel.value = level;
+  updateMathOptionVisibility();
 
   setActiveTab();
+}
+
+// "Toán" chỉ áp dụng cho tiếng Anh trình độ SAT (không phải kỹ năng ngôn ngữ
+// dùng chung mọi ngôn ngữ/trình độ như Viết/Đọc/Nghe/Nói) — ẩn/hiện tuỳ theo
+// ngôn ngữ + trình độ đang chọn, và tự chuyển về "Viết" nếu đang chọn "Toán"
+// mà chuyển sang ngôn ngữ/trình độ khác không còn Toán nữa.
+function updateMathOptionVisibility(){
+  const mathOpt = document.getElementById("opt-kind-math");
+  const showMath = currentLanguage === "en" && level === "SAT";
+  mathOpt.style.display = showMath ? "" : "none";
+  if(!showMath && practiceKind === "math"){
+    practiceKind = "writing";
+    document.getElementById("sel-practice-kind").value = "writing";
+  }
 }
 
 document.getElementById("tab-flash").addEventListener("click", ()=>{ mode="flash"; setActiveTab(); loadItems(); });
@@ -610,6 +627,7 @@ function reloadCurrentMode(){
 }
 document.getElementById("sel-level").addEventListener("change", e=>{
   level = e.target.value;
+  updateMathOptionVisibility();
   reloadCurrentMode();
 });
 document.getElementById("sel-type").addEventListener("change", e=>{ type = e.target.value; loadItems(); });
@@ -940,6 +958,57 @@ function buildPracticeSet(pool){
   return shuffle(result); // xáo cả thứ tự các dạng bài với nhau, không để luôn nhóm theo đúng thứ tự PRACTICE_SEQUENCE
 }
 
+// ============================================================
+// Toán (Math) — tab riêng, không thuộc Luyện tập. Chọn theo tỉ lệ 4 nhóm kiến
+// thức đúng như đề SAT thật (~35/35/15/15%: algebra/advanced_math/
+// problem_solving_data/geometry_trig), tái dùng renderPractice()/
+// checkPracticeAnswers() y hệt "Viết" — không cần logic hiển thị/chấm điểm mới.
+// ============================================================
+const MATH_SEQUENCE = [
+  { domain: "algebra",              count: 4 },
+  { domain: "advanced_math",        count: 4 },
+  { domain: "problem_solving_data", count: 2 },
+  { domain: "geometry_trig",        count: 2 },
+];
+
+function buildMathSet(pool){
+  const result = [];
+  MATH_SEQUENCE.forEach(seq => {
+    const candidates = shuffle(pool.filter(p => p.domain === seq.domain));
+    result.push(...candidates.slice(0, seq.count));
+  });
+  return shuffle(result);
+}
+
+let mathPoolCache = {}; // key "ngôn ngữ|trình độ" -> toàn bộ câu Toán của trình độ đó (chưa lọc theo domain)
+
+async function loadMathPractice(myReq){
+  if(myReq === undefined) myReq = ++practiceRequestSeq;
+  currentPracticeSourceId = null; // Toán không lưu quiz_results theo 1 "nguồn" cụ thể (không có khái niệm bài/đoạn văn)
+  const key = `${currentLanguage}|${level}`;
+  const area = document.getElementById("content-area");
+
+  if(mathPoolCache[key] !== undefined){
+    startNewMathSet(mathPoolCache[key]);
+    return;
+  }
+
+  area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
+  const { data, error } = await sb.from("math_problems").select("*").eq("language", currentLanguage).eq("level", level);
+  if(myReq !== practiceRequestSeq) return;
+  if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
+  mathPoolCache[key] = data || [];
+  startNewMathSet(mathPoolCache[key]);
+}
+
+function startNewMathSet(pool){
+  const area = document.getElementById("content-area");
+  if(!pool || pool.length === 0){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyMath}</div>`; return; }
+  currentPracticeItems = buildMathSet(pool);
+  practiceNextAction = () => startNewMathSet(pool);
+  renderPractice(currentPracticeItems, "");
+}
+
 // Đánh số mỗi lần loadPractice() được gọi — nếu người học đổi dạng luyện tập/ngôn
 // ngữ/trình độ trước khi 1 fetch cũ kịp xong, kết quả trả về muộn của fetch cũ sẽ
 // tự nhận ra mình đã lỗi thời (myReq !== practiceRequestSeq) và không ghi đè state.
@@ -951,6 +1020,7 @@ async function loadPractice(){
   if(practiceKind === "reading"){ await loadReadingPractice(myReq); }
   else if(practiceKind === "listening"){ await loadListeningPractice(myReq); }
   else if(practiceKind === "speaking_dialogue"){ await loadSpeakingDialogue(myReq); }
+  else if(practiceKind === "math"){ await loadMathPractice(myReq); }
   else { await loadWritingPractice(myReq); }
 }
 
@@ -1127,7 +1197,7 @@ async function checkPracticeAnswers(){
   document.getElementById("btn-check-practice").style.display = "none";
   document.getElementById("practice-after-actions").style.display = "block";
 
-  if(CURRENT_USER && (practiceKind === "writing" || practiceKind === "reading" || practiceKind === "listening") && currentPracticeItems.length > 0){
+  if(CURRENT_USER && (practiceKind === "writing" || practiceKind === "reading" || practiceKind === "listening" || practiceKind === "math") && currentPracticeItems.length > 0){
     const { error } = await sb.from("quiz_results").insert({
       user_id: CURRENT_USER.id,
       language: currentLanguage,
@@ -1165,7 +1235,7 @@ async function loadStats(){
   const thisWeekCount = data.filter(r => new Date(r.created_at).getTime() >= weekAgoMs).length;
 
   const rowsHtml = data.map(r=>{
-    const kindLabel = { writing: u.kindWriting, reading: u.kindReading, listening: u.kindListening }[r.practice_kind] || r.practice_kind;
+    const kindLabel = { writing: u.kindWriting, reading: u.kindReading, listening: u.kindListening, math: u.tabMath }[r.practice_kind] || r.practice_kind;
     const langLabel = (LANGS[r.language] && LANGS[r.language].switchLabel) || r.language;
     const percent = r.total_count ? Math.round((r.correct_count/r.total_count)*100) : 0;
     const dateStr = new Date(r.created_at).toLocaleString();

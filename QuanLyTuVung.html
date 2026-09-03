@@ -121,6 +121,7 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
       <button id="sec-reading">📖 Đọc</button>
       <button id="sec-listening">🎧 Nghe</button>
       <button id="sec-dialogue">🗣️ Hội thoại</button>
+      <button id="sec-math">🔢 Toán</button>
       <button id="sec-parents">👪 Phụ huynh</button>
     </div>
 
@@ -378,6 +379,45 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
       </div>
     </div>
 
+    <div id="math-section" style="display:none;">
+      <div class="card">
+        <h3>Câu hỏi Toán (chỉ dùng cho tiếng Anh, trình độ SAT)</h3>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">
+          Không có "bài học" cha như Ngữ pháp — mỗi câu Toán đứng độc lập, phân loại theo 4 nhóm kiến thức (domain) đúng như đề SAT thật.
+        </div>
+        <div class="filters" style="margin-bottom:14px;">
+          <select id="m-language" style="color:var(--text-1);background:#fff;border:1px solid var(--border);"></select>
+          <select id="m-level" style="color:var(--text-1);background:#fff;border:1px solid var(--border);"></select>
+          <select id="m-domain" style="color:var(--text-1);background:#fff;border:1px solid var(--border);">
+            <option value="all">Tất cả nhóm kiến thức</option>
+            <option value="algebra">Algebra (Đại số)</option>
+            <option value="advanced_math">Advanced Math (Toán cao cấp)</option>
+            <option value="problem_solving_data">Problem Solving & Data Analysis</option>
+            <option value="geometry_trig">Geometry & Trigonometry</option>
+          </select>
+          <button class="btn btn-primary" id="btn-add-math">+ Thêm câu Toán</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Nhóm kiến thức</th><th>Loại</th><th>Câu hỏi</th><th>Đáp án đúng</th><th></th></tr></thead>
+            <tbody id="math-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Nhập nhanh câu hỏi Toán từ CSV</h3>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">
+          Cấu trúc cột: <code>language,level,domain,type,question,options,correct_answer,explanation,order_index</code><br>
+          &bull; <b>domain</b>: <code>algebra</code>, <code>advanced_math</code>, <code>problem_solving_data</code>, hoặc <code>geometry_trig</code>.<br>
+          &bull; <b>type</b>: <code>multiple_choice</code> (trắc nghiệm) hoặc <code>fill_blank</code> (tự điền đáp số, giống dạng "grid-in" của SAT thật).
+        </div>
+        <textarea id="math-csv-input" placeholder='language,level,domain,type,question,options,correct_answer,explanation,order_index&#10;en,SAT,algebra,multiple_choice,"If 3x + 5 = 20, what is x?","3,5,7,15",5,,1'></textarea>
+        <div style="margin-top:10px;"><button class="btn btn-primary" id="btn-import-math">Nhập vào hệ thống</button></div>
+        <div class="result-msg" id="math-import-result"></div>
+      </div>
+    </div>
+
     <div id="parents-section" style="display:none;">
       <div class="card">
         <h3>Tạo tài khoản phụ huynh mới</h3>
@@ -487,6 +527,11 @@ function buildLanguageDropdowns(){
   const dLang = document.getElementById("d-language");
   dLang.innerHTML = LANGS_ORDER.map(code=>`<option value="${code}">${LANGS_CFG[code].adminLabel}</option>`).join("");
   rebuildDLevelOptions();
+
+  // Bộ chọn ngôn ngữ/trình độ trong phần Toán
+  const mLang = document.getElementById("m-language");
+  mLang.innerHTML = LANGS_ORDER.map(code=>`<option value="${code}">${LANGS_CFG[code].adminLabel}</option>`).join("");
+  rebuildMLevelOptions();
 }
 
 function rebuildRLevelOptions(){
@@ -499,6 +544,13 @@ function rebuildRLevelOptions(){
 function rebuildLiLevelOptions(){
   const lang = document.getElementById("li-language").value;
   const sel = document.getElementById("li-level");
+  const levels = LANGS_CFG[lang]?.levels || [];
+  sel.innerHTML = levels.map(lv=>`<option value="${lv.code}">${lv.label}</option>`).join("");
+}
+
+function rebuildMLevelOptions(){
+  const lang = document.getElementById("m-language").value;
+  const sel = document.getElementById("m-level");
   const levels = LANGS_CFG[lang]?.levels || [];
   sel.innerHTML = levels.map(lv=>`<option value="${lv.code}">${lv.label}</option>`).join("");
 }
@@ -866,7 +918,7 @@ document.getElementById("btn-import").addEventListener("click", async ()=>{
 // ============================================================
 // Chuyển đổi giữa 4 khu vực quản trị: Từ vựng / Ngữ pháp / Đọc / Hội thoại
 // ============================================================
-const ALL_SECTIONS = ["vocab", "grammar", "reading", "listening", "dialogue", "parents"];
+const ALL_SECTIONS = ["vocab", "grammar", "reading", "listening", "dialogue", "math", "parents"];
 function switchSection(active){
   ALL_SECTIONS.forEach(name=>{
     document.getElementById(`sec-${name}`).classList.toggle("active", name===active);
@@ -876,6 +928,7 @@ function switchSection(active){
   else if(active === "reading") loadPassages();
   else if(active === "listening") loadLiPassages();
   else if(active === "dialogue") loadDialogues();
+  else if(active === "math") loadMath();
   else if(active === "parents") loadParents();
 }
 document.getElementById("sec-vocab").addEventListener("click", ()=> switchSection("vocab"));
@@ -883,6 +936,7 @@ document.getElementById("sec-grammar").addEventListener("click", ()=> switchSect
 document.getElementById("sec-reading").addEventListener("click", ()=> switchSection("reading"));
 document.getElementById("sec-listening").addEventListener("click", ()=> switchSection("listening"));
 document.getElementById("sec-dialogue").addEventListener("click", ()=> switchSection("dialogue"));
+document.getElementById("sec-math").addEventListener("click", ()=> switchSection("math"));
 document.getElementById("sec-parents").addEventListener("click", ()=> switchSection("parents"));
 
 // ============================================================
@@ -976,6 +1030,9 @@ document.getElementById("r-language").addEventListener("change", ()=>{ rebuildRL
 document.getElementById("r-level").addEventListener("change", loadPassages);
 document.getElementById("li-language").addEventListener("change", ()=>{ rebuildLiLevelOptions(); loadLiPassages(); });
 document.getElementById("li-level").addEventListener("change", loadLiPassages);
+document.getElementById("m-language").addEventListener("change", ()=>{ rebuildMLevelOptions(); loadMath(); });
+document.getElementById("m-level").addEventListener("change", loadMath);
+document.getElementById("m-domain").addEventListener("change", loadMath);
 document.getElementById("d-language").addEventListener("change", ()=>{ rebuildDLevelOptions(); loadDialogues(); });
 document.getElementById("d-level").addEventListener("change", loadDialogues);
 
@@ -2007,6 +2064,187 @@ document.getElementById("btn-import-lq").addEventListener("click", async ()=>{
       + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
     document.getElementById("lq-csv-input").value = "";
     if(CURRENT_LI_PASSAGE) await loadLQ(CURRENT_LI_PASSAGE.id);
+  } catch(err){
+    resultEl.className = "result-msg err";
+    resultEl.textContent = "Có lỗi bất ngờ xảy ra: " + (err && err.message ? err.message : String(err));
+    console.error(err);
+  } finally {
+    btn.disabled = false; btn.textContent = "Nhập vào hệ thống";
+  }
+});
+
+// ============================================================
+// Toán (Math) — không có "bài học cha" như Ngữ pháp, mỗi câu đứng độc lập,
+// lọc trực tiếp theo language+level+domain. Tái dùng EX_TYPE_LABELS cho nhãn
+// loại câu (multiple_choice/fill_blank giống hệt Ngữ pháp/Đọc/Nghe).
+// ============================================================
+const MATH_DOMAIN_LABELS = {
+  algebra: "Algebra", advanced_math: "Advanced Math",
+  problem_solving_data: "Problem Solving & Data", geometry_trig: "Geometry & Trig",
+};
+let CURRENT_MATH = [];
+
+async function loadMath(){
+  const language = document.getElementById("m-language").value;
+  const level = document.getElementById("m-level").value;
+  const domain = document.getElementById("m-domain").value;
+  let query = sb.from("math_problems").select("*").eq("language", language).eq("level", level).order("order_index");
+  if(domain !== "all") query = query.eq("domain", domain);
+  const { data, error } = await query;
+  if(error){ alert("Lỗi khi tải câu Toán: " + error.message); return; }
+  CURRENT_MATH = data || [];
+  renderMath();
+}
+function renderMath(){
+  document.getElementById("math-table-body").innerHTML = CURRENT_MATH.map(m=>`
+    <tr>
+      <td><span class="badge">${MATH_DOMAIN_LABELS[m.domain] || m.domain}</span></td>
+      <td><span class="badge">${EX_TYPE_LABELS[m.type] || m.type}</span></td>
+      <td>${escHtmlAdmin(m.question)}</td>
+      <td>${escHtmlAdmin(m.correct_answer)}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-sm" onclick="openEditMath(${m.id})">Sửa</button>
+        <button class="btn-sm danger" onclick="deleteMath(${m.id})">Xoá</button>
+      </td>
+    </tr>`).join("");
+}
+function mathFieldForm(record){
+  const r = record || { domain:"algebra", type:"multiple_choice", question:"", options:"", correct_answer:"", explanation:"", order_index: CURRENT_MATH.length + 1 };
+  return `
+    <div class="field-row"><label>Nhóm kiến thức</label>
+      <select data-f="domain">
+        <option value="algebra" ${r.domain==='algebra'?"selected":""}>Algebra (Đại số)</option>
+        <option value="advanced_math" ${r.domain==='advanced_math'?"selected":""}>Advanced Math (Toán cao cấp)</option>
+        <option value="problem_solving_data" ${r.domain==='problem_solving_data'?"selected":""}>Problem Solving & Data Analysis</option>
+        <option value="geometry_trig" ${r.domain==='geometry_trig'?"selected":""}>Geometry & Trigonometry</option>
+      </select>
+    </div>
+    <div class="field-row"><label>Loại câu hỏi</label>
+      <select data-f="type">
+        <option value="multiple_choice" ${r.type==='multiple_choice'?"selected":""}>Trắc nghiệm</option>
+        <option value="fill_blank" ${r.type==='fill_blank'?"selected":""}>Tự điền đáp số (grid-in)</option>
+      </select>
+    </div>
+    <div class="field-row"><label>Câu hỏi</label><input data-f="question" value="${(r.question||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Các lựa chọn (cách nhau bởi dấu phẩy — chỉ cần cho trắc nghiệm)</label><input data-f="options" value="${(r.options||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Đáp án đúng</label><input data-f="correct_answer" value="${(r.correct_answer||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Giải thích (không bắt buộc)</label><input data-f="explanation" value="${(r.explanation||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Thứ tự</label><input data-f="order_index" type="number" value="${r.order_index||0}"></div>
+  `;
+}
+function openAddMath(){
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Thêm câu Toán</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="math-form">${mathFieldForm(null)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Thêm</button></div>
+    </form>`;
+  wireMathForm(null);
+}
+window.openEditMath = function(id){
+  const record = CURRENT_MATH.find(m=>m.id===id);
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Sửa câu Toán</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="math-form">${mathFieldForm(record)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Lưu</button></div>
+    </form>`;
+  wireMathForm(record);
+};
+window.deleteMath = async function(id){
+  if(!confirm("Xoá câu Toán này?")) return;
+  const { error } = await sb.from("math_problems").delete().eq("id", id);
+  if(error){ alert("Lỗi: " + error.message); return; }
+  await loadMath();
+};
+function wireMathForm(record){
+  document.getElementById("overlay").classList.add("show");
+  document.getElementById("m-close").onclick = closeModal;
+  document.getElementById("m-cancel").onclick = closeModal;
+  document.getElementById("math-form").onsubmit = async (e)=>{
+    e.preventDefault();
+    const language = document.getElementById("m-language").value;
+    const level = document.getElementById("m-level").value;
+    const form = e.target;
+    const payload = { language, level };
+    form.querySelectorAll("[data-f]").forEach(el=>{
+      payload[el.dataset.f] = el.dataset.f === "order_index" ? (parseInt(el.value,10) || 0) : el.value;
+    });
+    if(!payload.question || !payload.correct_answer){ alert("Vui lòng nhập đủ câu hỏi và đáp án đúng."); return; }
+    let error;
+    if(record){ ({ error } = await sb.from("math_problems").update(payload).eq("id", record.id)); }
+    else { ({ error } = await sb.from("math_problems").insert(payload)); }
+    if(error){ alert("Lỗi: " + error.message); return; }
+    closeModal();
+    await loadMath();
+  };
+}
+document.getElementById("btn-add-math").addEventListener("click", openAddMath);
+
+// ---- Nhập nhanh câu Toán từ CSV ----
+document.getElementById("btn-import-math").addEventListener("click", async ()=>{
+  const raw = document.getElementById("math-csv-input").value.trim();
+  const resultEl = document.getElementById("math-import-result");
+  const btn = document.getElementById("btn-import-math");
+  resultEl.className = "result-msg";
+  if(!raw){ return; }
+  btn.disabled = true; btn.textContent = "Đang nhập...";
+  try {
+    const allRows = parseCsvRows(raw);
+    if(allRows.length < 2){ resultEl.className = "result-msg err"; resultEl.textContent = "Cần ít nhất 1 dòng tiêu đề + 1 dòng dữ liệu."; return; }
+    const headers = allRows[0].map(h=>h.toLowerCase());
+    const required = ["language","level","domain","type","question","correct_answer"];
+    const missing = required.filter(r=>!headers.includes(r));
+    if(missing.length){ resultEl.className = "result-msg err"; resultEl.textContent = "Thiếu cột bắt buộc: " + missing.join(", "); return; }
+
+    const validDomains = Object.keys(MATH_DOMAIN_LABELS);
+    const rows = [];
+    const errors = [];
+    for(let i=1;i<allRows.length;i++){
+      const cols = allRows[i];
+      const obj = {};
+      headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+      if(!obj.language || !obj.level || !obj.domain || !obj.type || !obj.question || !obj.correct_answer){
+        errors.push(`Dòng dữ liệu #${i}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
+        continue;
+      }
+      if(!LANGS_CFG[obj.language]){ errors.push(`Dòng dữ liệu #${i}: ngôn ngữ "${obj.language}" không hợp lệ, đã bỏ qua.`); continue; }
+      if(!LANGS_CFG[obj.language].levels.some(lv=>lv.code===obj.level)){ errors.push(`Dòng dữ liệu #${i}: trình độ "${obj.level}" không hợp lệ, đã bỏ qua.`); continue; }
+      if(!validDomains.includes(obj.domain)){ errors.push(`Dòng dữ liệu #${i}: nhóm kiến thức "${obj.domain}" không hợp lệ, đã bỏ qua.`); continue; }
+      if(!Object.keys(EX_TYPE_LABELS).includes(obj.type)){ errors.push(`Dòng dữ liệu #${i}: loại "${obj.type}" không hợp lệ, đã bỏ qua.`); continue; }
+      rows.push({
+        language: obj.language, level: obj.level, domain: obj.domain, type: obj.type,
+        question: obj.question, options: obj.options || "", correct_answer: obj.correct_answer,
+        explanation: obj.explanation || "", order_index: parseInt(obj.order_index, 10) || i
+      });
+    }
+    if(rows.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = "Không có dòng nào hợp lệ để nhập.\n" + errors.join("\n"); return; }
+
+    // Chống trùng theo (language, level, domain, question)
+    const pairs = Array.from(new Set(rows.map(r => r.language+"|"+r.level)));
+    const existing = new Set();
+    for(const pair of pairs){
+      const [language, level] = pair.split("|");
+      const { data, error: lookupError } = await sb.from("math_problems").select("domain, question").eq("language", language).eq("level", level);
+      if(lookupError) continue;
+      (data||[]).forEach(d => existing.add(pair+"|"+d.domain+"|"+normalizeText(d.question)));
+    }
+    const newRows = [];
+    let dupCount = 0;
+    rows.forEach(r=>{
+      const key = r.language+"|"+r.level+"|"+r.domain+"|"+normalizeText(r.question);
+      if(existing.has(key)){ dupCount++; return; }
+      existing.add(key);
+      newRows.push(r);
+    });
+    if(newRows.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = `Cả ${rows.length} câu đều đã tồn tại sẵn, không có gì để nhập thêm.`; return; }
+
+    const { error } = await sb.from("math_problems").insert(newRows);
+    if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
+    resultEl.className = "result-msg ok";
+    resultEl.textContent = `Đã nhập thành công ${newRows.length} câu Toán.`
+      + (dupCount ? ` Bỏ qua ${dupCount} câu đã tồn tại sẵn.` : "")
+      + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
+    document.getElementById("math-csv-input").value = "";
+    await loadMath();
   } catch(err){
     resultEl.className = "result-msg err";
     resultEl.textContent = "Có lỗi bất ngờ xảy ra: " + (err && err.message ? err.message : String(err));
