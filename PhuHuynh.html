@@ -82,11 +82,18 @@ header.top h1{font-size:18px;margin:0;font-weight:700;}
 <div class="wrap" id="main-wrap" style="display:none;">
   <header class="top">
     <h1>👪 Bảng theo dõi học tập</h1>
-    <button class="btn btn-outline" id="btn-logout">Đăng xuất</button>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <span id="parent-email-label" style="font-size:13px;opacity:.85;"></span>
+      <button class="btn btn-outline" id="btn-logout">Đăng xuất</button>
+    </div>
   </header>
   <div class="date-filter-bar">
     <label for="activity-date-filter">Xem hoạt động ngày:</label>
     <input type="date" id="activity-date-filter">
+    <label style="margin-left:16px;display:inline-flex;align-items:center;gap:6px;">
+      <input type="checkbox" id="only-quiz-filter" checked>
+      Chỉ xem kết quả làm bài tập
+    </label>
   </div>
   <div id="dashboard-area"><div class="loading-msg">Đang tải…</div></div>
 </div>
@@ -144,9 +151,11 @@ async function afterLogin(){
   if(!profile || profile.role !== "parent"){ showScreen("denied"); return; }
   showScreen("main");
   CURRENT_PARENT_ID = user.id;
+  document.getElementById("parent-email-label").textContent = user.email || "";
   const dateInput = document.getElementById("activity-date-filter");
   dateInput.value = todayLocalDateStr();
   dateInput.addEventListener("change", ()=> loadDashboard(CURRENT_PARENT_ID));
+  document.getElementById("only-quiz-filter").addEventListener("change", ()=> loadDashboard(CURRENT_PARENT_ID));
   loadDashboard(user.id);
 }
 
@@ -170,11 +179,12 @@ async function loadDashboard(parentId){
   if(!links || !links.length){ area.innerHTML = `<div class="empty-msg">Chưa có học sinh nào được liên kết với tài khoản này.</div>`; return; }
 
   const dateStr = document.getElementById("activity-date-filter").value || todayLocalDateStr();
+  const onlyQuiz = document.getElementById("only-quiz-filter").checked;
   const studentIds = links.map(l => l.student_id);
   const { data: profiles } = await sb.from("profiles").select("id,email").in("id", studentIds);
   const emailOf = Object.fromEntries((profiles||[]).map(p=>[p.id, p.email]));
 
-  const blocks = await Promise.all(studentIds.map(id => buildStudentBlock(id, emailOf[id] || id, dateStr)));
+  const blocks = await Promise.all(studentIds.map(id => buildStudentBlock(id, emailOf[id] || id, dateStr, onlyQuiz)));
   area.innerHTML = blocks.join("");
 }
 
@@ -191,14 +201,18 @@ const EX_TYPE_LABELS = {
   listening_choice: "Nghe & chọn", synonym_antonym: "Đồng/Trái nghĩa", odd_one_out: "Từ khác nhóm", word_form: "Biến đổi từ"
 };
 
-async function buildStudentBlock(studentId, studentEmail, dateStr){
+async function buildStudentBlock(studentId, studentEmail, dateStr, onlyQuiz){
   const dayStart = new Date(`${dateStr}T00:00:00`).toISOString();
   const dayEnd = new Date(`${dateStr}T23:59:59.999`).toISOString();
 
+  // Khi "Chỉ xem kết quả làm bài tập" được tick, khỏi truy vấn activity_log
+  // luôn — vừa nhẹ hơn (đỡ 1 query/học sinh) vừa đúng ý chỉ muốn xem điểm.
   const [{ data: quizzes }, { data: dayQuizzes }, { data: dayActivity }] = await Promise.all([
     sb.from("quiz_results").select("*").eq("user_id", studentId).order("created_at", { ascending: false }).limit(20),
     sb.from("quiz_results").select("*").eq("user_id", studentId).gte("created_at", dayStart).lte("created_at", dayEnd),
-    sb.from("activity_log").select("*").eq("user_id", studentId).gte("created_at", dayStart).lte("created_at", dayEnd).order("created_at", { ascending: false }).limit(200) // chặn trần phòng khi 1 ngày có quá nhiều sự kiện
+    onlyQuiz
+      ? Promise.resolve({ data: [] })
+      : sb.from("activity_log").select("*").eq("user_id", studentId).gte("created_at", dayStart).lte("created_at", dayEnd).order("created_at", { ascending: false }).limit(200) // chặn trần phòng khi 1 ngày có quá nhiều sự kiện
   ]);
 
   const studentLabel = escHtml(studentEmail);
@@ -257,7 +271,7 @@ async function buildStudentBlock(studentId, studentEmail, dateStr){
           ${breakdownHtml}
         </div>`;
       }).join("")
-    : `<div class="empty-msg">Không có hoạt động nào trong ngày này.</div>`;
+    : `<div class="empty-msg">${onlyQuiz ? "Không có bài kiểm tra nào trong ngày này." : "Không có hoạt động nào trong ngày này."}</div>`;
 
   return `
     <div class="card">
@@ -271,7 +285,7 @@ async function buildStudentBlock(studentId, studentEmail, dateStr){
       <div class="stats-list">${quizRowsHtml}</div>
     </div>
     <div class="card">
-      <h2 style="font-size:14px;">Hoạt động gần đây — ${studentLabel}</h2>
+      <h2 style="font-size:14px;">${onlyQuiz ? "Kết quả làm bài trong ngày" : "Hoạt động gần đây"} — ${studentLabel}</h2>
       <div class="sub">Ngày ${dateStr.split("-").reverse().join("/")}</div>
       ${dayTotalHtml}
       <div class="activity-list">${timelineHtml}</div>
