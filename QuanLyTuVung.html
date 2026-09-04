@@ -420,17 +420,16 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
 
     <div id="parents-section" style="display:none;">
       <div class="card">
-        <h3>Tạo tài khoản phụ huynh mới</h3>
+        <h3>Gán vai trò phụ huynh + liên kết học sinh</h3>
         <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">
-          Tài khoản phụ huynh dùng để đăng nhập vào <code>PhuHuynh.html</code>, xem thống kê
-          học tập của 1 học sinh cụ thể. Việc tạo tài khoản gọi 1 hàm server riêng (không dùng
-          key công khai của trang này) nên cần đã cấu hình <code>SUPABASE_SERVICE_ROLE_KEY</code>
-          trên Cloudflare Pages — xem tài liệu bàn giao.
+          Phụ huynh TỰ đăng ký tài khoản giống hệt học sinh (qua màn hình đăng ký
+          bình thường của app) — ở đây chỉ cần chọn đúng tài khoản đã đăng ký đó và
+          gán làm phụ huynh + liên kết với học sinh. Không cần tạo tài khoản hộ,
+          không cần cấu hình gì thêm trên Cloudflare.
         </div>
-        <div class="field-row"><label>Email phụ huynh</label><input id="p-email" type="email" placeholder="phuhuynh@email.com"></div>
-        <div class="field-row"><label>Mật khẩu</label><input id="p-password" type="text" placeholder="Tối thiểu 6 ký tự"></div>
+        <div class="field-row"><label>Tài khoản phụ huynh (đã đăng ký)</label><select id="p-parent-account"></select></div>
         <div class="field-row"><label>Liên kết với học sinh</label><select id="p-student"></select></div>
-        <div style="margin-top:10px;"><button class="btn btn-primary" id="btn-create-parent">Tạo tài khoản phụ huynh</button></div>
+        <div style="margin-top:10px;"><button class="btn btn-primary" id="btn-create-parent">Gán làm phụ huynh + liên kết</button></div>
         <div class="result-msg" id="parent-create-result"></div>
       </div>
 
@@ -940,17 +939,26 @@ document.getElementById("sec-math").addEventListener("click", ()=> switchSection
 document.getElementById("sec-parents").addEventListener("click", ()=> switchSection("parents"));
 
 // ============================================================
-// Phụ huynh — tạo tài khoản (qua Cloudflare Pages Function /api/create-parent,
-// vì cần service_role key không được nhúng ở đây) + liên kết với 1 học sinh.
+// Phụ huynh — TỰ đăng ký tài khoản giống hệt học sinh (không admin tạo hộ,
+// không cần service_role key/Worker). Admin chỉ gán role='parent' cho đúng
+// tài khoản đã đăng ký đó + liên kết với 1 học sinh qua parent_links.
 // ============================================================
 async function loadParents(){
-  const studentSel = document.getElementById("p-student");
-  const { data: students, error: studentsError } = await sb.from("profiles").select("id,email").eq("role","student").order("email");
-  if(studentsError){
-    studentSel.innerHTML = `<option value="">(Lỗi tải danh sách: ${escHtmlAdmin(studentsError.message)})</option>`;
+  const { data: allProfiles, error: profilesError } = await sb.from("profiles").select("id,email,role").order("email");
+
+  const parentSel = document.getElementById("p-parent-account");
+  if(profilesError){
+    parentSel.innerHTML = `<option value="">(Lỗi tải danh sách: ${escHtmlAdmin(profilesError.message)})</option>`;
   } else {
-    studentSel.innerHTML = (students||[]).map(s=>`<option value="${s.id}">${escHtmlAdmin(s.email||s.id)}</option>`).join("");
+    parentSel.innerHTML = (allProfiles||[]).map(p=>{
+      const roleLabel = p.role === "parent" ? " — đã là phụ huynh" : "";
+      return `<option value="${p.id}">${escHtmlAdmin(p.email||p.id)}${roleLabel}</option>`;
+    }).join("");
   }
+
+  const studentSel = document.getElementById("p-student");
+  const students = (allProfiles||[]).filter(p=>p.role === "student");
+  studentSel.innerHTML = students.map(s=>`<option value="${s.id}">${escHtmlAdmin(s.email||s.id)}</option>`).join("");
 
   const { data: links, error } = await sb.from("parent_links").select("id,parent_id,student_id,created_at").order("created_at",{ascending:false});
   const tbody = document.getElementById("parent-table-body");
@@ -1015,37 +1023,34 @@ function openResetParentPassword(parentId, parentEmail){
 }
 
 document.getElementById("btn-create-parent").addEventListener("click", async ()=>{
-  const email = document.getElementById("p-email").value.trim();
-  const password = document.getElementById("p-password").value;
+  const parentId = document.getElementById("p-parent-account").value;
   const studentId = document.getElementById("p-student").value;
   const resultEl = document.getElementById("parent-create-result");
   resultEl.textContent = "";
-  if(!email || !password || !studentId){ resultEl.textContent = "Điền đủ email, mật khẩu và chọn 1 học sinh."; return; }
+  if(!parentId || !studentId){ resultEl.textContent = "Chọn đủ tài khoản phụ huynh và học sinh."; return; }
+  if(parentId === studentId){ resultEl.textContent = "Không thể chọn cùng 1 tài khoản cho cả 2 vai trò."; return; }
 
   const btn = document.getElementById("btn-create-parent");
-  btn.disabled = true; btn.textContent = "Đang tạo...";
+  btn.disabled = true; btn.textContent = "Đang gán...";
   try{
-    const { data: { session } } = await sb.auth.getSession();
-    if(!session){ resultEl.textContent = "Phiên đăng nhập đã hết hạn — vui lòng đăng xuất rồi đăng nhập lại."; return; }
-    const res = await fetch("/api/create-parent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
-      body: JSON.stringify({ email, password })
-    });
-    const body = await res.json();
-    if(!res.ok){ resultEl.textContent = "Lỗi: " + (body.error || res.statusText); return; }
+    const { error: roleError } = await sb.from("profiles").update({ role: "parent" }).eq("id", parentId);
+    if(roleError){ resultEl.textContent = "Lỗi gán vai trò phụ huynh: " + roleError.message; return; }
 
-    const { error: linkError } = await sb.from("parent_links").insert({ parent_id: body.userId, student_id: studentId });
-    if(linkError){ resultEl.textContent = "Đã tạo tài khoản nhưng liên kết với học sinh thất bại: " + linkError.message; return; }
+    const { error: linkError } = await sb.from("parent_links").insert({ parent_id: parentId, student_id: studentId });
+    if(linkError){
+      resultEl.textContent = linkError.code === "23505"
+        ? "Đã tạo vai trò phụ huynh, nhưng liên kết này đã tồn tại từ trước."
+        : "Đã gán vai trò phụ huynh nhưng liên kết với học sinh thất bại: " + linkError.message;
+      loadParents();
+      return;
+    }
 
-    resultEl.textContent = "✅ Đã tạo tài khoản phụ huynh và liên kết thành công.";
-    document.getElementById("p-email").value = "";
-    document.getElementById("p-password").value = "";
+    resultEl.textContent = "✅ Đã gán vai trò phụ huynh và liên kết thành công.";
     loadParents();
   } catch(err){
-    resultEl.textContent = "Lỗi kết nối tới server function: " + err.message;
+    resultEl.textContent = "Lỗi: " + err.message;
   } finally {
-    btn.disabled = false; btn.textContent = "Tạo tài khoản phụ huynh";
+    btn.disabled = false; btn.textContent = "Gán làm phụ huynh + liên kết";
   }
 });
 

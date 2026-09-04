@@ -116,7 +116,15 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === "/api/create-parent") {
-      return handleCreateParent(request, env);
+      // Bọc try/catch tạm thời để lỗi thật (message + stack) hiện thẳng ra
+      // JSON trả về — không cần vào Cloudflare Dashboard tìm log nữa, xem
+      // thẳng trong Console/Network của trình duyệt là đủ. Có thể bỏ lớp
+      // try/catch này sau khi đã xác định và sửa xong lỗi gốc.
+      try {
+        return await handleCreateParent(request, env);
+      } catch (err) {
+        return jsonResponse({ error: "EXCEPTION: " + (err && err.message), stack: err && err.stack }, 500);
+      }
     }
 
     // Mọi request khác: phục vụ file tĩnh y hệt trước đây (index.html,
