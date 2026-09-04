@@ -14,6 +14,7 @@
   --radius:14px; --gap:16px; --shadow:0 1px 3px rgba(20,42,77,0.08);
 }
 *{box-sizing:border-box;}
+.hidden{display:none !important;}
 body{margin:0;font-family:Arial,"Segoe UI",sans-serif;background:var(--bg-page);color:var(--text-1);font-size:14px;}
 .wrap{max-width:820px;margin:0 auto;padding:20px;}
 header.top{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#fff;border-radius:var(--radius);padding:18px 24px;margin-bottom:var(--gap);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
@@ -32,6 +33,10 @@ header.top h1{font-size:18px;margin:0;font-weight:700;}
 .login-card label{display:block;font-size:12px;font-weight:600;color:var(--text-2);margin:14px 0 6px;}
 .login-card input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;}
 .login-error{background:var(--red-light);color:var(--red);font-size:12.5px;padding:9px 12px;border-radius:8px;margin-top:14px;display:none;}
+.login-ok{background:var(--green-light);color:#2f7d3a;font-size:12.5px;padding:9px 12px;border-radius:8px;margin-top:14px;display:none;}
+.auth-tabs{display:flex;gap:8px;margin:16px 0 2px;}
+.auth-tabs button{flex:1;padding:9px;border-radius:8px;border:2px solid var(--border);background:#fff;font-size:13px;font-weight:700;color:var(--text-2);cursor:pointer;}
+.auth-tabs button.active{border-color:var(--navy2);color:var(--navy2);background:var(--teal-light);}
 .denied-box{max-width:460px;margin:60px auto;text-align:center;background:var(--bg-card);border-radius:var(--radius);padding:36px 28px;box-shadow:var(--shadow);}
 
 .stats-summary{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
@@ -57,8 +62,12 @@ header.top h1{font-size:18px;margin:0;font-weight:700;}
 <div class="wrap hidden" id="login-screen" style="display:none;">
   <div class="login-screen">
     <div class="login-card">
-      <h1>Đăng nhập Phụ huynh</h1>
-      <div style="font-size:12.5px;color:var(--text-2);">Tài khoản do quản trị viên (Mr.Thanh) tạo và cung cấp cho bạn.</div>
+      <h1>Phụ huynh</h1>
+      <div style="font-size:12.5px;color:var(--text-2);">Đăng ký tài khoản riêng, sau đó nhờ quản trị viên liên kết với con bạn.</div>
+      <div class="auth-tabs">
+        <button type="button" id="tab-login" class="active">Đăng nhập</button>
+        <button type="button" id="tab-register">Đăng ký</button>
+      </div>
       <form id="login-form">
         <label>Email</label>
         <input type="email" id="login-email" required>
@@ -66,6 +75,17 @@ header.top h1{font-size:18px;margin:0;font-weight:700;}
         <input type="password" id="login-password" required>
         <button class="btn btn-primary" type="submit" id="login-btn">Đăng nhập</button>
         <div class="login-error" id="login-error"></div>
+      </form>
+      <form id="register-form" class="hidden">
+        <label>Email</label>
+        <input type="email" id="reg-email" required autocomplete="email">
+        <label>Mật khẩu (tối thiểu 6 ký tự)</label>
+        <input type="password" id="reg-password" required minlength="6" autocomplete="new-password">
+        <label>Nhập lại mật khẩu</label>
+        <input type="password" id="reg-password2" required autocomplete="new-password">
+        <button class="btn btn-primary" type="submit" id="register-btn">Đăng ký</button>
+        <div class="login-error" id="register-error"></div>
+        <div class="login-ok" id="register-ok"></div>
       </form>
     </div>
   </div>
@@ -132,6 +152,63 @@ document.getElementById("login-form").addEventListener("submit", async (e)=>{
   if(error){ err.textContent = error.message; err.style.display = "block"; return; }
   await afterLogin();
 });
+
+document.getElementById("tab-login").addEventListener("click", ()=>{
+  document.getElementById("tab-login").classList.add("active");
+  document.getElementById("tab-register").classList.remove("active");
+  document.getElementById("login-form").classList.remove("hidden");
+  document.getElementById("register-form").classList.add("hidden");
+});
+document.getElementById("tab-register").addEventListener("click", ()=>{
+  document.getElementById("tab-register").classList.add("active");
+  document.getElementById("tab-login").classList.remove("active");
+  document.getElementById("register-form").classList.remove("hidden");
+  document.getElementById("login-form").classList.add("hidden");
+});
+
+// Đăng ký tài khoản phụ huynh: dùng đúng signUp() công khai giống học sinh
+// (xem 13.13 tài liệu bàn giao), rồi tự gán role='parent' cho CHÍNH tài khoản
+// vừa tạo — được phép vì policy "Users update own profile" cho tự sửa hàng
+// của chính mình. Sau khi đăng ký vẫn cần admin liên kết với học sinh mới xem
+// được dữ liệu (loadDashboard() đã tự báo "Chưa có học sinh nào được liên kết"
+// nếu chưa có ai gán).
+document.getElementById("register-form").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const email = document.getElementById("reg-email").value.trim();
+  const password = document.getElementById("reg-password").value;
+  const password2 = document.getElementById("reg-password2").value;
+  const err = document.getElementById("register-error");
+  const ok = document.getElementById("register-ok");
+  err.style.display = "none"; ok.style.display = "none";
+
+  if(password !== password2){ err.textContent = "Mật khẩu nhập lại không khớp."; err.style.display = "block"; return; }
+
+  const btn = document.getElementById("register-btn");
+  btn.disabled = true; btn.textContent = "Đang đăng ký...";
+  const { data, error } = await sb.auth.signUp({ email, password });
+  if(error){
+    btn.disabled = false; btn.textContent = "Đăng ký";
+    err.textContent = error.message; err.style.display = "block";
+    return;
+  }
+
+  if(data.session){
+    // Email confirmation đang TẮT ở Supabase -> có phiên đăng nhập ngay,
+    // gán role='parent' rồi vào thẳng dashboard.
+    await sb.from("profiles").update({ role: "parent" }).eq("id", data.user.id);
+    btn.disabled = false; btn.textContent = "Đăng ký";
+    await afterLogin();
+  } else {
+    // Email confirmation đang BẬT (khác cấu hình hiện tại của project) -> chưa
+    // có phiên nên chưa gán được role='parent' ngay. Nếu sau này bật tính năng
+    // xác nhận email, cần bổ sung thêm bước gán role ở lần đăng nhập đầu tiên.
+    btn.disabled = false; btn.textContent = "Đăng ký";
+    ok.textContent = "Đăng ký thành công! Kiểm tra email để xác nhận tài khoản trước khi đăng nhập.";
+    ok.style.display = "block";
+    document.getElementById("register-form").reset();
+  }
+});
+
 document.getElementById("btn-logout").addEventListener("click", doLogout);
 document.getElementById("btn-logout-denied").addEventListener("click", doLogout);
 async function doLogout(){ await sb.auth.signOut(); showScreen("login"); }
