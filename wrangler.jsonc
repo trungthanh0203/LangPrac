@@ -1,13 +1,16 @@
 {
   // Cấu hình tường minh cho Cloudflare Worker "langprac" — trước đây KHÔNG có
   // file này, Cloudflare tự suy luận cấu hình "chỉ phục vụ file tĩnh" qua
-  // Dashboard. Từ khi thêm _worker.js (route /api/create-parent), wrangler cần
+  // Dashboard. Từ khi thêm worker.js (route /api/create-parent), wrangler cần
   // biết rõ main entry + thư mục static assets, nên phải khai báo tường minh.
+  // Lưu ý: "main" KHÔNG được đặt tên "_worker.js" (tên dành riêng cho Cloudflare
+  // Pages) — Wrangler sẽ từ chối deploy với lỗi "Uploading a Pages _worker.js
+  // file as an asset." nếu dùng tên đó cho 1 Worker thường.
   //
   // "name" PHẢI khớp đúng tên Worker hiện có (langprac.onstudy.workers.dev) để
   // deploy cập nhật đúng Worker này, không tạo Worker mới.
   "name": "langprac",
-  "main": "_worker.js",
+  "main": "worker.js",
   "compatibility_date": "2026-09-04",
   "assets": {
     "directory": ".",

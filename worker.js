@@ -4,11 +4,13 @@
 // functions/api/*.js theo quy ước "Pages Functions" bị Worker bỏ qua hoàn
 // toàn — 2 sản phẩm khác nhau của Cloudflare, không tự nhận diện lẫn nhau.
 //
-// _worker.js là quy ước CHUẨN để thêm route API tự viết vào 1 Worker đang
-// phục vụ static assets: Cloudflare tự nhận diện file này ở gốc thư mục asset,
-// chạy nó TRƯỚC, request nào không khớp route tự viết thì rơi xuống phục vụ
-// file tĩnh qua env.ASSETS.fetch() y hệt trước đây — không đổi hành vi các
-// trang html/json/icon hiện có.
+// File này được khai báo làm "main" entry trong wrangler.jsonc (KHÔNG được đặt
+// tên "_worker.js" — đó là tên dành riêng cho Cloudflare Pages, Wrangler sẽ từ
+// chối deploy 1 Worker (không phải Pages) có file tên đó, báo lỗi "Uploading a
+// Pages _worker.js file as an asset." — đã gặp lỗi này thật, đổi tên mới hết).
+// Request nào không khớp route tự viết bên dưới thì rơi xuống phục vụ file
+// tĩnh qua env.ASSETS.fetch() y hệt trước đây — không đổi hành vi các trang
+// html/json/icon hiện có.
 //
 // Logic tạo tài khoản phụ huynh giữ NGUYÊN VĂN từ functions/api/create-parent.js
 // (file đó giờ không còn được dùng nữa vì không phải Pages — giữ lại chỉ để
