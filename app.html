@@ -110,6 +110,8 @@ header.top{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#ff
 .flash-phonetic{font-size:15px;color:var(--text-3);font-style:italic;}
 .flash-speak{background:var(--navy2);color:#fff;border:none;width:42px;height:42px;border-radius:50%;font-size:18px;cursor:pointer;margin-top:6px;}
 .flash-speak:hover{opacity:.85;}
+.flash-speak:disabled{opacity:.5;cursor:not-allowed;}
+.flash-btn-row{display:flex;gap:14px;}
 .flash-meanings{margin-top:14px;font-size:16px;}
 .flash-meanings .vi{font-weight:700;color:var(--text-1);}
 .flash-meanings .en{color:var(--text-2);font-size:13.5px;margin-top:4px;}
@@ -780,7 +782,11 @@ function renderFlash(){
         ${it.category ? `<div class="flash-cat">${it.category}</div>` : ''}
         <div class="flash-de">${it.de_text}</div>
         ${it.phonetic ? `<div class="flash-phonetic">${it.phonetic}</div>` : ''}
-        <button class="flash-speak" id="btn-speak" title="${L().ui.speakTitle}">🔊</button>
+        <div class="flash-btn-row">
+          <button class="flash-speak" id="btn-speak" title="${L().ui.speakTitle}">🔊</button>
+          ${SpeechRecognitionCtor ? `<button class="flash-speak" id="btn-flash-record" title="${L().ui.recordPronunciationBtn}">🎤</button>` : ''}
+        </div>
+        ${SpeechRecognitionCtor ? `<div class="pronunciation-result" id="flash-pronunciation-result"></div>` : ''}
         <div class="flash-meanings">
           <div class="vi">${it.vi_meaning}</div>
           ${it.en_meaning ? `<div class="en">${it.en_meaning}</div>` : ''}
@@ -793,6 +799,9 @@ function renderFlash(){
       </div>
     </div>`;
   document.getElementById("btn-speak").addEventListener("click", ()=> speak(it.de_text));
+  if(SpeechRecognitionCtor){
+    document.getElementById("btn-flash-record").addEventListener("click", ()=> startFlashPronunciationCheck(it.de_text));
+  }
   document.getElementById("btn-prev").addEventListener("click", ()=>{ if(flashIndex>0){ flashIndex--; renderFlash(); } });
   document.getElementById("btn-next").addEventListener("click", ()=>{ if(flashIndex<items.length-1){ flashIndex++; renderFlash(); } });
 }
@@ -1754,14 +1763,12 @@ function renderDialogueStep(){
 }
 
 // Ghi âm 1 câu bằng SpeechRecognition (Web Speech API — miễn phí, có sẵn trong
-// trình duyệt), chấm điểm bằng scorePronunciation() rồi hiện kết quả. Không
-// chặn nút "Tiếp tục" — đây là tính năng bổ sung tuỳ chọn, học sinh không cấp
-// quyền mic hoặc dùng trình duyệt không hỗ trợ vẫn học bình thường.
-function startPronunciationCheck(lineIdx, targetText){
+// trình duyệt), chấm điểm bằng scorePronunciation() rồi hiện kết quả vào
+// resultEl. Dùng chung cho cả "Nói - Hội thoại" và thẻ Từ vựng — không chặn
+// luồng học chính (Tiếp tục / chuyển thẻ) nếu học sinh không cấp quyền mic
+// hoặc dùng trình duyệt không hỗ trợ.
+function recognizeSpeechFor(targetText, resultEl, recordBtn, onScored){
   const u = L().ui;
-  const resultEl = document.getElementById("pronunciation-result");
-  const recordBtn = document.getElementById("btn-dialogue-record");
-  if(!resultEl || !recordBtn) return;
   resultEl.className = "pronunciation-result";
   resultEl.textContent = u.pronunciationListening;
   recordBtn.disabled = true;
@@ -1774,11 +1781,11 @@ function startPronunciationCheck(lineIdx, targetText){
   recognition.onresult = (event)=>{
     const transcript = event.results[0][0].transcript;
     const score = scorePronunciation(targetText, transcript, currentLanguage);
-    dialoguePronunciationScores[lineIdx] = score;
     const tier = pronunciationTier(score);
     const tierLabel = { excellent: u.pronunciationExcellent, good: u.pronunciationGood, ok: u.pronunciationOk, retry: u.pronunciationRetry }[tier];
     resultEl.className = `pronunciation-result ${tier}`;
     resultEl.innerHTML = `<div class="score-line">${tierLabel} (${score}%)</div><div class="transcript-line">${u.pronunciationTranscriptLabel}${escHtml(transcript)}</div>`;
+    if(onScored) onScored(score);
   };
   recognition.onerror = ()=>{
     resultEl.className = "pronunciation-result retry";
@@ -1786,6 +1793,23 @@ function startPronunciationCheck(lineIdx, targetText){
   };
   recognition.onend = ()=>{ recordBtn.disabled = false; };
   recognition.start();
+}
+
+function startPronunciationCheck(lineIdx, targetText){
+  const resultEl = document.getElementById("pronunciation-result");
+  const recordBtn = document.getElementById("btn-dialogue-record");
+  if(!resultEl || !recordBtn) return;
+  recognizeSpeechFor(targetText, resultEl, recordBtn, (score)=>{ dialoguePronunciationScores[lineIdx] = score; });
+}
+
+// Chấm phát âm ngay trên thẻ Từ vựng (Flashcard) — cùng cơ chế, không lưu
+// điểm vào DB (flashcard không có khái niệm "hoàn thành 1 bộ" như hội thoại
+// hay Luyện tập, chỉ phản hồi tức thời cho từng thẻ, reset khi chuyển thẻ).
+function startFlashPronunciationCheck(targetText){
+  const resultEl = document.getElementById("flash-pronunciation-result");
+  const recordBtn = document.getElementById("btn-flash-record");
+  if(!resultEl || !recordBtn) return;
+  recognizeSpeechFor(targetText, resultEl, recordBtn);
 }
 
 // Khi hoàn thành 1 hội thoại, nếu có ít nhất 1 câu đã chấm phát âm, lưu 1 dòng
