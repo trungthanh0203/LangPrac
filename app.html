@@ -118,6 +118,18 @@ header.top{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#ff
 .flash-nav button:disabled{opacity:.3;cursor:not-allowed;}
 .flash-nav .counter{font-size:13px;color:var(--text-2);min-width:70px;}
 
+/* Ôn tập (Spaced Repetition) */
+.review-due-count{text-align:center;font-size:12.5px;color:var(--text-3);margin-bottom:14px;}
+.review-answer{margin-top:14px;font-size:16px;padding-top:14px;border-top:1px dashed var(--border);}
+.review-answer .vi{font-weight:700;color:var(--text-1);}
+.review-answer .en{color:var(--text-2);font-size:13.5px;margin-top:4px;}
+.review-show-btn{margin-top:14px;}
+.review-grade-btns{display:flex;justify-content:center;gap:10px;margin-top:16px;flex-wrap:wrap;}
+.review-grade-btns button{border:none;border-radius:8px;padding:10px 16px;font-size:13.5px;font-weight:700;cursor:pointer;color:#fff;}
+.review-grade-again{background:var(--red);}
+.review-grade-good{background:var(--text-2);}
+.review-grade-easy{background:var(--green);}
+
 /* Game */
 .game-progress{text-align:center;font-size:12.5px;color:var(--text-3);margin-bottom:14px;}
 .game-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
@@ -201,6 +213,14 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
 .dialogue-text{font-size:14.5px;line-height:1.5;color:var(--text-1);}
 .dialogue-your-turn{margin-top:8px;font-size:12.5px;font-weight:600;color:var(--navy2);}
 .dialogue-line .btn{margin-top:10px;}
+.btn-record{background:var(--navy2);margin-top:10px;margin-right:8px;}
+.pronunciation-result{margin-top:10px;padding:10px 12px;border-radius:8px;font-size:13px;}
+.pronunciation-result .score-line{font-weight:700;margin-bottom:4px;}
+.pronunciation-result .transcript-line{color:var(--text-2);font-style:italic;}
+.pronunciation-result.excellent{background:var(--green-light);color:#2f7d3a;}
+.pronunciation-result.good{background:var(--teal-light);color:var(--navy2);}
+.pronunciation-result.ok{background:var(--amber-light);color:#8a5a15;}
+.pronunciation-result.retry{background:var(--red-light);color:#a33;}
 </style>
 </head>
 <body>
@@ -304,6 +324,7 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
     <button id="tab-game"></button>
     <button id="tab-grammar"></button>
     <button id="tab-practice"></button>
+    <button id="tab-review"></button>
   </div>
 
   <div class="selectors">
@@ -584,6 +605,7 @@ function applyLanguageUI(){
   document.getElementById("tab-game").textContent = u.tabGame;
   document.getElementById("tab-grammar").textContent = u.tabGrammar;
   document.getElementById("tab-practice").textContent = u.tabPractice;
+  document.getElementById("tab-review").textContent = u.tabReview;
   document.getElementById("btn-header-stats").textContent = u.tabStats;
   document.getElementById("opt-word").textContent = u.optWord;
   document.getElementById("opt-sentence").textContent = u.optSentence;
@@ -622,14 +644,16 @@ document.getElementById("tab-flash").addEventListener("click", ()=>{ mode="flash
 document.getElementById("tab-game").addEventListener("click", ()=>{ mode="game"; setActiveTab(); loadItems(); });
 document.getElementById("tab-grammar").addEventListener("click", ()=>{ mode="grammar"; setActiveTab(); loadGrammar(); });
 document.getElementById("tab-practice").addEventListener("click", ()=>{ mode="practice"; setActiveTab(); loadPractice(); });
+document.getElementById("tab-review").addEventListener("click", ()=>{ mode="review"; setActiveTab(); loadReviewQueue(); });
 document.getElementById("btn-header-stats").addEventListener("click", ()=>{ mode="stats"; setActiveTab(); loadStats(); });
 function setActiveTab(){
   document.getElementById("tab-flash").classList.toggle("active", mode==="flash");
   document.getElementById("tab-game").classList.toggle("active", mode==="game");
   document.getElementById("tab-grammar").classList.toggle("active", mode==="grammar");
   document.getElementById("tab-practice").classList.toggle("active", mode==="practice");
+  document.getElementById("tab-review").classList.toggle("active", mode==="review");
   document.getElementById("btn-header-stats").classList.toggle("active", mode==="stats");
-  document.getElementById("vocab-filters").style.display = (mode==="grammar" || mode==="practice" || mode==="stats") ? "none" : "contents";
+  document.getElementById("vocab-filters").style.display = (mode==="grammar" || mode==="practice" || mode==="stats" || mode==="review") ? "none" : "contents";
   document.getElementById("practice-filters").style.display = (mode==="practice") ? "block" : "none";
 }
 // Tải lại đúng nội dung theo tab đang active — dùng ở mọi nơi có thể đổi ngôn ngữ/trình độ/...
@@ -638,6 +662,7 @@ function reloadCurrentMode(){
   if(mode==="grammar"){ loadGrammar(); }
   else if(mode==="practice"){ loadPractice(); }
   else if(mode==="stats"){ loadStats(); }
+  else if(mode==="review"){ loadReviewQueue(); }
   else { loadItems(); }
 }
 document.getElementById("sel-level").addEventListener("change", e=>{
@@ -768,6 +793,132 @@ function renderFlash(){
   document.getElementById("btn-speak").addEventListener("click", ()=> speak(it.de_text));
   document.getElementById("btn-prev").addEventListener("click", ()=>{ if(flashIndex>0){ flashIndex--; renderFlash(); } });
   document.getElementById("btn-next").addEventListener("click", ()=>{ if(flashIndex<items.length-1){ flashIndex++; renderFlash(); } });
+}
+
+// ============================================================
+// Ôn tập (Spaced Repetition — thuật toán SM-2). Mỗi từ có 1 dòng trong
+// vocab_progress/user, lưu ease_factor/interval_days/repetitions/due_at.
+// quality: 2 = Quên (again), 4 = Bình thường (good), 5 = Dễ (easy).
+// ============================================================
+function computeSm2(prev, quality){
+  let ef = prev ? prev.ease_factor : 2.5;
+  let reps = prev ? prev.repetitions : 0;
+  let interval;
+  if(quality < 3){
+    reps = 0;
+    interval = 1;
+  } else {
+    reps += 1;
+    if(reps === 1) interval = 1;
+    else if(reps === 2) interval = 6;
+    else interval = Math.round((prev ? prev.interval_days : 1) * ef);
+  }
+  ef = Math.max(1.3, ef + (0.1 - (5-quality)*(0.08+(5-quality)*0.02)));
+  const due = new Date(Date.now() + interval*24*60*60*1000);
+  return { ease_factor: ef, interval_days: interval, repetitions: reps, due_at: due.toISOString(), last_grade: quality };
+}
+
+let reviewQueue = [];
+let reviewIndex = 0;
+let reviewProgressMap = {}; // vocab_item_id -> dòng vocab_progress hiện có (hoặc không có key nếu là từ mới)
+let reviewItemsCache = {}; // key "language|level" -> mảng vocab_items (word + sentence gộp chung)
+
+async function loadReviewQueue(){
+  const area = document.getElementById("content-area");
+  area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
+  if(!CURRENT_USER){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyVocab}</div>`; return; }
+
+  const key = `${currentLanguage}|${level}`;
+  if(!reviewItemsCache[key]){
+    const { data, error } = await sb.from("vocab_items").select("*").eq("language", currentLanguage).eq("level", level);
+    if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
+    reviewItemsCache[key] = data || [];
+  }
+  const allItems = reviewItemsCache[key];
+
+  const { data: progressRows, error: progressError } = await sb.from("vocab_progress").select("*")
+    .eq("user_id", CURRENT_USER.id).eq("language", currentLanguage).eq("level", level);
+  if(progressError){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${progressError.message}</div>`; return; }
+
+  reviewProgressMap = {};
+  (progressRows || []).forEach(p => { reviewProgressMap[p.vocab_item_id] = p; });
+
+  const now = Date.now();
+  const dueItems = [];
+  const newItems = [];
+  allItems.forEach(it => {
+    const p = reviewProgressMap[it.id];
+    if(!p) newItems.push(it);
+    else if(new Date(p.due_at).getTime() <= now) dueItems.push(it);
+  });
+  dueItems.sort((a,b) => new Date(reviewProgressMap[a.id].due_at) - new Date(reviewProgressMap[b.id].due_at));
+  const cappedNew = shuffle(newItems).slice(0, 10);
+
+  reviewQueue = shuffle(dueItems.concat(cappedNew));
+  reviewIndex = 0;
+  renderReviewCard();
+}
+
+function renderReviewCard(){
+  const area = document.getElementById("content-area");
+  const u = L().ui;
+  if(reviewIndex >= reviewQueue.length){
+    area.innerHTML = `
+      <div class="game-complete">
+        <h3>${u.reviewDoneMsg}</h3>
+      </div>`;
+    return;
+  }
+  const it = reviewQueue[reviewIndex];
+  area.innerHTML = `
+    <div class="flash-wrap">
+      <div class="review-due-count">${fmt(u.reviewDueCountLabel, {n: reviewQueue.length - reviewIndex})}</div>
+      <div class="flash-card">
+        ${it.category ? `<div class="flash-cat">${it.category}</div>` : ''}
+        <div class="flash-de">${it.de_text}</div>
+        ${it.phonetic ? `<div class="flash-phonetic">${it.phonetic}</div>` : ''}
+        <button class="flash-speak" id="btn-speak" title="${u.speakTitle}">🔊</button>
+        <button class="btn review-show-btn" id="btn-review-show">${u.reviewShowAnswerBtn}</button>
+        <div class="review-answer hidden" id="review-answer">
+          <div class="vi">${it.vi_meaning}</div>
+          ${it.en_meaning ? `<div class="en">${it.en_meaning}</div>` : ''}
+          <div class="review-grade-btns">
+            <button class="review-grade-again" id="btn-grade-again">${u.reviewAgainBtn}</button>
+            <button class="review-grade-good" id="btn-grade-good">${u.reviewGoodBtn}</button>
+            <button class="review-grade-easy" id="btn-grade-easy">${u.reviewEasyBtn}</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  document.getElementById("btn-speak").addEventListener("click", ()=> speak(it.de_text));
+  document.getElementById("btn-review-show").addEventListener("click", (e)=>{
+    document.getElementById("review-answer").classList.remove("hidden");
+    e.target.style.display = "none";
+  });
+  document.getElementById("btn-grade-again").addEventListener("click", ()=> gradeReviewCard(it, 2));
+  document.getElementById("btn-grade-good").addEventListener("click", ()=> gradeReviewCard(it, 4));
+  document.getElementById("btn-grade-easy").addEventListener("click", ()=> gradeReviewCard(it, 5));
+}
+
+async function gradeReviewCard(it, quality){
+  const prev = reviewProgressMap[it.id] || null;
+  const next = computeSm2(prev, quality);
+  const { error } = await sb.from("vocab_progress").upsert({
+    user_id: CURRENT_USER.id,
+    vocab_item_id: it.id,
+    language: currentLanguage,
+    level: level,
+    ease_factor: next.ease_factor,
+    interval_days: next.interval_days,
+    repetitions: next.repetitions,
+    due_at: next.due_at,
+    last_reviewed_at: new Date().toISOString(),
+    last_grade: next.last_grade,
+    updated_at: new Date().toISOString()
+  }, { onConflict: "user_id,vocab_item_id" });
+  if(error) console.warn("Lưu vocab_progress thất bại:", error.message);
+  reviewIndex++;
+  renderReviewCard();
 }
 
 let gamePool = [];
@@ -919,6 +1070,42 @@ function renderGrammar(lesson){
 function normalizeAnswer(s){ return String(s||"").trim().toLowerCase().replace(/\s+/g," "); }
 
 // ============================================================
+// Chấm phát âm (Web Speech API, MVP miễn phí) — so khớp văn bản trình duyệt
+// nhận diện được với câu mẫu, KHÔNG phải chấm phoneme-level thật. Tách hàm
+// scorePronunciation() riêng để sau này thay bằng dịch vụ chấm chuẩn hơn
+// (vd Azure Pronunciation Assessment) mà không phải sửa chỗ gọi nó.
+// ============================================================
+function tokenizeForPronunciation(text, lang){
+  const norm = String(text||"").trim().toLowerCase();
+  if(lang === "zh") return Array.from(norm.replace(/[，。！？、,.!?\s]/g,""));
+  return norm.replace(/[.,!?;:"“”]/g,"").split(/\s+/).filter(Boolean);
+}
+function levenshteinTokens(a, b){
+  const m = a.length, n = b.length;
+  const dp = Array.from({length: m+1}, (_, i) => { const row = new Array(n+1); row[0] = i; return row; });
+  for(let j=0;j<=n;j++) dp[0][j] = j;
+  for(let i=1;i<=m;i++){
+    for(let j=1;j<=n;j++){
+      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1]);
+    }
+  }
+  return dp[m][n];
+}
+function scorePronunciation(targetText, transcript, lang){
+  const t = tokenizeForPronunciation(targetText, lang);
+  const h = tokenizeForPronunciation(transcript, lang);
+  if(t.length === 0) return 0;
+  const dist = levenshteinTokens(t, h);
+  return Math.max(0, Math.round((1 - dist/Math.max(t.length, h.length||1)) * 100));
+}
+function pronunciationTier(score){
+  if(score >= 85) return "excellent";
+  if(score >= 65) return "good";
+  if(score >= 40) return "ok";
+  return "retry";
+}
+
+// ============================================================
 // Tab Luyện tập: lấy ngẫu nhiên bài tập theo đúng trình tự loại bài.
 // Muốn thêm loại bài mới sau này, chỉ cần thêm 1 dòng vào PRACTICE_SEQUENCE.
 // ============================================================
@@ -963,6 +1150,9 @@ let currentDialogue = null;
 let currentDialogueLines = [];
 let dialogueUserRole = null; // "A" hoặc "B" — vai người học chọn đọc
 let dialogueIndex = 0;
+const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition; // undefined nếu trình duyệt không hỗ trợ (vd Firefox) — ẩn nút ghi âm
+let dialoguePronunciationScores = {}; // order_index -> điểm 0-100, reset mỗi khi bắt đầu 1 hội thoại mới
+let dialogueScoreSaved = false; // chặn lưu quiz_results 2 lần nếu render lại màn hình "hoàn thành"
 
 function buildPracticeSet(pool){
   const result = [];
@@ -1255,7 +1445,7 @@ async function loadStats(){
   const thisWeekCount = data.filter(r => new Date(r.created_at).getTime() >= weekAgoMs).length;
 
   const rowsHtml = data.map(r=>{
-    const kindLabel = { writing: u.kindWriting, reading: u.kindReading, listening: u.kindListening, math: u.tabMath }[r.practice_kind] || r.practice_kind;
+    const kindLabel = { writing: u.kindWriting, reading: u.kindReading, listening: u.kindListening, math: u.kindMath, speaking_dialogue: u.kindSpeakingDialogue }[r.practice_kind] || r.practice_kind;
     const langLabel = (LANGS[r.language] && LANGS[r.language].switchLabel) || r.language;
     const percent = r.total_count ? Math.round((r.correct_count/r.total_count)*100) : 0;
     const dateStr = new Date(r.created_at).toLocaleString();
@@ -1488,6 +1678,8 @@ function renderDialogueRolePicker(dialogue, lines){
     dialogueIndex = 0;
     currentDialogue = dialogue;
     currentDialogueLines = lines;
+    dialoguePronunciationScores = {};
+    dialogueScoreSaved = false;
     renderDialogueStep();
   });
 }
@@ -1505,7 +1697,10 @@ function renderDialogueStep(){
     const state = idx < dialogueIndex ? "done" : (idx === dialogueIndex ? "current" : "upcoming");
     let actionHtml = "";
     if(state === "current" && isUserLine){
-      actionHtml = `<div class="dialogue-your-turn">${u.yourTurnLabel}</div><button class="btn" id="btn-dialogue-continue">${u.continueBtn}</button>`;
+      const recordHtml = SpeechRecognitionCtor
+        ? `<button class="btn btn-record" id="btn-dialogue-record">${u.recordPronunciationBtn}</button><div id="pronunciation-result"></div>`
+        : "";
+      actionHtml = `<div class="dialogue-your-turn">${u.yourTurnLabel}</div>${recordHtml}<button class="btn" id="btn-dialogue-continue">${u.continueBtn}</button>`;
     } else if(state === "current" && !isUserLine){
       actionHtml = `<button class="btn" id="btn-dialogue-continue" style="display:none;">${u.continueBtn}</button>`;
     }
@@ -1530,8 +1725,9 @@ function renderDialogueStep(){
     </div>`;
 
   if(finished){
-    document.getElementById("btn-dialogue-restart").addEventListener("click", ()=>{ dialogueIndex=0; renderDialogueStep(); });
+    document.getElementById("btn-dialogue-restart").addEventListener("click", ()=>{ dialogueIndex=0; dialoguePronunciationScores={}; dialogueScoreSaved=false; renderDialogueStep(); });
     document.getElementById("btn-dialogue-another").addEventListener("click", ()=> loadSpeakingDialogue());
+    saveDialoguePronunciationResult();
     return;
   }
 
@@ -1539,6 +1735,11 @@ function renderDialogueStep(){
   const isUserLine = currentLine.speaker === dialogueUserRole;
   const continueBtn = document.getElementById("btn-dialogue-continue");
   continueBtn.addEventListener("click", ()=>{ dialogueIndex++; renderDialogueStep(); });
+
+  if(isUserLine && SpeechRecognitionCtor){
+    const recordBtn = document.getElementById("btn-dialogue-record");
+    if(recordBtn) recordBtn.addEventListener("click", ()=> startPronunciationCheck(dialogueIndex, currentLine.line_text));
+  }
 
   if(!isUserLine){
     // App tự đọc lời thoại của mình, xong mới hiện nút Tiếp tục để người học chủ động qua câu kế.
@@ -1548,6 +1749,64 @@ function renderDialogueStep(){
 
   const el = document.getElementById(`dialogue-line-${dialogueIndex}`);
   if(el) el.scrollIntoView({behavior:"smooth", block:"center"});
+}
+
+// Ghi âm 1 câu bằng SpeechRecognition (Web Speech API — miễn phí, có sẵn trong
+// trình duyệt), chấm điểm bằng scorePronunciation() rồi hiện kết quả. Không
+// chặn nút "Tiếp tục" — đây là tính năng bổ sung tuỳ chọn, học sinh không cấp
+// quyền mic hoặc dùng trình duyệt không hỗ trợ vẫn học bình thường.
+function startPronunciationCheck(lineIdx, targetText){
+  const u = L().ui;
+  const resultEl = document.getElementById("pronunciation-result");
+  const recordBtn = document.getElementById("btn-dialogue-record");
+  if(!resultEl || !recordBtn) return;
+  resultEl.className = "pronunciation-result";
+  resultEl.textContent = u.pronunciationListening;
+  recordBtn.disabled = true;
+
+  const recognition = new SpeechRecognitionCtor();
+  recognition.lang = L().speechLang;
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onresult = (event)=>{
+    const transcript = event.results[0][0].transcript;
+    const score = scorePronunciation(targetText, transcript, currentLanguage);
+    dialoguePronunciationScores[lineIdx] = score;
+    const tier = pronunciationTier(score);
+    const tierLabel = { excellent: u.pronunciationExcellent, good: u.pronunciationGood, ok: u.pronunciationOk, retry: u.pronunciationRetry }[tier];
+    resultEl.className = `pronunciation-result ${tier}`;
+    resultEl.innerHTML = `<div class="score-line">${tierLabel} (${score}%)</div><div class="transcript-line">${u.pronunciationTranscriptLabel}${escHtml(transcript)}</div>`;
+  };
+  recognition.onerror = ()=>{
+    resultEl.className = "pronunciation-result retry";
+    resultEl.textContent = u.pronunciationMicError;
+  };
+  recognition.onend = ()=>{ recordBtn.disabled = false; };
+  recognition.start();
+}
+
+// Khi hoàn thành 1 hội thoại, nếu có ít nhất 1 câu đã chấm phát âm, lưu 1 dòng
+// vào quiz_results (tái dùng bảng có sẵn — xem migration 33) để hiện trong tab
+// Thống kê/dashboard phụ huynh, giống cách checkPracticeAnswers() đã làm cho
+// Viết/Đọc/Nghe/Toán.
+async function saveDialoguePronunciationResult(){
+  if(dialogueScoreSaved) return;
+  const scores = Object.values(dialoguePronunciationScores);
+  if(!CURRENT_USER || scores.length === 0) return;
+  dialogueScoreSaved = true;
+  const correctCount = scores.filter(s => s >= 65).length;
+  const { error } = await sb.from("quiz_results").insert({
+    user_id: CURRENT_USER.id,
+    language: currentLanguage,
+    level: level,
+    practice_kind: "speaking_dialogue",
+    source_id: currentDialogue ? currentDialogue.id : null,
+    correct_count: correctCount,
+    total_count: scores.length,
+    type_breakdown: dialoguePronunciationScores
+  });
+  if(error) console.warn("Lưu quiz_results (speaking_dialogue) thất bại:", error.message);
 }
 
 boot();
