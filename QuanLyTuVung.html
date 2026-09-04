@@ -438,7 +438,7 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
         <h3>Danh sách phụ huynh đã liên kết (<span id="parent-link-count">0</span>)</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Email phụ huynh</th><th>Email học sinh</th><th>Ngày tạo</th><th></th></tr></thead>
+            <thead><tr><th>Email phụ huynh</th><th>Email học sinh</th><th>Ngày tạo</th><th colspan="2"></th></tr></thead>
             <tbody id="parent-table-body"></tbody>
           </table>
         </div>
@@ -971,6 +971,7 @@ async function loadParents(){
       <td>${escHtmlAdmin(emailOf[l.parent_id] || l.parent_id)}</td>
       <td>${escHtmlAdmin(emailOf[l.student_id] || l.student_id)}</td>
       <td>${new Date(l.created_at).toLocaleDateString()}</td>
+      <td><button class="btn-sm" data-reset-pw="${l.parent_id}" data-parent-email="${escHtmlAdmin(emailOf[l.parent_id] || l.parent_id).replace(/"/g,'&quot;')}">Đổi mật khẩu</button></td>
       <td><button class="btn btn-outline" data-del-link="${l.id}">Xoá liên kết</button></td>
     </tr>`).join("");
   tbody.querySelectorAll("[data-del-link]").forEach(btn=>{
@@ -981,6 +982,36 @@ async function loadParents(){
       loadParents();
     });
   });
+  tbody.querySelectorAll("[data-reset-pw]").forEach(btn=>{
+    btn.addEventListener("click", ()=> openResetParentPassword(btn.dataset.resetPw, btn.dataset.parentEmail));
+  });
+}
+
+// Đổi mật khẩu phụ huynh — gọi RPC admin_reset_parent_password() (28_migration_...sql),
+// ghi thẳng auth.users bằng pgcrypto, không cần Cloudflare Function/service_role key.
+function openResetParentPassword(parentId, parentEmail){
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Đổi mật khẩu — ${escHtmlAdmin(parentEmail)}</h2><button class="modal-close" id="rp-close">&times;</button></div>
+    <form id="reset-pw-form">
+      <div class="field-row"><label>Mật khẩu mới</label><input id="rp-password" type="text" placeholder="Tối thiểu 6 ký tự" autocomplete="new-password"></div>
+      <div class="result-msg" id="reset-pw-result"></div>
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="rp-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Đổi mật khẩu</button></div>
+    </form>`;
+  document.getElementById("overlay").classList.add("show");
+  document.getElementById("rp-close").onclick = closeModal;
+  document.getElementById("rp-cancel").onclick = closeModal;
+  document.getElementById("reset-pw-form").onsubmit = async (e)=>{
+    e.preventDefault();
+    const newPassword = document.getElementById("rp-password").value;
+    const resultEl = document.getElementById("reset-pw-result");
+    if(!newPassword || newPassword.length < 6){ resultEl.textContent = "Mật khẩu phải có ít nhất 6 ký tự."; return; }
+    const submitBtn = e.target.querySelector("button[type=submit]");
+    submitBtn.disabled = true;
+    const { error } = await sb.rpc("admin_reset_parent_password", { p_parent_id: parentId, p_new_password: newPassword });
+    submitBtn.disabled = false;
+    if(error){ resultEl.textContent = "Lỗi: " + error.message; return; }
+    closeModal();
+  };
 }
 
 document.getElementById("btn-create-parent").addEventListener("click", async ()=>{
