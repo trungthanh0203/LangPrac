@@ -1,3 +1,7 @@
+// Tích hợp OneSignal (thông báo nhắc học) vào chính service worker này thay vì để
+// OneSignal tạo 1 SW riêng — 1 site chỉ nên có 1 service worker ở scope "/".
+importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
+
 // Service Worker cho app học Đức & Anh & Trung gộp chung 1 trang.
 //
 // Chiến lược cache tối ưu tốc độ:

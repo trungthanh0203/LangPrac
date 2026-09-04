@@ -111,6 +111,57 @@ async function handleCreateParent(request, env) {
   return jsonResponse({ userId: created.id });
 }
 
+// Thông báo nhắc học — chạy theo lịch (xem "triggers.crons" trong wrangler.jsonc,
+// 2 mốc giờ 7h/20h giờ Việt Nam). Chỉ nhắc học sinh đã bật `profiles.reminder_enabled`
+// VÀ chưa có hoạt động gì trong ngày hôm đó (RPC get_users_needing_reminder(), xem
+// migration 34_migration_add_reminder_preference.sql). Gửi push qua OneSignal REST
+// API thay vì tự viết Web Push/VAPID — xem lý do trong tài liệu bàn giao mục nhắc học.
+async function sendStudyReminders(env) {
+  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
+  const oneSignalAppId = env.ONESIGNAL_APP_ID;
+  const oneSignalApiKey = env.ONESIGNAL_REST_API_KEY;
+  if (!serviceRoleKey || !oneSignalAppId || !oneSignalApiKey) {
+    console.error("Nhắc học: thiếu secret (SUPABASE_SERVICE_ROLE_KEY / ONESIGNAL_APP_ID / ONESIGNAL_REST_API_KEY) — bỏ qua lần chạy này.");
+    return;
+  }
+
+  const rpcRes = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_users_needing_reminder`, {
+    method: "POST",
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      "Content-Type": "application/json"
+    },
+    body: "{}"
+  });
+  if (!rpcRes.ok) {
+    console.error("Nhắc học: lỗi gọi get_users_needing_reminder — " + (await rpcRes.text()));
+    return;
+  }
+  const rows = await rpcRes.json();
+  const userIds = (rows || []).map((r) => r.user_id);
+  if (userIds.length === 0) return;
+
+  const notifyRes = await fetch("https://onesignal.com/api/v1/notifications", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Key ${oneSignalApiKey}`
+    },
+    body: JSON.stringify({
+      app_id: oneSignalAppId,
+      include_aliases: { external_id: userIds },
+      target_channel: "push",
+      headings: { en: "⏰ Đến giờ học rồi!" },
+      contents: { en: "Hôm nay bạn chưa luyện tập — dành vài phút ôn bài trên iLapra nhé!" },
+      url: "https://langprac.onstudy.workers.dev/app.html"
+    })
+  });
+  if (!notifyRes.ok) {
+    console.error("Nhắc học: gửi push qua OneSignal thất bại — " + (await notifyRes.text()));
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -130,5 +181,9 @@ export default {
     // Mọi request khác: phục vụ file tĩnh y hệt trước đây (index.html,
     // app.html, manifest.json, icons/, languages.json...).
     return env.ASSETS.fetch(request);
+  },
+
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(sendStudyReminders(env));
   }
 };

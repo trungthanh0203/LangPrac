@@ -18,6 +18,7 @@
 <!-- Mở kết nối sớm tới CDN + Supabase để giảm độ trễ khi tải script/gọi API thật -->
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://vuykuqmebmainyhiotfx.supabase.co" crossorigin>
+<link rel="preconnect" href="https://cdn.onesignal.com" crossorigin>
 
 <style>
 :root{
@@ -316,6 +317,7 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
       <div class="header-voice">
         <button id="btn-logout">Đăng xuất</button>
         <button id="btn-header-stats"></button>
+        <button id="btn-header-reminder" class="hidden"></button>
       </div>
     </div>
   </header>
@@ -362,6 +364,7 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
      giao diện HTML/CSS phía trên trước, không phải chờ tải xong script này mới
      render được gì — cải thiện tốc độ hiển thị lần đầu (đặc biệt trên mạng chậm). -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
 const SUPABASE_URL = "https://vuykuqmebmainyhiotfx.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_8Ro-jEFQqFh7EfbXPfzWaw_V1xrkoyU";
@@ -371,6 +374,20 @@ if(SUPABASE_URL.includes("YOUR-PROJECT") || SUPABASE_ANON_KEY.includes("YOUR-ANO
   throw new Error("Supabase chưa được cấu hình");
 }
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Thông báo nhắc học (push) — App ID lấy từ OneSignal Dashboard sau khi tạo app
+// "Web Push" (xem mục hướng dẫn trong tài liệu bàn giao). Không phải thông tin bí
+// mật (khác REST API Key — key đó CHỈ nằm trong Cloudflare Secret, không đưa vào
+// đây). Chưa điền thì tính năng nhắc học tự ẩn, không ảnh hưởng phần còn lại của app.
+const ONESIGNAL_APP_ID = "c7dcd005-a9f6-4ea9-a952-e3cf7a3399ea";
+const ONESIGNAL_CONFIGURED = !ONESIGNAL_APP_ID.includes("ĐIỀN_SAU");
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+if(ONESIGNAL_CONFIGURED){
+  OneSignalDeferred.push(async (OneSignal) => {
+    await OneSignal.init({ appId: ONESIGNAL_APP_ID, serviceWorkerPath: "sw.js", serviceWorkerParam: { scope: "/" } });
+    updateReminderButton(); // SDK có thể tải xong SAU khi enterApp() đã chạy — cập nhật lại nút cho chắc
+  });
+}
 
 let THEME = {};
 let LANGS = {};
@@ -574,6 +591,10 @@ async function enterApp(user){
   CURRENT_SESSION_ID = crypto.randomUUID();
   logActivity("login", { language: currentLanguage });
 
+  if(ONESIGNAL_CONFIGURED){
+    OneSignalDeferred.push(OneSignal => OneSignal.login(user.id));
+  }
+
   applyLanguageUI();
   loadItems();
 }
@@ -611,6 +632,7 @@ function applyLanguageUI(){
   document.getElementById("tab-practice").textContent = u.tabPractice;
   document.getElementById("tab-review").textContent = u.tabReview;
   document.getElementById("btn-header-stats").textContent = u.tabStats;
+  updateReminderButton();
   document.getElementById("opt-word").textContent = u.optWord;
   document.getElementById("opt-sentence").textContent = u.optSentence;
   document.getElementById("opt-kind-writing").textContent = u.kindWriting;
@@ -650,6 +672,46 @@ document.getElementById("tab-grammar").addEventListener("click", ()=>{ mode="gra
 document.getElementById("tab-practice").addEventListener("click", ()=>{ mode="practice"; setActiveTab(); loadPractice(); });
 document.getElementById("tab-review").addEventListener("click", ()=>{ mode="review"; setActiveTab(); loadReviewQueue(); });
 document.getElementById("btn-header-stats").addEventListener("click", ()=>{ mode="stats"; setActiveTab(); loadStats(); });
+
+// ============================================================
+// Thông báo nhắc học (push qua OneSignal) — nút bật/tắt trong header. Chỉ hiện
+// nếu ONESIGNAL_CONFIGURED (đã điền App ID) và SDK tải thành công (mất mạng CDN/
+// trình duyệt chặn thì tự ẩn, không ảnh hưởng phần còn lại của app).
+// ============================================================
+function updateReminderButton(){
+  const btn = document.getElementById("btn-header-reminder");
+  if(!CURRENT_USER || !currentLanguage) return; // chưa đăng nhập xong / chưa chọn ngôn ngữ, gọi lại sau trong enterApp()
+  if(!ONESIGNAL_CONFIGURED || typeof OneSignal === "undefined"){ btn.classList.add("hidden"); return; }
+  btn.classList.remove("hidden");
+  const u = L().ui;
+  const enabled = !!(CURRENT_PROFILE && CURRENT_PROFILE.reminder_enabled);
+  btn.textContent = enabled ? u.reminderEnabledBtn : u.reminderEnableBtn;
+  btn.classList.toggle("active", enabled);
+}
+
+async function toggleReminder(){
+  const u = L().ui;
+  const enabled = !!(CURRENT_PROFILE && CURRENT_PROFILE.reminder_enabled);
+  if(enabled){
+    OneSignal.User.PushSubscription.optOut();
+    const { error } = await sb.from("profiles").update({ reminder_enabled: false }).eq("id", CURRENT_USER.id);
+    if(error) console.warn("Tắt nhắc học thất bại:", error.message);
+    CURRENT_PROFILE.reminder_enabled = false;
+    updateReminderButton();
+    return;
+  }
+  await OneSignal.Notifications.requestPermission();
+  if(!OneSignal.User.PushSubscription.optedIn){
+    alert(u.reminderPermissionDenied);
+    return;
+  }
+  const { error } = await sb.from("profiles").update({ reminder_enabled: true }).eq("id", CURRENT_USER.id);
+  if(error) console.warn("Bật nhắc học thất bại:", error.message);
+  CURRENT_PROFILE.reminder_enabled = true;
+  updateReminderButton();
+}
+document.getElementById("btn-header-reminder").addEventListener("click", toggleReminder);
+
 function setActiveTab(){
   document.getElementById("tab-flash").classList.toggle("active", mode==="flash");
   document.getElementById("tab-game").classList.toggle("active", mode==="game");

@@ -84,10 +84,11 @@ section{padding:64px 0;}
 .diff-section .section-head .eyebrow{color:var(--amber);}
 .diff-section .section-head h2{color:#fff;}
 .diff-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;}
-.diff-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:var(--radius);padding:24px 26px;}
+.diff-card{position:relative;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:var(--radius);padding:24px 26px;}
 .diff-card .ic{font-size:26px;margin-bottom:12px;}
 .diff-card h3{margin:0 0 8px;font-size:16px;}
 .diff-card p{margin:0;font-size:13.5px;color:#c6cee6;}
+.diff-card .new-badge{position:absolute;top:-10px;right:20px;background:var(--amber);color:#3a2408;border-radius:999px;padding:3px 10px;font-size:10.5px;font-weight:800;letter-spacing:.03em;}
 
 /* Steps */
 .step-row{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
@@ -205,7 +206,7 @@ footer.site-footer a:hover{color:var(--navy2);text-decoration:underline;}
       <div class="skill-card"><div class="ic">📐</div><h4 data-i18n="skillGrammarName">Ngữ pháp</h4><p data-i18n="skillGrammarDesc">Bài học + luyện tập có chấm điểm</p></div>
       <div class="skill-card"><div class="ic">📖</div><h4 data-i18n="skillReadingName">Đọc hiểu</h4><p data-i18n="skillReadingDesc">Đoạn văn thật + câu hỏi hiểu bài</p></div>
       <div class="skill-card"><div class="ic">🎧</div><h4 data-i18n="skillListeningName">Nghe hiểu</h4><p data-i18n="skillListeningDesc">Nghe audio + trả lời câu hỏi, không xem chữ</p></div>
-      <div class="skill-card"><div class="ic">💬</div><h4 data-i18n="skillSpeakingName">Nói</h4><p data-i18n="skillSpeakingDesc">Hội thoại có kịch bản, luyện phản xạ nói</p></div>
+      <div class="skill-card"><div class="ic">💬</div><h4 data-i18n="skillSpeakingName">Nói</h4><p data-i18n="skillSpeakingDesc">Hội thoại có kịch bản + chấm điểm phát âm bằng AI</p></div>
     </div>
   </div>
 </section>
@@ -218,6 +219,12 @@ footer.site-footer a:hover{color:var(--navy2);text-decoration:underline;}
       <p data-i18n="diffSub">Không cạnh tranh bằng số lượng ngôn ngữ hay trò chơi hoá — iLapra giải quyết đúng nỗi lo thật của phụ huynh và học sinh có mục tiêu rõ ràng.</p>
     </div>
     <div class="diff-grid">
+      <div class="diff-card">
+        <span class="new-badge" data-i18n="newBadge">MỚI</span>
+        <div class="ic">🎤</div>
+        <h3 data-i18n="diff0Title">Chấm phát âm bằng AI</h3>
+        <p data-i18n="diff0Desc">Ghi âm ngay trong app khi học từ vựng hoặc luyện hội thoại — AI so khớp với câu mẫu và chấm điểm phát âm tức thì, biết ngay mình đọc đúng hay sai.</p>
+      </div>
       <div class="diff-card">
         <div class="ic">👪</div>
         <h3 data-i18n="diff1Title">Phụ huynh theo dõi tiến độ thật</h3>
@@ -237,6 +244,12 @@ footer.site-footer a:hover{color:var(--navy2);text-decoration:underline;}
         <div class="ic">📱</div>
         <h3 data-i18n="diff4Title">Dùng ngay trên điện thoại, không cần tải nặng</h3>
         <p data-i18n="diff4Desc">Cài thẳng từ trình duyệt như 1 app thật (thêm vào màn hình chính), không chiếm nhiều dung lượng máy.</p>
+      </div>
+      <div class="diff-card">
+        <span class="new-badge" data-i18n="newBadge">MỚI</span>
+        <div class="ic">🔔</div>
+        <h3 data-i18n="diff5Title">Nhắc học đúng giờ</h3>
+        <p data-i18n="diff5Desc">Thông báo đẩy tận điện thoại/máy tính, không cần cài app riêng — chỉ nhắc khi thật sự chưa học hôm đó, không làm phiền học sinh đã chủ động học rồi.</p>
       </div>
     </div>
   </div>
@@ -301,14 +314,17 @@ const I18N = {
     skillGrammarName: "Ngữ pháp", skillGrammarDesc: "Bài học + luyện tập có chấm điểm",
     skillReadingName: "Đọc hiểu", skillReadingDesc: "Đoạn văn thật + câu hỏi hiểu bài",
     skillListeningName: "Nghe hiểu", skillListeningDesc: "Nghe audio + trả lời câu hỏi, không xem chữ",
-    skillSpeakingName: "Nói", skillSpeakingDesc: "Hội thoại có kịch bản, luyện phản xạ nói",
+    skillSpeakingName: "Nói", skillSpeakingDesc: "Hội thoại có kịch bản + chấm điểm phát âm bằng AI",
     diffEyebrow: "VÌ SAO CHỌN iLapra",
     diffTitle: "Khác với app học ngôn ngữ đại trà",
     diffSub: "Không cạnh tranh bằng số lượng ngôn ngữ hay trò chơi hoá — iLapra giải quyết đúng nỗi lo thật của phụ huynh và học sinh có mục tiêu rõ ràng.",
+    newBadge: "MỚI",
+    diff0Title: "Chấm phát âm bằng AI", diff0Desc: "Ghi âm ngay trong app khi học từ vựng hoặc luyện hội thoại — AI so khớp với câu mẫu và chấm điểm phát âm tức thì, biết ngay mình đọc đúng hay sai.",
     diff1Title: "Phụ huynh theo dõi tiến độ thật", diff1Desc: "Dashboard riêng cho phụ huynh: xem con học ngôn ngữ nào, trình độ nào, điểm bài kiểm tra ra sao, hoạt động gần đây — không cần hỏi lại con mỗi ngày.",
     diff2Title: "Luyện thi SAT chuyên biệt", diff2Desc: "Riêng cho tiếng Anh: bộ câu hỏi Toán SAT theo đúng 4 nhóm kiến thức chính thức của đề thi thật, có hình minh hoạ cho phần hình học và đồ thị.",
     diff3Title: "Nội dung do người dạy thật biên soạn", diff3Desc: "Mọi bài học, câu hỏi đều do đội ngũ iLapra trực tiếp biên soạn và kiểm duyệt — không phải nội dung tự sinh hàng loạt không ai kiểm tra.",
     diff4Title: "Dùng ngay trên điện thoại, không cần tải nặng", diff4Desc: "Cài thẳng từ trình duyệt như 1 app thật (thêm vào màn hình chính), không chiếm nhiều dung lượng máy.",
+    diff5Title: "Nhắc học đúng giờ", diff5Desc: "Thông báo đẩy tận điện thoại/máy tính, không cần cài app riêng — chỉ nhắc khi thật sự chưa học hôm đó, không làm phiền học sinh đã chủ động học rồi.",
     howEyebrow: "BẮT ĐẦU TRONG 3 BƯỚC",
     howTitle: "Không cần hướng dẫn phức tạp",
     step1Title: "Tạo tài khoản", step1Desc: "Đăng ký bằng email, chỉ mất chưa đến 1 phút.",
@@ -342,14 +358,17 @@ const I18N = {
     skillGrammarName: "Grammar", skillGrammarDesc: "Lessons + graded practice",
     skillReadingName: "Reading", skillReadingDesc: "Real passages + comprehension questions",
     skillListeningName: "Listening", skillListeningDesc: "Listen to audio + answer questions, no text shown",
-    skillSpeakingName: "Speaking", skillSpeakingDesc: "Scripted dialogues to build speaking reflexes",
+    skillSpeakingName: "Speaking", skillSpeakingDesc: "Scripted dialogues + AI pronunciation scoring",
     diffEyebrow: "WHY iLapra",
     diffTitle: "Different from mass-market language apps",
     diffSub: "We don't compete on language count or gamification — iLapra solves the real concerns of parents and goal-driven students.",
+    newBadge: "NEW",
+    diff0Title: "AI pronunciation scoring", diff0Desc: "Record yourself right in the app while learning vocabulary or practicing dialogues — AI matches it against the sample sentence and scores your pronunciation instantly.",
     diff1Title: "Parents see real progress", diff1Desc: "A dedicated parent dashboard: which language and level their child is on, quiz scores, recent activity — no need to ask every day.",
     diff2Title: "Dedicated SAT prep", diff2Desc: "For English: a Math SAT question bank matching the 4 official knowledge domains of the real exam, with diagrams for geometry and graph questions.",
     diff3Title: "Content built by real teachers", diff3Desc: "Every lesson and question is written and reviewed by the iLapra team — not mass-generated content nobody checked.",
     diff4Title: "Use it on your phone right away, no heavy install", diff4Desc: "Install straight from the browser like a real app (add to home screen) — takes up almost no storage.",
+    diff5Title: "Timely study reminders", diff5Desc: "Push notifications straight to your phone or computer, no separate app needed — only sent if you genuinely haven't studied that day, so it never nags students who already have.",
     howEyebrow: "GET STARTED IN 3 STEPS",
     howTitle: "No complicated setup",
     step1Title: "Create an account", step1Desc: "Sign up with email — takes less than a minute.",

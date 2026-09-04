@@ -15,5 +15,12 @@
   "assets": {
     "directory": ".",
     "binding": "ASSETS"
+  },
+  // Thông báo nhắc học: 2 mốc giờ cố định 7h sáng và 20h tối GIỜ VIỆT NAM (UTC+7,
+  // không có DST nên khỏi lo lệch mùa) = 00:00 và 13:00 UTC. Cloudflare Workers
+  // Builds tự đọc mục này khi deploy (push GitHub) — không cần thao tác tay thêm
+  // Cron Trigger trong Dashboard.
+  "triggers": {
+    "crons": ["0 0 * * *", "0 13 * * *"]
   }
 }
