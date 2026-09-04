@@ -226,7 +226,7 @@ async function buildStudentBlock(studentId, studentEmail, dateStr){
   const timelineItems = [
     ...(dayActivity||[]).map(a=>({ t: a.created_at, kind: "activity", data: a })),
     ...(dayQuizzes||[]).map(q=>({ t: q.created_at, kind: "quiz", data: q }))
-  ].sort((a,b)=> new Date(a.t) - new Date(b.t));
+  ].sort((a,b)=> new Date(b.t) - new Date(a.t)); // mới nhất trước, khớp thứ tự với "Kết quả học tập" ở trên
 
   const dayTotalCorrect = (dayQuizzes||[]).reduce((s,r)=>s+r.correct_count, 0);
   const dayTotalQuestions = (dayQuizzes||[]).reduce((s,r)=>s+r.total_count, 0);
