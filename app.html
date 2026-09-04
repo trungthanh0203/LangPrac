@@ -150,6 +150,9 @@ header.top{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#ff
 .config-warning{max-width:600px;margin:60px auto;background:var(--amber-light);color:#8a5a15;padding:20px 24px;border-radius:10px;font-size:13px;line-height:1.6;}
 .empty-msg{text-align:center;color:var(--text-3);padding:50px 20px;}
 footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 0 4px;}
+.reminder-setting{text-align:center;margin-top:14px;}
+.reminder-setting label{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;color:var(--text-2);cursor:pointer;}
+.reminder-setting input[type="checkbox"]{width:18px;height:18px;cursor:pointer;accent-color:var(--navy2);}
 
 /* Grammar */
 .grammar-lesson{margin-bottom:8px;}
@@ -317,7 +320,6 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
       <div class="header-voice">
         <button id="btn-logout">Đăng xuất</button>
         <button id="btn-header-stats"></button>
-        <button id="btn-header-reminder" class="hidden"></button>
       </div>
     </div>
   </header>
@@ -357,6 +359,13 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
     <div class="loading-msg">…</div>
   </div>
 
+  <div class="reminder-setting hidden" id="reminder-setting">
+    <label>
+      <input type="checkbox" id="chk-reminder">
+      <span id="reminder-setting-label"></span>
+    </label>
+  </div>
+
   <footer class="foot" id="footer-text"></footer>
 </div>
 
@@ -385,7 +394,7 @@ window.OneSignalDeferred = window.OneSignalDeferred || [];
 if(ONESIGNAL_CONFIGURED){
   OneSignalDeferred.push(async (OneSignal) => {
     await OneSignal.init({ appId: ONESIGNAL_APP_ID, serviceWorkerPath: "sw.js", serviceWorkerParam: { scope: "/" } });
-    updateReminderButton(); // SDK có thể tải xong SAU khi enterApp() đã chạy — cập nhật lại nút cho chắc
+    updateReminderUI(); // SDK có thể tải xong SAU khi enterApp() đã chạy — cập nhật lại checkbox cho chắc
   });
 }
 
@@ -632,7 +641,7 @@ function applyLanguageUI(){
   document.getElementById("tab-practice").textContent = u.tabPractice;
   document.getElementById("tab-review").textContent = u.tabReview;
   document.getElementById("btn-header-stats").textContent = u.tabStats;
-  updateReminderButton();
+  updateReminderUI();
   document.getElementById("opt-word").textContent = u.optWord;
   document.getElementById("opt-sentence").textContent = u.optSentence;
   document.getElementById("opt-kind-writing").textContent = u.kindWriting;
@@ -674,43 +683,42 @@ document.getElementById("tab-review").addEventListener("click", ()=>{ mode="revi
 document.getElementById("btn-header-stats").addEventListener("click", ()=>{ mode="stats"; setActiveTab(); loadStats(); });
 
 // ============================================================
-// Thông báo nhắc học (push qua OneSignal) — nút bật/tắt trong header. Chỉ hiện
-// nếu ONESIGNAL_CONFIGURED (đã điền App ID) và SDK tải thành công (mất mạng CDN/
-// trình duyệt chặn thì tự ẩn, không ảnh hưởng phần còn lại của app).
+// Thông báo nhắc học (push qua OneSignal) — checkbox ở cuối trang (dưới content-area,
+// trên footer). Chỉ hiện nếu ONESIGNAL_CONFIGURED (đã điền App ID) và SDK tải thành
+// công (mất mạng CDN/trình duyệt chặn thì tự ẩn, không ảnh hưởng phần còn lại của app).
 // ============================================================
-function updateReminderButton(){
-  const btn = document.getElementById("btn-header-reminder");
+function updateReminderUI(){
+  const wrap = document.getElementById("reminder-setting");
   if(!CURRENT_USER || !currentLanguage) return; // chưa đăng nhập xong / chưa chọn ngôn ngữ, gọi lại sau trong enterApp()
-  if(!ONESIGNAL_CONFIGURED || typeof OneSignal === "undefined"){ btn.classList.add("hidden"); return; }
-  btn.classList.remove("hidden");
+  if(!ONESIGNAL_CONFIGURED || typeof OneSignal === "undefined"){ wrap.classList.add("hidden"); return; }
+  wrap.classList.remove("hidden");
   const u = L().ui;
   const enabled = !!(CURRENT_PROFILE && CURRENT_PROFILE.reminder_enabled);
-  btn.textContent = enabled ? u.reminderEnabledBtn : u.reminderEnableBtn;
-  btn.classList.toggle("active", enabled);
+  document.getElementById("chk-reminder").checked = enabled;
+  document.getElementById("reminder-setting-label").textContent = u.reminderCheckboxLabel;
 }
 
-async function toggleReminder(){
+async function onReminderCheckboxChange(e){
   const u = L().ui;
-  const enabled = !!(CURRENT_PROFILE && CURRENT_PROFILE.reminder_enabled);
-  if(enabled){
+  const wantsEnabled = e.target.checked;
+  if(!wantsEnabled){
     OneSignal.User.PushSubscription.optOut();
     const { error } = await sb.from("profiles").update({ reminder_enabled: false }).eq("id", CURRENT_USER.id);
     if(error) console.warn("Tắt nhắc học thất bại:", error.message);
     CURRENT_PROFILE.reminder_enabled = false;
-    updateReminderButton();
     return;
   }
   await OneSignal.Notifications.requestPermission();
   if(!OneSignal.User.PushSubscription.optedIn){
     alert(u.reminderPermissionDenied);
+    e.target.checked = false; // xin quyền thất bại — trả checkbox về trạng thái tắt
     return;
   }
   const { error } = await sb.from("profiles").update({ reminder_enabled: true }).eq("id", CURRENT_USER.id);
   if(error) console.warn("Bật nhắc học thất bại:", error.message);
   CURRENT_PROFILE.reminder_enabled = true;
-  updateReminderButton();
 }
-document.getElementById("btn-header-reminder").addEventListener("click", toggleReminder);
+document.getElementById("chk-reminder").addEventListener("change", onReminderCheckboxChange);
 
 function setActiveTab(){
   document.getElementById("tab-flash").classList.toggle("active", mode==="flash");

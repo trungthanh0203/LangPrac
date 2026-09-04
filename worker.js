@@ -112,7 +112,7 @@ async function handleCreateParent(request, env) {
 }
 
 // Thông báo nhắc học — chạy theo lịch (xem "triggers.crons" trong wrangler.jsonc,
-// 2 mốc giờ 7h/20h giờ Việt Nam). Chỉ nhắc học sinh đã bật `profiles.reminder_enabled`
+// 1 mốc giờ 20h tối giờ Việt Nam). Chỉ nhắc học sinh đã bật `profiles.reminder_enabled`
 // VÀ chưa có hoạt động gì trong ngày hôm đó (RPC get_users_needing_reminder(), xem
 // migration 34_migration_add_reminder_preference.sql). Gửi push qua OneSignal REST
 // API thay vì tự viết Web Push/VAPID — xem lý do trong tài liệu bàn giao mục nhắc học.

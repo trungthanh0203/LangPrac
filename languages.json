@@ -114,8 +114,7 @@
         "pronunciationRetry": "🔁 Nochmal versuchen",
         "pronunciationMicError": "Mikrofon nicht verfügbar oder keine Berechtigung.",
         "pronunciationTranscriptLabel": "Erkannt: ",
-        "reminderEnableBtn": "🔕 Erinnerung aktivieren",
-        "reminderEnabledBtn": "🔔 Erinnerung an",
+        "reminderCheckboxLabel": "🔔 Tägliche Lernerinnerung um 20 Uhr erhalten",
         "reminderPermissionDenied": "Der Browser hat die Benachrichtigungsberechtigung blockiert. Bitte in den Browsereinstellungen erlauben."
       },
       "adminLabel": "🇩🇪 Tiếng Đức"
@@ -221,8 +220,7 @@
         "pronunciationRetry": "🔁 Try again",
         "pronunciationMicError": "Microphone unavailable or permission denied.",
         "pronunciationTranscriptLabel": "Heard: ",
-        "reminderEnableBtn": "🔕 Enable reminders",
-        "reminderEnabledBtn": "🔔 Reminders on",
+        "reminderCheckboxLabel": "🔔 Get a daily study reminder at 8pm",
         "reminderPermissionDenied": "Your browser blocked notification permission. Please allow it in your browser settings."
       },
       "adminLabel": "🇬🇧 Tiếng Anh"
@@ -332,8 +330,7 @@
         "pronunciationRetry": "🔁 再试一次",
         "pronunciationMicError": "麦克风不可用或未获得权限。",
         "pronunciationTranscriptLabel": "识别结果：",
-        "reminderEnableBtn": "🔕 开启学习提醒",
-        "reminderEnabledBtn": "🔔 提醒已开启",
+        "reminderCheckboxLabel": "🔔 开启每日学习提醒（晚上8点）",
         "reminderPermissionDenied": "浏览器已阻止通知权限，请到浏览器设置中允许通知。"
       },
       "adminLabel": "🇨🇳 Tiếng Trung (HSK)"
