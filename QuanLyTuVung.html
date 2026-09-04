@@ -2129,6 +2129,7 @@ function mathFieldForm(record){
     <div class="field-row"><label>Các lựa chọn (cách nhau bởi dấu phẩy — chỉ cần cho trắc nghiệm)</label><input data-f="options" value="${(r.options||'').replace(/"/g,'&quot;')}"></div>
     <div class="field-row"><label>Đáp án đúng</label><input data-f="correct_answer" value="${(r.correct_answer||'').replace(/"/g,'&quot;')}"></div>
     <div class="field-row"><label>Giải thích (không bắt buộc)</label><input data-f="explanation" value="${(r.explanation||'').replace(/"/g,'&quot;')}"></div>
+    <div class="field-row"><label>Hình minh hoạ SVG (không bắt buộc — chỉ dùng cho câu Hình học/đồ thị)</label><textarea data-f="figure_svg" rows="4" style="width:100%;font-family:monospace;font-size:11px;">${escHtmlAdmin(r.figure_svg||"")}</textarea></div>
     <div class="field-row"><label>Thứ tự</label><input data-f="order_index" type="number" value="${r.order_index||0}"></div>
   `;
 }

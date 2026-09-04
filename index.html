@@ -150,6 +150,8 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
 .exercise-item.correct{border-color:var(--green);background:var(--green-light);}
 .exercise-item.incorrect{border-color:var(--red);background:var(--red-light);}
 .exercise-question{font-weight:700;margin-bottom:10px;font-size:13.5px;}
+.exercise-figure{display:flex;justify-content:center;margin-bottom:10px;}
+.exercise-figure svg{background:#fff;border:1px solid var(--border);border-radius:8px;padding:6px;}
 .exercise-option{display:block;padding:5px 0;cursor:pointer;font-size:13.5px;}
 .exercise-option input{margin-right:8px;}
 .exercise-input{width:100%;max-width:320px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13.5px;font-family:inherit;}
@@ -1122,9 +1124,14 @@ function renderPractice(items, preHtml, nextLabel){
       bodyHtml = `<input type="text" class="exercise-input" id="input-${ex.id}" placeholder="${u.fillPlaceholder}">`;
     }
 
+    // figure_svg chỉ có ở câu Toán Hình học/đồ thị, nội dung do admin tự soạn
+    // (không phải input người dùng) nên chèn thẳng, không escHtml để SVG render được.
+    const figureHtml = ex.figure_svg ? `<div class="exercise-figure">${ex.figure_svg}</div>` : "";
+
     return `
       <div class="exercise-item" id="exercise-${ex.id}">
         <div class="exercise-question">${idx+1}. ${questionLabel}</div>
+        ${figureHtml}
         <div class="exercise-body">${bodyHtml}</div>
         <div class="exercise-feedback" id="feedback-${ex.id}"></div>
       </div>`;
