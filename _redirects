@@ -1,0 +1,6 @@
+# Cloudflare Pages: trang chủ "/" hiện trang giới thiệu (landing.html) thay vì
+# app học trực tiếp — người dùng mới nên thấy giới thiệu trước khi vào app.
+# KHÔNG đổi /index.html — app.html PWA (manifest.json start_url) và các link
+# "Vào học ngay" trong landing.html vẫn trỏ thẳng /index.html như cũ, không đổi
+# hành vi cho người dùng đã cài app.
+/  /landing.html  200
