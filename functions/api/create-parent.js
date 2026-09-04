@@ -2,7 +2,7 @@
 //
 // Tạo 1 tài khoản Supabase Auth (email+password) cho phụ huynh. Việc này cần
 // "service_role key" của Supabase (bỏ qua mọi RLS), tuyệt đối không được nhúng
-// vào file tĩnh (index.html/QuanLyTuVung.html) vì ai cũng đọc được code frontend.
+// vào file tĩnh (app.html/QuanLyTuVung.html) vì ai cũng đọc được code frontend.
 // Đây là lý do hàm này tồn tại: chạy trên server của Cloudflare, giữ key bí mật
 // trong biến môi trường (secret) chứ không trong code.
 //

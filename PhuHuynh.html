@@ -97,7 +97,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_8Ro-jEFQqFh7EfbXPfzWaw_V1xrkoyU";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Tên/cờ hiển thị cho từng ngôn ngữ khi liệt kê điểm — nạp từ languages.json
-// (giống index.html) để tự nhận ngôn ngữ mới nếu sau này được thêm vào đó.
+// (giống app.html) để tự nhận ngôn ngữ mới nếu sau này được thêm vào đó.
 let LANGS = {};
 async function loadLangsConfig(){
   const res = await fetch("languages.json");
@@ -178,7 +178,7 @@ async function loadDashboard(parentId){
   area.innerHTML = blocks.join("");
 }
 
-// Giới hạn 50 dòng, khớp với index.html's loadStats() (tab "Thống kê" của học sinh)
+// Giới hạn 50 dòng, khớp với app.html's loadStats() (tab "Thống kê" của học sinh)
 // để phụ huynh và học sinh nhìn thấy cùng 1 con số trung bình trên cùng lịch sử.
 function escHtml(s){
   return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");

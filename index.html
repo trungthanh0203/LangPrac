@@ -3,1554 +3,385 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>iLapra — Tôi luyện ngoại ngữ</title>
-
-<!-- PWA -->
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0a2472" id="meta-theme-color">
+<title>iLapra — Tôi luyện ngoại ngữ · I practice languages</title>
+<meta name="description" content="iLapra — học từ vựng, ngữ pháp, đọc, nghe, nói cho tiếng Đức, tiếng Anh (kể cả luyện thi SAT) và tiếng Trung. Phụ huynh theo dõi được tiến độ học thật của con.">
 <link rel="icon" href="icons/icon-app-192.png">
-<link rel="apple-touch-icon" href="icons/apple-touch-icon-app.png">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="iLapra" id="meta-apple-title">
-
-<!-- Mở kết nối sớm tới CDN + Supabase để giảm độ trễ khi tải script/gọi API thật -->
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<link rel="preconnect" href="https://vuykuqmebmainyhiotfx.supabase.co" crossorigin>
+<meta name="theme-color" content="#0a2472">
 
 <style>
 :root{
-  --navy:#0a2472; --navy2:#c8102e; --steel:#0a2472; --teal:#0a2472; --teal-light:#e7ecfa;
-  --word-font:"Trebuchet MS","Segoe UI",Arial,sans-serif;
-  --amber:#f2994a; --amber-light:#fdf1e6; --red:#d64545; --red-light:#fdeaea;
-  --green:#2f9e44; --green-light:#eaf7ec;
+  --navy:#0a2472; --navy2:#c8102e; --amber:#f2994a; --amber-light:#fdf1e6;
   --bg-page:#f2f4f7; --bg-card:#ffffff; --border:#e1e5eb;
   --text-1:#1a2332; --text-2:#5b6472; --text-3:#8a92a0;
-  --radius:14px; --gap:16px; --shadow:0 1px 3px rgba(20,42,77,0.08);
+  --radius:14px; --shadow:0 1px 3px rgba(20,42,77,0.08);
 }
 *{box-sizing:border-box;}
-body{margin:0;font-family:Arial,"Segoe UI",sans-serif;background:var(--bg-page);color:var(--text-1);font-size:14px;}
-.wrap{max-width:900px;margin:0 auto;padding:20px;}
-.hidden{display:none !important;}
+body{margin:0;font-family:Arial,"Segoe UI",sans-serif;background:var(--bg-page);color:var(--text-1);line-height:1.5;}
+.wrap{max-width:1040px;margin:0 auto;padding:0 20px;}
+a{color:inherit;}
+img{max-width:100%;}
 
-/* ---------- Đăng nhập / Đăng ký ---------- */
-.auth-wrap{max-width:420px;margin:60px auto;padding:20px;}
-.auth-card{background:var(--bg-card);border-radius:var(--radius);padding:28px 26px;box-shadow:var(--shadow);}
-.auth-card h2{margin:0;text-align:center;color:var(--navy2);font-size:19px;}
-.auth-tagline{text-align:center;font-size:12px;color:var(--text-2);font-style:italic;margin:2px 0 18px;}
-.auth-tabs{display:flex;gap:8px;margin-bottom:18px;}
-.auth-tabs button{flex:1;padding:10px;border-radius:8px;border:2px solid var(--border);background:#fff;font-size:13.5px;font-weight:700;color:var(--text-2);cursor:pointer;}
-.auth-tabs button.active{border-color:var(--navy2);color:var(--navy2);background:var(--teal-light);}
-.auth-field{margin-bottom:12px;}
-.auth-field label{display:block;font-size:12.5px;color:var(--text-2);margin-bottom:5px;}
-.auth-field input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;}
-.auth-submit{width:100%;padding:11px;border:none;border-radius:8px;background:var(--navy2);color:#fff;font-size:14.5px;font-weight:700;cursor:pointer;margin-top:6px;}
-.auth-submit:disabled{opacity:.6;cursor:not-allowed;}
-.auth-msg{margin-top:12px;font-size:12.5px;padding:10px 12px;border-radius:8px;display:none;}
-.auth-msg.err{display:block;background:var(--red-light);color:#a33;}
-.auth-msg.ok{display:block;background:var(--green-light);color:#2f7d3a;}
-.auth-legal-links{margin-top:16px;text-align:center;font-size:11.5px;color:var(--text-3);}
-.auth-legal-links a{color:var(--text-2);}
+/* ---------- Header ---------- */
+header.top-nav{background:#fff;border-bottom:1px solid var(--border);}
+.top-nav .wrap{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;gap:16px;flex-wrap:wrap;}
+.brand-block{display:flex;align-items:center;gap:10px;}
+.brand-block img{width:32px;height:32px;border-radius:8px;}
+.brand-text{display:flex;flex-direction:column;line-height:1.2;}
+.brand-text .name{font-weight:800;color:var(--navy);font-size:16px;}
+.brand-text .tagline{font-size:11px;color:var(--text-2);font-style:italic;}
+.nav-right{display:flex;align-items:center;gap:14px;}
+.lang-switch{display:flex;border:1px solid var(--border);border-radius:999px;overflow:hidden;}
+.lang-switch button{border:none;background:#fff;padding:6px 12px;font-size:12px;font-weight:700;color:var(--text-2);cursor:pointer;}
+.lang-switch button.active{background:var(--navy);color:#fff;}
+.nav-cta{display:flex;gap:10px;}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 18px;border-radius:999px;font-weight:700;font-size:13.5px;text-decoration:none;cursor:pointer;border:2px solid transparent;white-space:nowrap;}
+.btn-primary{background:var(--navy2);color:#fff;}
+.btn-primary:hover{background:#a80d26;}
+.btn-outline{background:#fff;color:var(--navy2);border-color:var(--navy2);}
+.btn-outline:hover{background:var(--amber-light);}
+.btn-lg{padding:14px 28px;font-size:15px;}
 
-.install-guide{max-width:920px;margin:0 auto 50px;padding:0 20px;}
-.install-guide-title{text-align:center;color:var(--navy2);font-size:16px;margin:0 0 6px;}
-.install-contact{text-align:center;color:var(--text-2);font-size:12.5px;margin:0 0 16px;}
-.install-guide-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
-.install-col{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:18px 16px;box-shadow:var(--shadow);}
-.install-icon{font-size:24px;margin-bottom:6px;}
-.install-col h4{margin:0 0 10px;font-size:14px;color:var(--navy2);}
-.install-col ol{margin:0;padding-left:20px;font-size:12.5px;color:var(--text-1);line-height:1.6;}
-.install-col li{margin-bottom:5px;}
-.install-result{font-size:12px;color:var(--text-2);font-style:italic;margin:8px 0 0;}
-@media (max-width:720px){
-  .install-guide-grid{grid-template-columns:1fr;}
+/* ---------- Hero ---------- */
+.hero{background:linear-gradient(150deg,var(--navy),#132e63);color:#fff;padding:64px 0 76px;}
+.hero .wrap{display:grid;grid-template-columns:1.15fr 1fr;gap:40px;align-items:center;}
+.hero .kicker{display:inline-block;background:rgba(255,255,255,.12);border-radius:999px;padding:6px 14px;font-size:12.5px;font-weight:700;letter-spacing:.02em;margin-bottom:18px;}
+.hero h1{font-size:clamp(28px,4.2vw,42px);line-height:1.18;margin:0 0 16px;font-weight:800;}
+.hero h1 em{color:var(--amber);font-style:normal;}
+.hero p.dek{font-size:16px;color:#dbe2f2;max-width:480px;margin:0 0 26px;}
+.hero .cta-row{display:flex;gap:12px;flex-wrap:wrap;}
+.hero-visual{background:#fff;border-radius:18px;padding:20px;box-shadow:0 20px 50px rgba(0,0,0,.25);}
+.lang-pill-row{display:flex;flex-direction:column;gap:10px;}
+.lang-pill{display:flex;align-items:center;gap:12px;background:var(--bg-page);border-radius:12px;padding:12px 14px;}
+.lang-pill .flag{font-size:22px;}
+.lang-pill .name{font-weight:800;color:var(--navy);font-size:14px;}
+.lang-pill .levels{font-size:12px;color:var(--text-2);}
+
+/* ---------- Sections ---------- */
+section{padding:64px 0;}
+.section-head{text-align:center;max-width:600px;margin:0 auto 40px;}
+.section-head .eyebrow{color:var(--navy2);font-weight:800;font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;}
+.section-head h2{font-size:clamp(22px,3vw,30px);margin:0 0 10px;color:var(--navy);}
+.section-head p{color:var(--text-2);font-size:15px;margin:0;}
+
+/* Language cards */
+.card-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+.lang-card{background:var(--bg-card);border-radius:var(--radius);box-shadow:var(--shadow);padding:26px 22px;text-align:center;}
+.lang-card .flag-big{font-size:38px;margin-bottom:12px;}
+.lang-card h3{margin:0 0 8px;color:var(--navy);font-size:17px;}
+.lang-card p{margin:0;color:var(--text-2);font-size:13.5px;}
+.lang-card .badge{display:inline-block;margin-top:12px;background:var(--amber-light);color:#8a5a1f;border-radius:999px;padding:5px 12px;font-size:11.5px;font-weight:700;}
+
+/* Skills grid */
+.skill-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;}
+.skill-card{background:var(--bg-card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px 16px;text-align:center;}
+.skill-card .ic{font-size:28px;margin-bottom:10px;}
+.skill-card h4{margin:0 0 6px;font-size:14px;color:var(--navy);}
+.skill-card p{margin:0;font-size:12px;color:var(--text-2);}
+
+/* Differentiators */
+.diff-section{background:var(--navy);color:#fff;}
+.diff-section .section-head p{color:#c6cee6;}
+.diff-section .section-head .eyebrow{color:var(--amber);}
+.diff-section .section-head h2{color:#fff;}
+.diff-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;}
+.diff-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:var(--radius);padding:24px 26px;}
+.diff-card .ic{font-size:26px;margin-bottom:12px;}
+.diff-card h3{margin:0 0 8px;font-size:16px;}
+.diff-card p{margin:0;font-size:13.5px;color:#c6cee6;}
+
+/* Steps */
+.step-row{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
+.step{text-align:center;position:relative;}
+.step .num{width:40px;height:40px;border-radius:50%;background:var(--navy2);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:16px;}
+.step h4{margin:0 0 8px;font-size:15px;color:var(--navy);}
+.step p{margin:0;font-size:13px;color:var(--text-2);}
+
+/* Final CTA */
+.final-cta{background:var(--amber-light);border-radius:var(--radius);padding:44px 30px;text-align:center;margin:0 20px;}
+.final-cta h2{margin:0 0 10px;color:var(--navy);font-size:24px;}
+.final-cta p{margin:0 0 22px;color:var(--text-2);font-size:14.5px;}
+
+/* Footer */
+footer.site-footer{border-top:1px solid var(--border);padding:28px 0;margin-top:20px;}
+footer.site-footer .wrap{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--text-3);}
+footer.site-footer a{color:var(--text-2);text-decoration:none;margin-left:16px;}
+footer.site-footer a:hover{color:var(--navy2);text-decoration:underline;}
+
+@media (max-width:820px){
+  .hero .wrap{grid-template-columns:1fr;}
+  .hero-visual{order:-1;}
+  .card-grid-3{grid-template-columns:1fr;}
+  .skill-grid{grid-template-columns:repeat(2,1fr);}
+  .diff-grid{grid-template-columns:1fr;}
+  .step-row{grid-template-columns:1fr;}
+  .nav-cta .btn:not(.btn-primary){display:none;}
 }
-
-/* ---------- Thanh người dùng ---------- */
-.header-grid{display:flex;align-items:center;gap:12px;}
-.header-logo{flex:0 0 auto;display:flex;align-items:center;}
-.header-logo img{height:78px;width:auto;max-width:160px;display:block;border-radius:8px;object-fit:contain;}
-.header-center{flex:1 1 auto;min-width:0;}
-.header-voice{flex:0 0 auto;display:flex;flex-direction:column;gap:6px;}
-.header-voice button{padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.4);font-size:12px;background:rgba(255,255,255,0.15);font-weight:700;color:#fff;cursor:pointer;white-space:nowrap;}
-.header-voice button:hover{background:rgba(255,255,255,0.25);}
-.header-voice button.active{background:#fff;color:var(--navy2);border-color:#fff;}
-@media (max-width:600px){
-  .header-logo img{height:52px;max-width:100px;}
-  .header-grid{gap:8px;}
-  .header-voice button{font-size:11px;padding:5px 6px;}
-}
-
-.user-bar{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;font-size:12.5px;}
-.user-bar .user-email{color:#fff;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;opacity:.95;}
-.user-bar .sep{color:rgba(255,255,255,0.5);}
-.user-bar select{padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.4);font-size:12.5px;background:rgba(255,255,255,0.15);font-weight:700;color:#fff;}
-.user-bar select option{color:#1a2332;background:#fff;}
-
-header.top{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#fff;border-radius:var(--radius);padding:18px 24px 16px;margin-bottom:10px;text-align:center;}
-.flag-strip{height:6px;max-width:180px;margin:0 auto var(--gap);border-radius:3px;overflow:hidden;border:1px solid var(--border);}
-
-.mode-tabs{display:flex;gap:10px;margin-bottom:var(--gap);}
-.mode-tabs button{flex:1;padding:12px;border-radius:10px;border:2px solid var(--border);background:var(--bg-card);font-size:14px;font-weight:700;color:var(--text-2);cursor:pointer;}
-.mode-tabs button.active{border-color:var(--teal);color:var(--navy2);background:var(--teal-light);}
-
-.selectors{display:flex;gap:10px;margin-bottom:var(--gap);flex-wrap:wrap;justify-content:center;}
-.selectors select{padding:9px 14px;border-radius:8px;border:1px solid var(--border);font-size:13.5px;background:#fff;}
-
-.card{background:var(--bg-card);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);}
-.loading-msg{text-align:center;padding:60px 20px;color:var(--text-3);}
-
-/* Flashcard */
-.flash-wrap{text-align:center;}
-.flash-progress{font-size:12.5px;color:var(--text-3);margin-bottom:14px;}
-.flash-card{background:linear-gradient(135deg,#f7f9fc,#eef2f8);border-radius:16px;padding:40px 30px;margin-bottom:20px;min-height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;}
-.flash-cat{font-size:11.5px;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px;}
-.flash-de{font-size:32px;font-weight:800;color:var(--navy2);font-family:var(--word-font);}
-.flash-phonetic{font-size:15px;color:var(--text-3);font-style:italic;}
-.flash-speak{background:var(--navy2);color:#fff;border:none;width:42px;height:42px;border-radius:50%;font-size:18px;cursor:pointer;margin-top:6px;}
-.flash-speak:hover{opacity:.85;}
-.flash-meanings{margin-top:14px;font-size:16px;}
-.flash-meanings .vi{font-weight:700;color:var(--text-1);}
-.flash-meanings .en{color:var(--text-2);font-size:13.5px;margin-top:4px;}
-.flash-nav{display:flex;justify-content:center;align-items:center;gap:20px;}
-.flash-nav button{background:var(--navy2);color:#fff;border:none;width:48px;height:48px;border-radius:50%;font-size:20px;cursor:pointer;}
-.flash-nav button:disabled{opacity:.3;cursor:not-allowed;}
-.flash-nav .counter{font-size:13px;color:var(--text-2);min-width:70px;}
-
-/* Game */
-.game-progress{text-align:center;font-size:12.5px;color:var(--text-3);margin-bottom:14px;}
-.game-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-.game-item{background:#fff;border:2px solid var(--border);border-radius:10px;padding:14px 16px;font-size:14px;cursor:pointer;margin-bottom:10px;transition:all .15s;}
-.game-item-phonetic{font-size:11px;color:var(--text-3);font-style:italic;margin-top:3px;font-weight:400;}
-.game-item:hover{border-color:var(--teal);}
-.game-item.selected{border-color:var(--steel);background:var(--teal-light);}
-.game-item.matched{border-color:var(--green);background:var(--green-light);color:var(--green);cursor:default;font-weight:600;}
-.game-item.matched:hover{border-color:var(--green);}
-.game-item.wrong{border-color:var(--red);background:var(--red-light);animation:shake .3s;}
-@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-4px);}75%{transform:translateX(4px);}}
-.game-complete{text-align:center;padding:30px;}
-.game-complete h3{color:var(--green);font-size:20px;}
-.btn{padding:9px 18px;border-radius:8px;border:none;font-size:13.5px;font-weight:700;cursor:pointer;background:var(--teal);color:#fff;}
-.config-warning{max-width:600px;margin:60px auto;background:var(--amber-light);color:#8a5a15;padding:20px 24px;border-radius:10px;font-size:13px;line-height:1.6;}
-.empty-msg{text-align:center;color:var(--text-3);padding:50px 20px;}
-footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 0 4px;}
-
-/* Grammar */
-.grammar-lesson{margin-bottom:8px;}
-.grammar-title{font-size:19px;margin:0 0 16px;color:var(--navy2);}
-.grammar-section{margin-bottom:18px;}
-.grammar-section-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
-.grammar-section-num{flex-shrink:0;width:26px;height:26px;border-radius:50%;background:var(--navy2);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;}
-.grammar-section-title{font-size:15px;font-weight:700;color:var(--navy2);}
-.grammar-section-body{padding-left:36px;}
-.grammar-section-body p{margin:0 0 10px;line-height:1.65;color:var(--text-1);}
-.grammar-section-body ul{margin:0 0 10px 20px;padding:0;line-height:1.65;}
-.grammar-section-body li{margin-bottom:4px;}
-.exercise-section{border-top:1px solid var(--border);margin-top:22px;padding-top:20px;}
-.exercise-heading{font-size:16px;margin:0 0 14px;color:var(--text-1);}
-.exercise-item{background:var(--bg-page);border:2px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:12px;}
-.exercise-item.correct{border-color:var(--green);background:var(--green-light);}
-.exercise-item.incorrect{border-color:var(--red);background:var(--red-light);}
-.exercise-question{font-weight:700;margin-bottom:10px;font-size:13.5px;}
-.exercise-figure{display:flex;justify-content:center;margin-bottom:10px;}
-.exercise-figure svg{background:#fff;border:1px solid var(--border);border-radius:8px;padding:6px;}
-.exercise-option{display:block;padding:5px 0;cursor:pointer;font-size:13.5px;}
-.exercise-option input{margin-right:8px;}
-.exercise-input{width:100%;max-width:320px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13.5px;font-family:inherit;}
-.exercise-feedback{margin-top:8px;font-size:12.5px;font-weight:600;min-height:1em;}
-.exercise-item.correct .exercise-feedback{color:var(--green);}
-.exercise-item.incorrect .exercise-feedback{color:var(--red);}
-.order-answer-row{min-height:44px;border:2px dashed var(--border);border-radius:8px;padding:8px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
-.order-bank-row{display:flex;flex-wrap:wrap;gap:6px;}
-.order-chip{padding:7px 12px;border-radius:16px;border:1px solid var(--border);background:#fff;font-size:13px;cursor:pointer;font-family:inherit;}
-.order-chip:hover{border-color:var(--teal);}
-.order-chip-selected{background:var(--teal-light);border-color:var(--teal);}
-.order-placeholder{color:var(--text-3);font-size:12.5px;font-style:italic;}
-.grammar-score{margin-top:16px;font-weight:700;font-size:15px;text-align:center;color:var(--navy2);}
-
-/* Thống kê */
-.stats-summary{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px;}
-.stats-summary-item{flex:1;min-width:120px;background:var(--teal-light);border-radius:12px;padding:14px;text-align:center;}
-.stats-summary-item b{display:block;font-size:22px;color:var(--navy2);}
-.stats-row{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 4px;border-bottom:1px solid var(--border);font-size:13.5px;}
-.stats-row-score{font-weight:700;color:var(--navy2);}
-
-/* Đọc & Nói - đoạn văn */
-.reading-passage{background:var(--bg-page);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:18px;}
-.reading-passage-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
-.reading-passage-title{font-size:16px;margin:0;color:var(--navy2);}
-.reading-passage-text{line-height:1.9;font-size:14.5px;color:var(--text-1);}
-.passage-sentence{cursor:pointer;border-radius:4px;padding:1px 2px;}
-.passage-sentence:hover{background:var(--teal-light);}
-.passage-sentence.playing{background:var(--teal-light);font-weight:700;}
-.listening-sentence-buttons{display:flex;flex-wrap:wrap;gap:8px;}
-.listening-sentence-btn{padding:7px 12px;border-radius:16px;border:1px solid var(--border);background:#fff;font-size:13px;cursor:pointer;font-family:inherit;}
-.listening-sentence-btn:hover{border-color:var(--teal);}
-.listening-sentence-btn.playing{background:var(--teal-light);border-color:var(--teal);font-weight:700;}
-
-/* Nói - hội thoại */
-.role-picker{background:var(--bg-page);border:1px solid var(--border);border-radius:12px;padding:16px 18px;}
-.dialogue-wrap .reading-passage-title{margin-bottom:14px;}
-.dialogue-line{border:2px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:10px;max-width:85%;opacity:0.5;}
-.dialogue-line.dialogue-current{opacity:1;border-color:var(--teal);}
-.dialogue-line.dialogue-done{opacity:0.75;}
-.dialogue-line.dialogue-app{background:var(--bg-page);margin-right:auto;}
-.dialogue-line.dialogue-user{background:var(--teal-light);margin-left:auto;}
-.dialogue-speaker{font-size:11.5px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;}
-.dialogue-text{font-size:14.5px;line-height:1.5;color:var(--text-1);}
-.dialogue-your-turn{margin-top:8px;font-size:12.5px;font-weight:600;color:var(--navy2);}
-.dialogue-line .btn{margin-top:10px;}
 </style>
 </head>
 <body>
 
-<div class="wrap" id="config-warning" style="display:none;">
-  <div class="config-warning"><b>⚠️ Supabase chưa được cấu hình.</b> Điền SUPABASE_URL / SUPABASE_ANON_KEY ở đầu thẻ &lt;script&gt; trong file này.</div>
-</div>
-
-<!-- ================= MÀN HÌNH ĐĂNG NHẬP / ĐĂNG KÝ ================= -->
-<div class="auth-wrap hidden" id="auth-screen">
-  <div class="auth-card">
-    <h2>iLapra</h2>
-    <div class="auth-tagline">Tôi luyện ngoại ngữ</div>
-    <div class="auth-tabs">
-      <button id="auth-tab-login" class="active">Đăng nhập</button>
-      <button id="auth-tab-register">Đăng ký</button>
-    </div>
-
-    <form id="login-form">
-      <div class="auth-field"><label>Email</label><input type="email" id="login-email" required autocomplete="email"></div>
-      <div class="auth-field"><label>Mật khẩu</label><input type="password" id="login-password" required autocomplete="current-password"></div>
-      <button type="submit" class="auth-submit" id="login-submit">Đăng nhập</button>
-      <div class="auth-msg" id="login-msg"></div>
-    </form>
-
-    <form id="register-form" class="hidden">
-      <div class="auth-field"><label>Email</label><input type="email" id="reg-email" required autocomplete="email"></div>
-      <div class="auth-field"><label>Mật khẩu (tối thiểu 6 ký tự)</label><input type="password" id="reg-password" required minlength="6" autocomplete="new-password"></div>
-      <div class="auth-field"><label>Nhập lại mật khẩu</label><input type="password" id="reg-password2" required autocomplete="new-password"></div>
-      <div class="auth-field"><label>Số điện thoại</label><input type="tel" id="reg-phone" required autocomplete="tel"></div>
-      <div class="auth-field"><label>Địa chỉ</label><input type="text" id="reg-address" required autocomplete="street-address"></div>
-      <button type="submit" class="auth-submit" id="register-submit">Đăng ký</button>
-      <div class="auth-msg" id="register-msg"></div>
-    </form>
-    <div class="auth-legal-links">Tiếp tục nghĩa là bạn đồng ý với <a href="terms.html" target="_blank">Điều khoản dịch vụ</a> và <a href="privacy.html" target="_blank">Chính sách bảo mật</a>.</div>
-  </div>
-</div>
-
-<div class="install-guide hidden" id="install-guide-section">
-  <h3 class="install-guide-title">📲 Cài app về máy để dùng tiện hơn</h3>
-  <p class="install-contact">Liên hệ Mr.Thành - 0989.099.454 (Zalo)</p>
-  <div class="install-guide-grid">
-    <div class="install-col">
-      <div class="install-icon">💻</div>
-      <h4>Máy tính (Chrome / Edge)</h4>
-      <ol>
-        <li>Mở trang web này bằng Chrome hoặc Edge.</li>
-        <li>Ở cuối thanh địa chỉ, bấm vào biểu tượng "Cài đặt" (hình máy tính có mũi tên).</li>
-        <li>Bấm "Cài đặt" trong hộp thoại hiện ra.</li>
-      </ol>
-      <p class="install-result">→ App sẽ có icon riêng trên màn hình/Dock, mở lên không cần trình duyệt.</p>
-    </div>
-    <div class="install-col">
-      <div class="install-icon">🤖</div>
-      <h4>Điện thoại Android (Chrome)</h4>
-      <ol>
-        <li>Mở trang web này bằng Chrome.</li>
-        <li>Chờ vài giây, banner "Thêm vào Màn hình chính" sẽ tự hiện — bấm vào đó. Nếu không thấy, bấm menu 3 chấm ở góc trên → chọn "Cài đặt ứng dụng".</li>
-        <li>Bấm "Cài đặt" hoặc "Thêm".</li>
-      </ol>
-      <p class="install-result">→ Icon app xuất hiện ngay ở màn hình chính điện thoại.</p>
-    </div>
-    <div class="install-col">
-      <div class="install-icon">🍎</div>
-      <h4>iPhone / iPad (Safari)</h4>
-      <ol>
-        <li>Mở trang web này bằng <b>Safari</b> (bắt buộc — Chrome trên iPhone không cài được).</li>
-        <li>Bấm nút Chia sẻ (hình vuông có mũi tên đi lên) ở thanh dưới cùng.</li>
-        <li>Kéo xuống, chọn "Thêm vào MH chính" (Add to Home Screen) → bấm "Thêm".</li>
-      </ol>
-      <p class="install-result">→ App có icon riêng, mở toàn màn hình như ứng dụng thật.</p>
-    </div>
-  </div>
-</div>
-
-<!-- ================= APP CHÍNH (chỉ hiện sau khi đăng nhập) ================= -->
-<div class="wrap hidden" id="main-wrap">
-  <header class="top">
-    <div class="header-grid">
-      <div class="header-logo">
-        <img src="icons/logo.png" alt="Logo" onerror="this.style.display='none'">
-      </div>
-      <div class="header-center">
-        <div class="user-bar" id="user-bar">
-          <span class="user-email" id="user-email-label"></span>
-          <span class="sep">·</span>
-          <select id="lang-select"></select>
-          <select id="voice-select" title="Chọn giọng đọc"></select>
-        </div>
-      </div>
-      <div class="header-voice">
-        <button id="btn-logout">Đăng xuất</button>
-        <button id="btn-header-stats"></button>
+<header class="top-nav">
+  <div class="wrap">
+    <div class="brand-block">
+      <img src="icons/logo.png" alt="">
+      <div class="brand-text">
+        <span class="name">iLapra</span>
+        <span class="tagline" data-i18n="tagline">Tôi luyện ngoại ngữ</span>
       </div>
     </div>
-  </header>
-  <div class="flag-strip" id="flag-strip"></div>
-
-  <div class="mode-tabs">
-    <button id="tab-flash" class="active"></button>
-    <button id="tab-game"></button>
-    <button id="tab-grammar"></button>
-    <button id="tab-practice"></button>
-  </div>
-
-  <div class="selectors">
-    <select id="sel-level"></select>
-    <div id="vocab-filters" style="display:contents;">
-      <select id="sel-type">
-        <option id="opt-word" value="word"></option>
-        <option id="opt-sentence" value="sentence"></option>
-      </select>
-      <select id="sel-topic"></select>
-    </div>
-    <div id="practice-filters" style="display:none;">
-      <select id="sel-practice-kind">
-        <option id="opt-kind-writing" value="writing"></option>
-        <option id="opt-kind-reading" value="reading"></option>
-        <option id="opt-kind-listening" value="listening"></option>
-        <option id="opt-kind-speaking-dialogue" value="speaking_dialogue"></option>
-        <option id="opt-kind-math" value="math" style="display:none;"></option>
-      </select>
+    <div class="nav-right">
+      <div class="lang-switch">
+        <button id="btn-lang-vi" data-lang="vi">VI</button>
+        <button id="btn-lang-en" data-lang="en">EN</button>
+      </div>
+      <div class="nav-cta">
+        <a class="btn btn-outline" href="PhuHuynh.html" data-i18n="navParent">Phụ huynh</a>
+        <a class="btn btn-primary" href="app.html" data-i18n="navCta">Đăng nhập / Đăng ký</a>
+      </div>
     </div>
   </div>
+</header>
 
-  <div class="card" id="content-area">
-    <div class="loading-msg">…</div>
+<section class="hero">
+  <div class="wrap">
+    <div>
+      <span class="kicker" data-i18n="heroKicker">🇩🇪 Đức · 🇬🇧 Anh (kể cả SAT) · 🇨🇳 Trung — 1 nơi duy nhất</span>
+      <h1 data-i18n="heroTitle">Học ngoại ngữ có lộ trình rõ ràng — <em>không phải học lan man</em></h1>
+      <p class="dek" data-i18n="heroDek">Từ vựng, ngữ pháp, đọc hiểu, nghe, nói — theo đúng khung trình độ quốc tế (A1–B2, HSK1–6, SAT), do iLapra biên soạn. Phụ huynh xem được tiến độ học thật của con, không cần hỏi lại "hôm nay có học không".</p>
+      <div class="cta-row">
+        <a class="btn btn-primary btn-lg" href="app.html" data-i18n="heroCtaPrimary">Bắt đầu học ngay</a>
+        <a class="btn btn-outline btn-lg" href="#skills" data-i18n="heroCtaSecondary">Xem app dạy gì</a>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="lang-pill-row">
+        <div class="lang-pill"><span class="flag">🇩🇪</span><div><div class="name" data-i18n="pillDeName">Tiếng Đức</div><div class="levels" data-i18n="pillDeLevels">A1 · A2 · B1 · B2 · Nâng cao</div></div></div>
+        <div class="lang-pill"><span class="flag">🇬🇧</span><div><div class="name" data-i18n="pillEnName">Tiếng Anh</div><div class="levels" data-i18n="pillEnLevels">A1 · A2 · B1 · B2 · SAT (luyện thi)</div></div></div>
+        <div class="lang-pill"><span class="flag">🇨🇳</span><div><div class="name" data-i18n="pillZhName">Tiếng Trung</div><div class="levels">HSK1 · HSK2 · HSK3 · HSK4 · HSK5 · HSK6</div></div></div>
+      </div>
+    </div>
   </div>
+</section>
 
-  <footer class="foot" id="footer-text"></footer>
-</div>
+<section id="languages">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow" data-i18n="langEyebrow">3 NGÔN NGỮ</div>
+      <h2 data-i18n="langTitle">Đủ khung trình độ quốc tế, không dạy nửa vời</h2>
+      <p data-i18n="langSub">Mỗi ngôn ngữ đi theo đúng thang trình độ được công nhận rộng rãi, học sinh biết chính xác mình đang ở đâu và cần học gì tiếp theo.</p>
+    </div>
+    <div class="card-grid-3">
+      <div class="lang-card">
+        <div class="flag-big">🇩🇪</div>
+        <h3 data-i18n="cardDeName">Tiếng Đức</h3>
+        <p data-i18n="cardDeDesc">Khung Châu Âu chung (CEFR) A1 → B2, có thêm phần nâng cao cho người đã có nền tảng.</p>
+        <span class="badge" data-i18n="pillDeLevels">A1 – B2 + Nâng cao</span>
+      </div>
+      <div class="lang-card">
+        <div class="flag-big">🇬🇧</div>
+        <h3 data-i18n="cardEnName">Tiếng Anh</h3>
+        <p data-i18n="cardEnDesc">Từ căn bản A1 đến B2, và riêng 1 lộ trình luyện thi SAT (Digital SAT) gồm cả Tiếng Anh lẫn Toán.</p>
+        <span class="badge" data-i18n="cardEnBadge">A1 – B2 + SAT</span>
+      </div>
+      <div class="lang-card">
+        <div class="flag-big">🇨🇳</div>
+        <h3 data-i18n="cardZhName">Tiếng Trung</h3>
+        <p data-i18n="cardZhDesc">Đầy đủ 6 cấp HSK — theo đúng chuẩn thi năng lực Hán ngữ quốc tế.</p>
+        <span class="badge">HSK1 – HSK6</span>
+      </div>
+    </div>
+  </div>
+</section>
 
-<!-- Đặt script thư viện ở cuối body (thay vì trong head) để trình duyệt vẽ xong
-     giao diện HTML/CSS phía trên trước, không phải chờ tải xong script này mới
-     render được gì — cải thiện tốc độ hiển thị lần đầu (đặc biệt trên mạng chậm). -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<section id="skills" style="background:var(--bg-card);">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow" data-i18n="skillEyebrow">5 KỸ NĂNG</div>
+      <h2 data-i18n="skillTitle">Học đầy đủ, không chỉ ghi nhớ từ đơn lẻ</h2>
+      <p data-i18n="skillSub">Nhiều app chỉ dừng ở flashcard từ vựng. iLapra luyện đủ để dùng ngôn ngữ thật sự.</p>
+    </div>
+    <div class="skill-grid">
+      <div class="skill-card"><div class="ic">🗂️</div><h4 data-i18n="skillVocabName">Từ vựng</h4><p data-i18n="skillVocabDesc">Flashcard + ôn tập theo chủ đề</p></div>
+      <div class="skill-card"><div class="ic">📐</div><h4 data-i18n="skillGrammarName">Ngữ pháp</h4><p data-i18n="skillGrammarDesc">Bài học + luyện tập có chấm điểm</p></div>
+      <div class="skill-card"><div class="ic">📖</div><h4 data-i18n="skillReadingName">Đọc hiểu</h4><p data-i18n="skillReadingDesc">Đoạn văn thật + câu hỏi hiểu bài</p></div>
+      <div class="skill-card"><div class="ic">🎧</div><h4 data-i18n="skillListeningName">Nghe hiểu</h4><p data-i18n="skillListeningDesc">Nghe audio + trả lời câu hỏi, không xem chữ</p></div>
+      <div class="skill-card"><div class="ic">💬</div><h4 data-i18n="skillSpeakingName">Nói</h4><p data-i18n="skillSpeakingDesc">Hội thoại có kịch bản, luyện phản xạ nói</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="diff-section">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow" data-i18n="diffEyebrow">VÌ SAO CHỌN iLapra</div>
+      <h2 data-i18n="diffTitle">Khác với app học ngôn ngữ đại trà</h2>
+      <p data-i18n="diffSub">Không cạnh tranh bằng số lượng ngôn ngữ hay trò chơi hoá — iLapra giải quyết đúng nỗi lo thật của phụ huynh và học sinh có mục tiêu rõ ràng.</p>
+    </div>
+    <div class="diff-grid">
+      <div class="diff-card">
+        <div class="ic">👪</div>
+        <h3 data-i18n="diff1Title">Phụ huynh theo dõi tiến độ thật</h3>
+        <p data-i18n="diff1Desc">Dashboard riêng cho phụ huynh: xem con học ngôn ngữ nào, trình độ nào, điểm bài kiểm tra ra sao, hoạt động gần đây — không cần hỏi lại con mỗi ngày.</p>
+      </div>
+      <div class="diff-card">
+        <div class="ic">🎯</div>
+        <h3 data-i18n="diff2Title">Luyện thi SAT chuyên biệt</h3>
+        <p data-i18n="diff2Desc">Riêng cho tiếng Anh: bộ câu hỏi Toán SAT theo đúng 4 nhóm kiến thức chính thức của đề thi thật, có hình minh hoạ cho phần hình học và đồ thị.</p>
+      </div>
+      <div class="diff-card">
+        <div class="ic">✍️</div>
+        <h3 data-i18n="diff3Title">Nội dung do người dạy thật biên soạn</h3>
+        <p data-i18n="diff3Desc">Mọi bài học, câu hỏi đều do đội ngũ iLapra trực tiếp biên soạn và kiểm duyệt — không phải nội dung tự sinh hàng loạt không ai kiểm tra.</p>
+      </div>
+      <div class="diff-card">
+        <div class="ic">📱</div>
+        <h3 data-i18n="diff4Title">Dùng ngay trên điện thoại, không cần tải nặng</h3>
+        <p data-i18n="diff4Desc">Cài thẳng từ trình duyệt như 1 app thật (thêm vào màn hình chính), không chiếm nhiều dung lượng máy.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow" data-i18n="howEyebrow">BẮT ĐẦU TRONG 3 BƯỚC</div>
+      <h2 data-i18n="howTitle">Không cần hướng dẫn phức tạp</h2>
+    </div>
+    <div class="step-row">
+      <div class="step"><div class="num">1</div><h4 data-i18n="step1Title">Tạo tài khoản</h4><p data-i18n="step1Desc">Đăng ký bằng email, chỉ mất chưa đến 1 phút.</p></div>
+      <div class="step"><div class="num">2</div><h4 data-i18n="step2Title">Chọn ngôn ngữ &amp; trình độ</h4><p data-i18n="step2Desc">Chọn đúng ngôn ngữ và trình độ đang học, đổi lại bất cứ lúc nào.</p></div>
+      <div class="step"><div class="num">3</div><h4 data-i18n="step3Title">Luyện tập mỗi ngày</h4><p data-i18n="step3Desc">Học từ vựng, làm bài luyện tập — phụ huynh xem tiến độ qua dashboard riêng.</p></div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:0;">
+  <div class="final-cta">
+    <h2 data-i18n="finalTitle">Sẵn sàng bắt đầu?</h2>
+    <p data-i18n="finalDesc">Tạo tài khoản miễn phí và vào học ngay hôm nay.</p>
+    <a class="btn btn-primary btn-lg" href="app.html" data-i18n="finalCta">Đăng ký / Đăng nhập</a>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div>© 2026 iLapra</div>
+    <div>
+      <a href="terms.html" data-i18n="footerTerms">Điều khoản dịch vụ</a>
+      <a href="privacy.html" data-i18n="footerPrivacy">Chính sách bảo mật</a>
+    </div>
+  </div>
+</footer>
+
 <script>
-const SUPABASE_URL = "https://vuykuqmebmainyhiotfx.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_8Ro-jEFQqFh7EfbXPfzWaw_V1xrkoyU";
-
-if(SUPABASE_URL.includes("YOUR-PROJECT") || SUPABASE_ANON_KEY.includes("YOUR-ANON")){
-  document.getElementById("config-warning").style.display = "block";
-  throw new Error("Supabase chưa được cấu hình");
-}
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-let THEME = {};
-let LANGS = {};
-let LANG_ORDER = [];
-let currentLanguage = null;
-let mode = "flash";
-let level = "";
-let type = "word";
-let topic = "all";
-let practiceKind = "writing"; // "writing" | "reading" | "listening" | "speaking_dialogue"
-let items = [];
-let flashIndex = 0;
-let CURRENT_USER = null;
-let CURRENT_PROFILE = null;
-let CURRENT_SESSION_ID = null; // sinh mới mỗi lần đăng nhập, dùng để nhóm các dòng activity_log cùng 1 phiên
-
-// Ghi 1 dòng hoạt động vào activity_log — không chặn UI nếu lỗi (best-effort, chỉ log ra console).
-async function logActivity(eventType, extraFields){
-  if(!CURRENT_USER) return;
-  const row = { user_id: CURRENT_USER.id, event_type: eventType, session_id: CURRENT_SESSION_ID, ...(extraFields||{}) };
-  const { error } = await sb.from("activity_log").insert(row);
-  if(error) console.warn("logActivity failed:", eventType, error.message);
-}
-
-function L(){ return LANGS[currentLanguage]; }
-function fmt(str, vars){ return str.replace(/\{(\w+)\}/g, (_, k) => (vars[k] !== undefined ? vars[k] : "")); }
-function shuffle(arr){
-  const a = [...arr];
-  for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; }
-  return a;
-}
-
-// ============================================================
-// Khởi động: nạp cấu hình ngôn ngữ, rồi kiểm tra phiên đăng nhập
-// ============================================================
-async function boot(){
-  const res = await fetch("languages.json");
-  const cfg = await res.json();
-  THEME = cfg.theme;
-  LANGS = cfg.languages;
-  LANG_ORDER = Object.keys(LANGS);
-  applyGlobalTheme();
-
-  const { data: { session } } = await sb.auth.getSession();
-  if(session){
-    if(await isAdminUser(session.user.id)){ window.location.href = "QuanLyTuVung.html"; return; }
-    if(await isParentUser(session.user.id)){ window.location.href = "PhuHuynh.html"; return; }
-    await enterApp(session.user);
+const I18N = {
+  vi: {
+    tagline: "Tôi luyện ngoại ngữ",
+    navParent: "Phụ huynh",
+    navCta: "Đăng nhập / Đăng ký",
+    heroKicker: "🇩🇪 Đức · 🇬🇧 Anh (kể cả SAT) · 🇨🇳 Trung — 1 nơi duy nhất",
+    heroTitle: 'Học ngoại ngữ có lộ trình rõ ràng — <em>không phải học lan man</em>',
+    heroDek: 'Từ vựng, ngữ pháp, đọc hiểu, nghe, nói — theo đúng khung trình độ quốc tế (A1–B2, HSK1–6, SAT), do iLapra biên soạn. Phụ huynh xem được tiến độ học thật của con, không cần hỏi lại "hôm nay có học không".',
+    heroCtaPrimary: "Bắt đầu học ngay",
+    heroCtaSecondary: "Xem app dạy gì",
+    pillDeName: "Tiếng Đức", pillDeLevels: "A1 · A2 · B1 · B2 · Nâng cao",
+    pillEnName: "Tiếng Anh", pillEnLevels: "A1 · A2 · B1 · B2 · SAT (luyện thi)",
+    pillZhName: "Tiếng Trung",
+    langEyebrow: "3 NGÔN NGỮ",
+    langTitle: "Đủ khung trình độ quốc tế, không dạy nửa vời",
+    langSub: "Mỗi ngôn ngữ đi theo đúng thang trình độ được công nhận rộng rãi, học sinh biết chính xác mình đang ở đâu và cần học gì tiếp theo.",
+    cardDeName: "Tiếng Đức", cardDeDesc: "Khung Châu Âu chung (CEFR) A1 → B2, có thêm phần nâng cao cho người đã có nền tảng.",
+    cardEnName: "Tiếng Anh", cardEnDesc: "Từ căn bản A1 đến B2, và riêng 1 lộ trình luyện thi SAT (Digital SAT) gồm cả Tiếng Anh lẫn Toán.", cardEnBadge: "A1 – B2 + SAT",
+    cardZhName: "Tiếng Trung", cardZhDesc: "Đầy đủ 6 cấp HSK — theo đúng chuẩn thi năng lực Hán ngữ quốc tế.",
+    skillEyebrow: "5 KỸ NĂNG",
+    skillTitle: "Học đầy đủ, không chỉ ghi nhớ từ đơn lẻ",
+    skillSub: "Nhiều app chỉ dừng ở flashcard từ vựng. iLapra luyện đủ để dùng ngôn ngữ thật sự.",
+    skillVocabName: "Từ vựng", skillVocabDesc: "Flashcard + ôn tập theo chủ đề",
+    skillGrammarName: "Ngữ pháp", skillGrammarDesc: "Bài học + luyện tập có chấm điểm",
+    skillReadingName: "Đọc hiểu", skillReadingDesc: "Đoạn văn thật + câu hỏi hiểu bài",
+    skillListeningName: "Nghe hiểu", skillListeningDesc: "Nghe audio + trả lời câu hỏi, không xem chữ",
+    skillSpeakingName: "Nói", skillSpeakingDesc: "Hội thoại có kịch bản, luyện phản xạ nói",
+    diffEyebrow: "VÌ SAO CHỌN iLapra",
+    diffTitle: "Khác với app học ngôn ngữ đại trà",
+    diffSub: "Không cạnh tranh bằng số lượng ngôn ngữ hay trò chơi hoá — iLapra giải quyết đúng nỗi lo thật của phụ huynh và học sinh có mục tiêu rõ ràng.",
+    diff1Title: "Phụ huynh theo dõi tiến độ thật", diff1Desc: "Dashboard riêng cho phụ huynh: xem con học ngôn ngữ nào, trình độ nào, điểm bài kiểm tra ra sao, hoạt động gần đây — không cần hỏi lại con mỗi ngày.",
+    diff2Title: "Luyện thi SAT chuyên biệt", diff2Desc: "Riêng cho tiếng Anh: bộ câu hỏi Toán SAT theo đúng 4 nhóm kiến thức chính thức của đề thi thật, có hình minh hoạ cho phần hình học và đồ thị.",
+    diff3Title: "Nội dung do người dạy thật biên soạn", diff3Desc: "Mọi bài học, câu hỏi đều do đội ngũ iLapra trực tiếp biên soạn và kiểm duyệt — không phải nội dung tự sinh hàng loạt không ai kiểm tra.",
+    diff4Title: "Dùng ngay trên điện thoại, không cần tải nặng", diff4Desc: "Cài thẳng từ trình duyệt như 1 app thật (thêm vào màn hình chính), không chiếm nhiều dung lượng máy.",
+    howEyebrow: "BẮT ĐẦU TRONG 3 BƯỚC",
+    howTitle: "Không cần hướng dẫn phức tạp",
+    step1Title: "Tạo tài khoản", step1Desc: "Đăng ký bằng email, chỉ mất chưa đến 1 phút.",
+    step2Title: "Chọn ngôn ngữ &amp; trình độ", step2Desc: "Chọn đúng ngôn ngữ và trình độ đang học, đổi lại bất cứ lúc nào.",
+    step3Title: "Luyện tập mỗi ngày", step3Desc: "Học từ vựng, làm bài luyện tập — phụ huynh xem tiến độ qua dashboard riêng.",
+    finalTitle: "Sẵn sàng bắt đầu?", finalDesc: "Tạo tài khoản miễn phí và vào học ngay hôm nay.", finalCta: "Đăng ký / Đăng nhập",
+    footerTerms: "Điều khoản dịch vụ", footerPrivacy: "Chính sách bảo mật",
+  },
+  en: {
+    tagline: "I practice languages",
+    navParent: "For Parents",
+    navCta: "Log in / Sign up",
+    heroKicker: "🇩🇪 German · 🇬🇧 English (incl. SAT) · 🇨🇳 Chinese — all in one place",
+    heroTitle: 'Learn a language with a clear path — <em>not scattered guesswork</em>',
+    heroDek: "Vocabulary, grammar, reading, listening, speaking — mapped to real international levels (A1–B2, HSK1–6, SAT), built by iLapra. Parents can see their child's real progress, no more asking \"did you study today?\"",
+    heroCtaPrimary: "Start learning now",
+    heroCtaSecondary: "See what we teach",
+    pillDeName: "German", pillDeLevels: "A1 · A2 · B1 · B2 · Advanced",
+    pillEnName: "English", pillEnLevels: "A1 · A2 · B1 · B2 · SAT prep",
+    pillZhName: "Chinese",
+    langEyebrow: "3 LANGUAGES",
+    langTitle: "Full international levels, no half-measures",
+    langSub: "Each language follows a widely recognized level scale, so students know exactly where they stand and what to learn next.",
+    cardDeName: "German", cardDeDesc: "Common European Framework (CEFR) A1 → B2, plus an advanced track for learners with a foundation already.",
+    cardEnName: "English", cardEnDesc: "From basic A1 to B2, plus a dedicated Digital SAT track covering both English and Math.", cardEnBadge: "A1 – B2 + SAT",
+    cardZhName: "Chinese", cardZhDesc: "All 6 HSK levels — matching the official international Chinese proficiency test.",
+    skillEyebrow: "5 SKILLS",
+    skillTitle: "Train it all, not just memorize isolated words",
+    skillSub: "Most apps stop at vocabulary flashcards. iLapra trains you to actually use the language.",
+    skillVocabName: "Vocabulary", skillVocabDesc: "Flashcards + topic-based review",
+    skillGrammarName: "Grammar", skillGrammarDesc: "Lessons + graded practice",
+    skillReadingName: "Reading", skillReadingDesc: "Real passages + comprehension questions",
+    skillListeningName: "Listening", skillListeningDesc: "Listen to audio + answer questions, no text shown",
+    skillSpeakingName: "Speaking", skillSpeakingDesc: "Scripted dialogues to build speaking reflexes",
+    diffEyebrow: "WHY iLapra",
+    diffTitle: "Different from mass-market language apps",
+    diffSub: "We don't compete on language count or gamification — iLapra solves the real concerns of parents and goal-driven students.",
+    diff1Title: "Parents see real progress", diff1Desc: "A dedicated parent dashboard: which language and level their child is on, quiz scores, recent activity — no need to ask every day.",
+    diff2Title: "Dedicated SAT prep", diff2Desc: "For English: a Math SAT question bank matching the 4 official knowledge domains of the real exam, with diagrams for geometry and graph questions.",
+    diff3Title: "Content built by real teachers", diff3Desc: "Every lesson and question is written and reviewed by the iLapra team — not mass-generated content nobody checked.",
+    diff4Title: "Use it on your phone right away, no heavy install", diff4Desc: "Install straight from the browser like a real app (add to home screen) — takes up almost no storage.",
+    howEyebrow: "GET STARTED IN 3 STEPS",
+    howTitle: "No complicated setup",
+    step1Title: "Create an account", step1Desc: "Sign up with email — takes less than a minute.",
+    step2Title: "Pick a language &amp; level", step2Desc: "Choose the language and level you're studying, change it anytime.",
+    step3Title: "Practice every day", step3Desc: "Study vocabulary, do practice exercises — parents track progress via their own dashboard.",
+    finalTitle: "Ready to start?", finalDesc: "Create a free account and start learning today.", finalCta: "Sign up / Log in",
+    footerTerms: "Terms of Service", footerPrivacy: "Privacy Policy",
   }
-  else { showAuthScreen(); }
-
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register("sw.js").catch(err => console.warn("SW registration failed:", err));
-    });
-  }
-}
-
-async function isAdminUser(userId){
-  const { data } = await sb.from("admins").select("user_id").eq("user_id", userId).limit(1);
-  return !!(data && data.length);
-}
-
-async function isParentUser(userId){
-  const { data } = await sb.from("profiles").select("role").eq("id", userId).maybeSingle();
-  return !!(data && data.role === "parent");
-}
-
-function applyGlobalTheme(){
-  const root = document.body.style;
-  root.setProperty("--navy", THEME.navy);
-  root.setProperty("--navy2", THEME.navy2);
-  root.setProperty("--steel", THEME.steel);
-  root.setProperty("--teal", THEME.teal);
-  root.setProperty("--teal-light", THEME.tealLight);
-  root.setProperty("--word-font", THEME.wordFontFamily);
-  document.getElementById("meta-theme-color").setAttribute("content", THEME.navy);
-
-  const colors = THEME.flagStripeColors;
-  const stops = colors.map((c,i)=>{
-    const from = (i/colors.length*100).toFixed(1);
-    const to = ((i+1)/colors.length*100).toFixed(1);
-    return `${c} ${from}%, ${c} ${to}%`;
-  }).join(", ");
-  document.getElementById("flag-strip").style.background = `linear-gradient(90deg, ${stops})`;
-}
-
-// ============================================================
-// Đăng nhập / Đăng ký
-// ============================================================
-function showAuthScreen(){
-  document.getElementById("main-wrap").classList.add("hidden");
-  document.getElementById("auth-screen").classList.remove("hidden");
-  document.getElementById("install-guide-section").classList.remove("hidden");
-}
-
-document.getElementById("auth-tab-login").addEventListener("click", ()=>{
-  document.getElementById("auth-tab-login").classList.add("active");
-  document.getElementById("auth-tab-register").classList.remove("active");
-  document.getElementById("login-form").classList.remove("hidden");
-  document.getElementById("register-form").classList.add("hidden");
-});
-document.getElementById("auth-tab-register").addEventListener("click", ()=>{
-  document.getElementById("auth-tab-register").classList.add("active");
-  document.getElementById("auth-tab-login").classList.remove("active");
-  document.getElementById("register-form").classList.remove("hidden");
-  document.getElementById("login-form").classList.add("hidden");
-});
-
-document.getElementById("login-form").addEventListener("submit", async (e)=>{
-  e.preventDefault();
-  const msg = document.getElementById("login-msg");
-  msg.className = "auth-msg";
-  const btn = document.getElementById("login-submit");
-  btn.disabled = true; btn.textContent = "Đang đăng nhập...";
-  const email = document.getElementById("login-email").value.trim();
-  const password = document.getElementById("login-password").value;
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  btn.disabled = false; btn.textContent = "Đăng nhập";
-  if(error){ msg.className = "auth-msg err"; msg.textContent = error.message; return; }
-  if(await isAdminUser(data.user.id)){ window.location.href = "QuanLyTuVung.html"; return; }
-  if(await isParentUser(data.user.id)){ window.location.href = "PhuHuynh.html"; return; }
-  await enterApp(data.user);
-});
-
-document.getElementById("register-form").addEventListener("submit", async (e)=>{
-  e.preventDefault();
-  const msg = document.getElementById("register-msg");
-  msg.className = "auth-msg";
-  const email = document.getElementById("reg-email").value.trim();
-  const password = document.getElementById("reg-password").value;
-  const password2 = document.getElementById("reg-password2").value;
-  const phone = document.getElementById("reg-phone").value.trim();
-  const address = document.getElementById("reg-address").value.trim();
-
-  if(password !== password2){ msg.className = "auth-msg err"; msg.textContent = "Mật khẩu nhập lại không khớp."; return; }
-
-  const btn = document.getElementById("register-submit");
-  btn.disabled = true; btn.textContent = "Đang đăng ký...";
-  const { data, error } = await sb.auth.signUp({
-    email, password,
-    options: { data: { phone, address } }
-  });
-  btn.disabled = false; btn.textContent = "Đăng ký";
-  if(error){ msg.className = "auth-msg err"; msg.textContent = error.message; return; }
-
-  if(data.session){
-    // Email confirmation đang TẮT ở Supabase -> có phiên đăng nhập ngay
-    if(await isAdminUser(data.user.id)){ window.location.href = "QuanLyTuVung.html"; return; }
-    await enterApp(data.user);
-  } else {
-    // Email confirmation đang BẬT -> cần xác nhận email trước khi đăng nhập được
-    msg.className = "auth-msg ok";
-    msg.textContent = "Đăng ký thành công! Vui lòng kiểm tra email để xác nhận tài khoản trước khi đăng nhập.";
-    document.getElementById("register-form").reset();
-  }
-});
-
-document.getElementById("btn-logout").addEventListener("click", async ()=>{
-  await logActivity("logout");
-  await sb.auth.signOut();
-  CURRENT_USER = null; CURRENT_PROFILE = null; CURRENT_SESSION_ID = null;
-  document.getElementById("main-wrap").classList.add("hidden");
-  document.getElementById("login-form").reset();
-  showAuthScreen();
-});
-
-let lastVisibilityLogAt = 0;
-const VISIBILITY_LOG_MIN_INTERVAL_MS = 8000; // chặn spam activity_log khi chuyển tab/khoá-mở màn hình liên tục
-
-document.addEventListener("visibilitychange", ()=>{
-  // Xấp xỉ "đang học"/"không học": không có idle-timer thật, chỉ ghi lại lúc
-  // người dùng chuyển tab/thu nhỏ app (app_hidden) và lúc quay lại (app_visible).
-  // Có throttle vì sự kiện này có thể bắn liên tục (chuyển tab nhanh, khoá màn
-  // hình di động nhiều lần) — không throttle sẽ làm activity_log phình to vô ích.
-  if(!CURRENT_USER) return;
-  const now = Date.now();
-  if(now - lastVisibilityLogAt < VISIBILITY_LOG_MIN_INTERVAL_MS) return;
-  lastVisibilityLogAt = now;
-  logActivity(document.hidden ? "app_hidden" : "app_visible", { language: currentLanguage });
-});
-
-async function enterApp(user){
-  CURRENT_USER = user;
-  const { data: profile } = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
-  CURRENT_PROFILE = profile;
-
-  document.getElementById("auth-screen").classList.add("hidden");
-  document.getElementById("install-guide-section").classList.add("hidden");
-  document.getElementById("main-wrap").classList.remove("hidden");
-  document.getElementById("user-email-label").textContent = user.email;
-
-  buildLangSelect();
-  buildVoiceSelect();
-  currentLanguage = (profile && profile.selected_language && LANGS[profile.selected_language])
-    ? profile.selected_language
-    : LANG_ORDER[0];
-  document.getElementById("lang-select").value = currentLanguage;
-  level = LANGS[currentLanguage].levels[0].code;
-
-  CURRENT_SESSION_ID = crypto.randomUUID();
-  logActivity("login", { language: currentLanguage });
-
-  applyLanguageUI();
-  loadItems();
-}
-
-function buildLangSelect(){
-  const sel = document.getElementById("lang-select");
-  sel.innerHTML = LANG_ORDER.map(code=>`<option value="${code}">${LANGS[code].switchLabel}</option>`).join("");
-  sel.addEventListener("change", onLanguageSelectChange);
-}
-
-async function onLanguageSelectChange(e){
-  currentLanguage = e.target.value;
-  applyLanguageUI();
-  reloadCurrentMode();
-  // Lưu lại lựa chọn ngôn ngữ cho lần đăng nhập sau
-  if(CURRENT_USER){
-    await sb.from("profiles").update({ selected_language: currentLanguage }).eq("id", CURRENT_USER.id);
-    logActivity("language_change", { language: currentLanguage });
-  }
-}
-
-// ============================================================
-// Áp dụng nhãn/trình độ theo ngôn ngữ đang chọn (màu sắc KHÔNG đổi theo ngôn ngữ nữa)
-// ============================================================
-function applyLanguageUI(){
-  const cfg = L();
-  const u = cfg.ui;
-
-  document.title = u.pageTitle;
-  document.getElementById("meta-apple-title").setAttribute("content", u.appleTitle);
-
-  document.getElementById("tab-flash").textContent = u.tabFlash;
-  document.getElementById("tab-game").textContent = u.tabGame;
-  document.getElementById("tab-grammar").textContent = u.tabGrammar;
-  document.getElementById("tab-practice").textContent = u.tabPractice;
-  document.getElementById("btn-header-stats").textContent = u.tabStats;
-  document.getElementById("opt-word").textContent = u.optWord;
-  document.getElementById("opt-sentence").textContent = u.optSentence;
-  document.getElementById("opt-kind-writing").textContent = u.kindWriting;
-  document.getElementById("opt-kind-reading").textContent = u.kindReading;
-  document.getElementById("opt-kind-listening").textContent = u.kindListening;
-  document.getElementById("opt-kind-speaking-dialogue").textContent = u.kindSpeakingDialogue;
-  document.getElementById("opt-kind-math").textContent = u.kindMath;
-  document.getElementById("footer-text").innerHTML = u.footer;
-
-  const levelSel = document.getElementById("sel-level");
-  const prevLevel = level;
-  levelSel.innerHTML = cfg.levels.map(lv => `<option value="${lv.code}">${lv.label}</option>`).join("");
-  level = cfg.levels.some(lv=>lv.code===prevLevel) ? prevLevel : cfg.levels[0].code;
-  levelSel.value = level;
-  updateMathOptionVisibility();
-
-  setActiveTab();
-}
-
-// "Toán" chỉ áp dụng cho tiếng Anh trình độ SAT (không phải kỹ năng ngôn ngữ
-// dùng chung mọi ngôn ngữ/trình độ như Viết/Đọc/Nghe/Nói) — ẩn/hiện tuỳ theo
-// ngôn ngữ + trình độ đang chọn, và tự chuyển về "Viết" nếu đang chọn "Toán"
-// mà chuyển sang ngôn ngữ/trình độ khác không còn Toán nữa.
-function updateMathOptionVisibility(){
-  const mathOpt = document.getElementById("opt-kind-math");
-  const showMath = currentLanguage === "en" && level === "SAT";
-  mathOpt.style.display = showMath ? "" : "none";
-  if(!showMath && practiceKind === "math"){
-    practiceKind = "writing";
-    document.getElementById("sel-practice-kind").value = "writing";
-  }
-}
-
-document.getElementById("tab-flash").addEventListener("click", ()=>{ mode="flash"; setActiveTab(); loadItems(); });
-document.getElementById("tab-game").addEventListener("click", ()=>{ mode="game"; setActiveTab(); loadItems(); });
-document.getElementById("tab-grammar").addEventListener("click", ()=>{ mode="grammar"; setActiveTab(); loadGrammar(); });
-document.getElementById("tab-practice").addEventListener("click", ()=>{ mode="practice"; setActiveTab(); loadPractice(); });
-document.getElementById("btn-header-stats").addEventListener("click", ()=>{ mode="stats"; setActiveTab(); loadStats(); });
-function setActiveTab(){
-  document.getElementById("tab-flash").classList.toggle("active", mode==="flash");
-  document.getElementById("tab-game").classList.toggle("active", mode==="game");
-  document.getElementById("tab-grammar").classList.toggle("active", mode==="grammar");
-  document.getElementById("tab-practice").classList.toggle("active", mode==="practice");
-  document.getElementById("btn-header-stats").classList.toggle("active", mode==="stats");
-  document.getElementById("vocab-filters").style.display = (mode==="grammar" || mode==="practice" || mode==="stats") ? "none" : "contents";
-  document.getElementById("practice-filters").style.display = (mode==="practice") ? "block" : "none";
-}
-// Tải lại đúng nội dung theo tab đang active — dùng ở mọi nơi có thể đổi ngôn ngữ/trình độ/...
-// mà KHÔNG đổi tab, để tránh gọi nhầm loadItems() (tải Từ vựng/Trò chơi) khi đang ở tab Ngữ pháp/Luyện tập.
-function reloadCurrentMode(){
-  if(mode==="grammar"){ loadGrammar(); }
-  else if(mode==="practice"){ loadPractice(); }
-  else if(mode==="stats"){ loadStats(); }
-  else { loadItems(); }
-}
-document.getElementById("sel-level").addEventListener("change", e=>{
-  level = e.target.value;
-  updateMathOptionVisibility();
-  reloadCurrentMode();
-});
-document.getElementById("sel-type").addEventListener("change", e=>{ type = e.target.value; loadItems(); });
-document.getElementById("sel-topic").addEventListener("change", e=>{ topic = e.target.value; applyTopicFilter(); if(mode==="flash"){ flashIndex=0; renderFlash(); } else { startGameRound(); } });
-document.getElementById("sel-practice-kind").addEventListener("change", e=>{ practiceKind = e.target.value; loadPractice(); });
-
-// ============================================================
-// Chọn giọng đọc: Nam / Nữ
-// Giọng thực tế phát ra phụ thuộc danh sách giọng đọc máy/trình duyệt cài sẵn
-// cho từng ngôn ngữ — một số máy chỉ có 1 giọng/ngôn ngữ, khi đó hệ thống chỉ
-// còn thay đổi được cao độ (pitch)/tốc độ (rate) chứ không đổi được giọng gốc.
-// ============================================================
-const VOICE_PROFILES = {
-  male_adult:   { label: "🧔 Nam",  pitch: 0.85, rate: 0.9, genderHint: "male"   },
-  female_adult: { label: "👩 Nữ",   pitch: 1.1,  rate: 0.9, genderHint: "female" },
 };
-let currentVoiceType = "female_adult";
 
-function buildVoiceSelect(){
-  const sel = document.getElementById("voice-select");
-  sel.innerHTML = Object.entries(VOICE_PROFILES).map(([key,v]) => `<option value="${key}">${v.label}</option>`).join("");
-  sel.value = currentVoiceType;
-  sel.addEventListener("change", (e)=>{ currentVoiceType = e.target.value; });
-}
-
-// "Đánh thức" danh sách giọng đọc của trình duyệt càng sớm càng tốt (nhiều trình
-// duyệt tải danh sách này bất đồng bộ, lần gọi đầu có thể trả về mảng rỗng).
-if("speechSynthesis" in window){
-  window.speechSynthesis.getVoices();
-  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
-}
-
-function pickVoiceForLang(langCode, genderHint){
-  const voices = window.speechSynthesis.getVoices();
-  const langPrefix = langCode.split("-")[0].toLowerCase();
-  const candidates = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith(langPrefix));
-  if(candidates.length === 0) return null;
-  const maleHint = /male|nam|david|mark|stefan|yannick|thomas|paul|felix|liang|kangkang|yunyang|yunjian/i;
-  const femaleHint = /female|nu|hedda|zira|susan|anna|salli|ting|xiaoxiao|yaoyao|mei|xiaoyi|hanhan/i;
-  const hintRegex = genderHint === "male" ? maleHint : femaleHint;
-  const matched = candidates.find(v => hintRegex.test(v.name));
-  return matched || candidates[0];
-}
-
-function speak(text, opts){
-  opts = opts || {};
-  if(!('speechSynthesis' in window)){ if(opts.onend) opts.onend(); return; }
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  const langCode = L().speechLang;
-  const profile = VOICE_PROFILES[currentVoiceType];
-  u.lang = langCode;
-  u.pitch = profile.pitch;
-  u.rate = profile.rate;
-  const genderHint = opts.genderHint || profile.genderHint;
-  const voice = pickVoiceForLang(langCode, genderHint);
-  if(voice) u.voice = voice;
-  if(opts.onend) u.onend = opts.onend;
-  window.speechSynthesis.speak(u);
-}
-
-let allLoadedItems = [];
-let lastLoadedKey = null; // "ngôn ngữ|trình độ|loại" của lần tải gần nhất — tránh gọi mạng lại nếu không đổi
-
-async function loadItems(){
-  const key = `${currentLanguage}|${level}|${type}`;
-  if(key === lastLoadedKey){
-    // Bộ lọc không đổi so với lần tải trước (vd chỉ chuyển qua lại giữa 2 tab
-    // Từ vựng/Trò chơi) — dùng lại dữ liệu đã có sẵn, khỏi gọi mạng lại.
-    applyTopicFilter();
-    if(mode === "flash"){ flashIndex = 0; renderFlash(); } else { startGameRound(); }
-    return;
-  }
-  const area = document.getElementById("content-area");
-  area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
-  const { data, error } = await sb.from("vocab_items").select("*").eq("language", currentLanguage).eq("level", level).eq("type", type);
-  if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
-  allLoadedItems = data || [];
-  lastLoadedKey = key;
-  populateTopics();
-  applyTopicFilter();
-  if(mode === "flash"){ flashIndex = 0; renderFlash(); } else { startGameRound(); }
-}
-
-function populateTopics(){
-  const sel = document.getElementById("sel-topic");
-  const cats = Array.from(new Set(allLoadedItems.map(i=>i.category).filter(Boolean))).sort();
-  const prev = topic;
-  sel.innerHTML = `<option value="all">${L().ui.optAllTopics}</option>` + cats.map(c=>`<option value="${c}">${c}</option>`).join("");
-  topic = cats.includes(prev) ? prev : "all";
-  sel.value = topic;
-}
-
-function applyTopicFilter(){
-  const filtered = topic === "all" ? allLoadedItems : allLoadedItems.filter(i=>i.category===topic);
-  items = shuffle(filtered);
-}
-
-function renderFlash(){
-  const area = document.getElementById("content-area");
-  if(items.length === 0){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyVocab}</div>`; return; }
-  if(flashIndex >= items.length) flashIndex = 0;
-  const it = items[flashIndex];
-  area.innerHTML = `
-    <div class="flash-wrap">
-      <div class="flash-progress">${flashIndex+1} / ${items.length}</div>
-      <div class="flash-card">
-        ${it.category ? `<div class="flash-cat">${it.category}</div>` : ''}
-        <div class="flash-de">${it.de_text}</div>
-        ${it.phonetic ? `<div class="flash-phonetic">${it.phonetic}</div>` : ''}
-        <button class="flash-speak" id="btn-speak" title="${L().ui.speakTitle}">🔊</button>
-        <div class="flash-meanings">
-          <div class="vi">${it.vi_meaning}</div>
-          ${it.en_meaning ? `<div class="en">${it.en_meaning}</div>` : ''}
-        </div>
-      </div>
-      <div class="flash-nav">
-        <button id="btn-prev" ${flashIndex===0?'disabled':''}>‹</button>
-        <span class="counter">${flashIndex+1} / ${items.length}</span>
-        <button id="btn-next" ${flashIndex===items.length-1?'disabled':''}>›</button>
-      </div>
-    </div>`;
-  document.getElementById("btn-speak").addEventListener("click", ()=> speak(it.de_text));
-  document.getElementById("btn-prev").addEventListener("click", ()=>{ if(flashIndex>0){ flashIndex--; renderFlash(); } });
-  document.getElementById("btn-next").addEventListener("click", ()=>{ if(flashIndex<items.length-1){ flashIndex++; renderFlash(); } });
-}
-
-let gamePool = [];
-let gameBatch = [];
-let leftOrder = [];
-let rightOrder = [];
-let selectedLeftId = null;
-let matchedIds = new Set();
-
-function startGameRound(){
-  if(items.length === 0){ document.getElementById("content-area").innerHTML = `<div class="empty-msg">${L().ui.emptyVocab}</div>`; return; }
-  gamePool = shuffle(items);
-  nextBatch();
-}
-
-function nextBatch(){
-  if(gamePool.length === 0){
-    const u = L().ui;
-    document.getElementById("content-area").innerHTML = `
-      <div class="game-complete">
-        <h3>${u.gameComplete}</h3>
-        <p style="color:var(--text-2);">${fmt(u.gameCompleteSub, {n: items.length, level: level})}</p>
-        <button class="btn" id="btn-restart">${u.restartBtn}</button>
-      </div>`;
-    document.getElementById("btn-restart").addEventListener("click", startGameRound);
-    return;
-  }
-  gameBatch = gamePool.splice(0, Math.min(5, gamePool.length));
-  leftOrder = shuffle(gameBatch);
-  rightOrder = shuffle(gameBatch);
-  selectedLeftId = null;
-  matchedIds = new Set();
-  renderGame();
-}
-
-function renderGame(){
-  const area = document.getElementById("content-area");
-  area.innerHTML = `
-    <div class="game-progress">${fmt(L().ui.gameProgress, {remain: gamePool.length, matched: matchedIds.size, total: gameBatch.length})}</div>
-    <div class="game-cols">
-      <div id="col-left"></div>
-      <div id="col-right"></div>
-    </div>`;
-  const colLeft = document.getElementById("col-left");
-  const colRight = document.getElementById("col-right");
-
-  leftOrder.forEach(it=>{
-    const div = document.createElement("div");
-    div.className = "game-item" + (matchedIds.has(it.id) ? " matched" : "") + (selectedLeftId===it.id ? " selected" : "");
-    div.innerHTML = escHtml(it.de_text) + (it.phonetic ? `<div class="game-item-phonetic">${escHtml(it.phonetic)}</div>` : "");
-    div.dataset.id = it.id;
-    if(!matchedIds.has(it.id)){ div.addEventListener("click", ()=> onLeftClick(it.id)); }
-    colLeft.appendChild(div);
+function applyLang(lang){
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    const key = el.dataset.i18n;
+    if(I18N[lang][key] !== undefined) el.innerHTML = I18N[lang][key];
   });
-
-  rightOrder.forEach(it=>{
-    const div = document.createElement("div");
-    div.className = "game-item" + (matchedIds.has(it.id) ? " matched" : "");
-    div.textContent = it.vi_meaning;
-    div.dataset.id = it.id;
-    if(!matchedIds.has(it.id)){ div.addEventListener("click", ()=> onRightClick(it.id)); }
-    colRight.appendChild(div);
-  });
+  document.getElementById("btn-lang-vi").classList.toggle("active", lang === "vi");
+  document.getElementById("btn-lang-en").classList.toggle("active", lang === "en");
+  try{ localStorage.setItem("ilapra_landing_lang", lang); }catch(e){}
 }
 
-function onLeftClick(id){ selectedLeftId = (selectedLeftId === id) ? null : id; renderGame(); }
-
-function onRightClick(rightId){
-  if(selectedLeftId === null) return;
-  if(selectedLeftId === rightId){
-    matchedIds.add(rightId);
-    selectedLeftId = null;
-    if(matchedIds.size === gameBatch.length){ setTimeout(nextBatch, 500); } else { renderGame(); }
-  } else {
-    const leftEl = document.querySelector(`#col-left [data-id="${selectedLeftId}"]`);
-    const rightEl = document.querySelector(`#col-right [data-id="${rightId}"]`);
-    if(leftEl) leftEl.classList.add("wrong");
-    if(rightEl) rightEl.classList.add("wrong");
-    setTimeout(()=>{ selectedLeftId = null; renderGame(); }, 500);
-  }
-}
-
-function escHtml(s){
-  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-function formatGrammarContent(text){
-  const raw = String(text||'').trim();
-  const lines = raw.split('\n');
-  const sections = [];
-  let current = null;
-  lines.forEach(line=>{
-    const trimmed = line.trim();
-    if(trimmed.startsWith('## ')){ current = { title: trimmed.slice(3).trim(), lines: [] }; sections.push(current); }
-    else { if(!current){ current = { title: '', lines: [] }; sections.push(current); } current.lines.push(line); }
-  });
-  return sections.map((sec, idx)=>{
-    const bodyHtml = formatBlockLines(sec.lines);
-    const head = sec.title
-      ? `<div class="grammar-section-head"><span class="grammar-section-num">${idx+1}</span><span class="grammar-section-title">${escHtml(sec.title)}</span></div>`
-      : '';
-    return `<div class="grammar-section">${head}<div class="grammar-section-body">${bodyHtml}</div></div>`;
-  }).join('');
-}
-function formatBlockLines(lines){
-  const text = lines.join('\n');
-  const blocks = text.trim().split(/\n\s*\n/);
-  return blocks.filter(b=>b.trim()).map(block=>{
-    const ls = block.split('\n').map(l=>l.trim()).filter(Boolean);
-    let html = '', listBuf = [], textBuf = [];
-    const flushList = ()=>{ if(listBuf.length){ html += '<ul>' + listBuf.map(l=>`<li>${escHtml(l.slice(2))}</li>`).join('') + '</ul>'; listBuf = []; } };
-    const flushText = ()=>{ if(textBuf.length){ html += '<p>' + textBuf.map(escHtml).join('<br>') + '</p>'; textBuf = []; } };
-    ls.forEach(l=>{ if(l.startsWith('- ')){ flushText(); listBuf.push(l); } else { flushList(); textBuf.push(l); } });
-    flushList(); flushText();
-    return html;
-  }).join('');
-}
-
-let grammarCache = {}; // key "ngôn ngữ|trình độ" -> bài học lý thuyết đã tải, tránh gọi mạng lại
-
-async function loadGrammar(){
-  const key = `${currentLanguage}|${level}`;
-  const area = document.getElementById("content-area");
-
-  if(grammarCache[key] !== undefined){
-    const cached = grammarCache[key];
-    if(cached === null){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyGrammar}</div>`; return; }
-    renderGrammar(cached);
-    return;
-  }
-
-  area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
-  const { data: lessonData, error: lessonError } = await sb.from("grammar_lessons").select("*").eq("language", currentLanguage).eq("level", level).maybeSingle();
-  if(lessonError){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${lessonError.message}</div>`; return; }
-  grammarCache[key] = lessonData || null;
-  if(!lessonData){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyGrammar}</div>`; return; }
-  renderGrammar(lessonData);
-}
-
-function renderGrammar(lesson){
-  const area = document.getElementById("content-area");
-  area.innerHTML = `
-    <div class="grammar-lesson">
-      <h2 class="grammar-title">${escHtml(lesson.title)}</h2>
-      <div class="grammar-content">${formatGrammarContent(lesson.content)}</div>
-    </div>
-  `;
-}
-
-function normalizeAnswer(s){ return String(s||"").trim().toLowerCase().replace(/\s+/g," "); }
-
-// ============================================================
-// Tab Luyện tập: lấy ngẫu nhiên bài tập theo đúng trình tự loại bài.
-// Muốn thêm loại bài mới sau này, chỉ cần thêm 1 dòng vào PRACTICE_SEQUENCE.
-// ============================================================
-const PRACTICE_SEQUENCE = [
-  { type: "multiple_choice",     count: 4 },
-  { type: "fill_blank",          count: 2 },
-  { type: "sentence_ordering",   count: 2 },
-  { type: "listening_choice",    count: 2 },
-  { type: "synonym_antonym",     count: 2 },
-  { type: "odd_one_out",         count: 2 },
-  { type: "word_form",           count: 2 },
-  { type: "listening_dictation", count: 2 },
-  { type: "error_correction",    count: 2 },
-  { type: "verb_conjugation",    count: 2 },
-];
-
-// Phân loại cách hiển thị/chấm điểm cho từng dạng bài — thêm dạng bài mới sau này
-// chỉ cần khai báo ở đây, không cần sửa code hiển thị/chấm điểm bên dưới.
-function exerciseCategory(type){
-  if(type === "sentence_ordering") return "ordering";
-  if(["multiple_choice","synonym_antonym","odd_one_out","listening_choice"].includes(type)) return "choice";
-  return "input"; // fill_blank, word_form, và mặc định an toàn cho dạng chưa biết
-}
-
-let practicePoolCache = {}; // key "ngôn ngữ|trình độ" -> toàn bộ bài tập của trình độ đó (chưa lọc)
-let currentPracticeItems = []; // bộ câu hỏi đang hiển thị (giữ cố định để nút "Làm lại" dùng đúng bộ này)
-let currentPracticePreHtml = ""; // HTML phụ hiện phía trên danh sách bài tập (đoạn văn đọc/nói)
-let practiceNextAction = null; // hàm gọi khi bấm nút "Tiếp theo/Đoạn khác" — tuỳ theo dạng luyện tập đang chọn
-let currentPracticeSourceId = null; // lesson_id (writing) hoặc passage_id (reading) của bộ câu hỏi đang hiển thị, dùng khi lưu quiz_results
-
-// ---- Đọc (Reading) ----
-let readingPoolCache = {}; // key "ngôn ngữ|trình độ" -> [đoạn văn]
-let PASSAGE_SENTENCES_CACHE = {}; // "id đoạn văn" -> mảng câu đã tách, dùng khi phát âm thanh
-
-// ---- Nghe (Listening) — kho riêng, KHÔNG dùng chung reading_passages ----
-let listeningPoolCache = {}; // key "ngôn ngữ|trình độ" -> [đoạn văn nghe]
-let LISTENING_SENTENCES_CACHE = {}; // "id đoạn văn nghe" -> mảng câu đã tách, dùng khi phát âm thanh
-
-// ---- Nói - Hội thoại (Speaking dialogue) ----
-let dialoguePoolCache = {}; // key "ngôn ngữ|trình độ" -> [hội thoại]
-let currentDialogue = null;
-let currentDialogueLines = [];
-let dialogueUserRole = null; // "A" hoặc "B" — vai người học chọn đọc
-let dialogueIndex = 0;
-
-function buildPracticeSet(pool){
-  const result = [];
-  PRACTICE_SEQUENCE.forEach(seq => {
-    const candidates = shuffle(pool.filter(ex => ex.type === seq.type));
-    result.push(...candidates.slice(0, seq.count));
-  });
-  return shuffle(result); // xáo cả thứ tự các dạng bài với nhau, không để luôn nhóm theo đúng thứ tự PRACTICE_SEQUENCE
-}
-
-// ============================================================
-// Toán (Math) — tab riêng, không thuộc Luyện tập. Chọn theo tỉ lệ 4 nhóm kiến
-// thức đúng như đề SAT thật (~35/35/15/15%: algebra/advanced_math/
-// problem_solving_data/geometry_trig), tái dùng renderPractice()/
-// checkPracticeAnswers() y hệt "Viết" — không cần logic hiển thị/chấm điểm mới.
-// ============================================================
-const MATH_SEQUENCE = [
-  { domain: "algebra",              count: 4 },
-  { domain: "advanced_math",        count: 4 },
-  { domain: "problem_solving_data", count: 2 },
-  { domain: "geometry_trig",        count: 2 },
-];
-
-function buildMathSet(pool){
-  const result = [];
-  MATH_SEQUENCE.forEach(seq => {
-    const candidates = shuffle(pool.filter(p => p.domain === seq.domain));
-    result.push(...candidates.slice(0, seq.count));
-  });
-  return shuffle(result);
-}
-
-let mathPoolCache = {}; // key "ngôn ngữ|trình độ" -> toàn bộ câu Toán của trình độ đó (chưa lọc theo domain)
-
-async function loadMathPractice(myReq){
-  if(myReq === undefined) myReq = ++practiceRequestSeq;
-  currentPracticeSourceId = null; // Toán không lưu quiz_results theo 1 "nguồn" cụ thể (không có khái niệm bài/đoạn văn)
-  const key = `${currentLanguage}|${level}`;
-  const area = document.getElementById("content-area");
-
-  if(mathPoolCache[key] !== undefined){
-    startNewMathSet(mathPoolCache[key]);
-    return;
-  }
-
-  area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
-  const { data, error } = await sb.from("math_problems").select("*").eq("language", currentLanguage).eq("level", level);
-  if(myReq !== practiceRequestSeq) return;
-  if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
-  mathPoolCache[key] = data || [];
-  startNewMathSet(mathPoolCache[key]);
-}
-
-function startNewMathSet(pool){
-  const area = document.getElementById("content-area");
-  if(!pool || pool.length === 0){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyMath}</div>`; return; }
-  currentPracticeItems = buildMathSet(pool);
-  practiceNextAction = () => startNewMathSet(pool);
-  renderPractice(currentPracticeItems, "");
-}
-
-// Đánh số mỗi lần loadPractice() được gọi — nếu người học đổi dạng luyện tập/ngôn
-// ngữ/trình độ trước khi 1 fetch cũ kịp xong, kết quả trả về muộn của fetch cũ sẽ
-// tự nhận ra mình đã lỗi thời (myReq !== practiceRequestSeq) và không ghi đè state.
-let practiceRequestSeq = 0;
-
-async function loadPractice(){
-  const myReq = ++practiceRequestSeq;
-  currentPracticeSourceId = null; // reset — chỉ writing/reading/listening (3 dạng có chấm điểm) mới set lại bên dưới
-  if(practiceKind === "reading"){ await loadReadingPractice(myReq); }
-  else if(practiceKind === "listening"){ await loadListeningPractice(myReq); }
-  else if(practiceKind === "speaking_dialogue"){ await loadSpeakingDialogue(myReq); }
-  else if(practiceKind === "math"){ await loadMathPractice(myReq); }
-  else { await loadWritingPractice(myReq); }
-}
-
-let practiceLessonIdCache = {}; // key "ngôn ngữ|trình độ" -> lesson_id, song song với practicePoolCache
-
-async function loadWritingPractice(myReq){
-  const key = `${currentLanguage}|${level}`;
-  const area = document.getElementById("content-area");
-
-  if(practicePoolCache[key] !== undefined){
-    currentPracticeSourceId = practiceLessonIdCache[key] || null;
-    startNewPracticeSet(practicePoolCache[key]);
-    return;
-  }
-
-  area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
-  const { data: lessonData, error: lessonError } = await sb.from("grammar_lessons").select("id").eq("language", currentLanguage).eq("level", level).maybeSingle();
-  if(myReq !== practiceRequestSeq) return; // đã có yêu cầu mới hơn — bỏ kết quả này
-  if(lessonError){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${lessonError.message}</div>`; return; }
-  if(!lessonData){ practicePoolCache[key] = []; area.innerHTML = `<div class="empty-msg">${L().ui.emptyPractice}</div>`; return; }
-  currentPracticeSourceId = lessonData.id;
-  practiceLessonIdCache[key] = lessonData.id;
-  const { data: exData, error: exError } = await sb.from("grammar_exercises").select("*").eq("lesson_id", lessonData.id);
-  if(myReq !== practiceRequestSeq) return;
-  if(exError){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${exError.message}</div>`; return; }
-  practicePoolCache[key] = exData || [];
-  startNewPracticeSet(practicePoolCache[key]);
-}
-
-function startNewPracticeSet(pool){
-  const area = document.getElementById("content-area");
-  if(!pool || pool.length === 0){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyPractice}</div>`; return; }
-  currentPracticeItems = buildPracticeSet(pool);
-  practiceNextAction = () => startNewPracticeSet(pool);
-  renderPractice(currentPracticeItems, "");
-}
-
-let orderStates = {}; // ex.id -> { bank: [{text,uid}], answer: [{text,uid}] } — trạng thái bài "sắp xếp câu"
-
-function initOrderState(ex){
-  const words = (ex.options || "").split(",").map(o=>o.trim()).filter(Boolean);
-  orderStates[ex.id] = { bank: shuffle(words.map((w,i)=>({text:w, uid:`${ex.id}-${i}`}))), answer: [] };
-}
-
-function orderExerciseHtml(exId){
-  const st = orderStates[exId];
-  const answerHtml = st.answer.length
-    ? st.answer.map(w=>`<button type="button" class="order-chip order-chip-selected" data-uid="${w.uid}" data-zone="answer">${escHtml(w.text)}</button>`).join(" ")
-    : `<span class="order-placeholder">...</span>`;
-  const bankHtml = st.bank.map(w=>`<button type="button" class="order-chip" data-uid="${w.uid}" data-zone="bank">${escHtml(w.text)}</button>`).join(" ");
-  return `<div class="order-answer-row">${answerHtml}</div><div class="order-bank-row">${bankHtml}</div>`;
-}
-
-function wireOrderChips(exId){
-  const body = document.querySelector(`#exercise-${exId} .exercise-body`);
-  body.querySelectorAll(".order-chip").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      const st = orderStates[exId];
-      const uid = btn.dataset.uid;
-      const fromArr = btn.dataset.zone === "bank" ? st.bank : st.answer;
-      const toArr = btn.dataset.zone === "bank" ? st.answer : st.bank;
-      const i = fromArr.findIndex(w=>w.uid===uid);
-      if(i>-1){ const [w] = fromArr.splice(i,1); toArr.push(w); }
-      body.innerHTML = orderExerciseHtml(exId);
-      wireOrderChips(exId);
-    });
-  });
-}
-
-function renderPractice(items, preHtml, nextLabel){
-  const area = document.getElementById("content-area");
-  const u = L().ui;
-  currentPracticeItems = items;
-  currentPracticePreHtml = preHtml || "";
-  orderStates = {}; // mỗi lần hiện bài (kể cả "Làm lại") đều xáo lại bài sắp xếp câu từ đầu
-
-  const exHtml = items.map((ex, idx)=>{
-    const cat = exerciseCategory(ex.type);
-    let questionLabel = escHtml(ex.question);
-    let bodyHtml;
-
-    if(ex.type === "sentence_ordering"){
-      questionLabel = "🔀 " + u.orderingPrompt;
-      initOrderState(ex);
-      bodyHtml = orderExerciseHtml(ex.id);
-    } else if(ex.type === "listening_choice"){
-      questionLabel = "🎧 " + u.listeningPrompt;
-      const opts = shuffle((ex.options || "").split(",").map(o=>o.trim()).filter(Boolean));
-      bodyHtml = `<button type="button" class="flash-speak" data-listen="${escHtml(ex.question)}" style="margin-bottom:10px;">🔊</button>`
-        + opts.map(o=>`<label class="exercise-option"><input type="radio" name="ex-${ex.id}" value="${escHtml(o)}"> ${escHtml(o)}</label>`).join("");
-    } else if(ex.type === "listening_dictation"){
-      questionLabel = "🎧✍️ " + u.dictationPrompt;
-      bodyHtml = `<button type="button" class="flash-speak" data-listen="${escHtml(ex.question)}" style="margin-bottom:10px;">🔊</button>`
-        + `<input type="text" class="exercise-input" id="input-${ex.id}" placeholder="${u.fillPlaceholder}">`;
-    } else if(cat === "choice"){
-      const opts = shuffle((ex.options || "").split(",").map(o=>o.trim()).filter(Boolean));
-      bodyHtml = opts.map(o=>`<label class="exercise-option"><input type="radio" name="ex-${ex.id}" value="${escHtml(o)}"> ${escHtml(o)}</label>`).join("");
-    } else {
-      bodyHtml = `<input type="text" class="exercise-input" id="input-${ex.id}" placeholder="${u.fillPlaceholder}">`;
-    }
-
-    // figure_svg chỉ có ở câu Toán Hình học/đồ thị, nội dung do admin tự soạn
-    // (không phải input người dùng) nên chèn thẳng, không escHtml để SVG render được.
-    const figureHtml = ex.figure_svg ? `<div class="exercise-figure">${ex.figure_svg}</div>` : "";
-
-    return `
-      <div class="exercise-item" id="exercise-${ex.id}">
-        <div class="exercise-question">${idx+1}. ${questionLabel}</div>
-        ${figureHtml}
-        <div class="exercise-body">${bodyHtml}</div>
-        <div class="exercise-feedback" id="feedback-${ex.id}"></div>
-      </div>`;
-  }).join("");
-
-  const hasItems = items.length > 0;
-  const exerciseSectionHtml = hasItems ? `
-    <div class="exercise-section" style="border-top:none;margin-top:0;padding-top:0;">
-      <h3 class="exercise-heading">${u.exerciseHeading}</h3>
-      <div class="exercise-list">${exHtml}</div>
-      <button class="btn" id="btn-check-practice">${u.checkBtn}</button>
-      <div class="grammar-score" id="practice-score"></div>
-    </div>` : "";
-
-  area.innerHTML = `
-    ${currentPracticePreHtml}
-    ${exerciseSectionHtml}
-    <div id="practice-after-actions" style="display:${hasItems ? "none" : "block"};text-align:center;margin-top:14px;">
-      ${hasItems ? `<button class="btn" id="btn-practice-retry" style="margin-right:10px;">${u.retryBtn}</button>` : ""}
-      <button class="btn" id="btn-practice-next">${nextLabel || u.nextBtn}</button>
-    </div>
-  `;
-  items.forEach(ex=>{
-    if(ex.type === "sentence_ordering") wireOrderChips(ex.id);
-  });
-  document.querySelectorAll(".flash-speak[data-listen]").forEach(btn=>{
-    btn.addEventListener("click", ()=> speak(btn.dataset.listen));
-  });
-  if(hasItems){
-    document.getElementById("btn-check-practice").addEventListener("click", checkPracticeAnswers);
-    document.getElementById("btn-practice-retry").addEventListener("click", ()=> renderPractice(currentPracticeItems, currentPracticePreHtml, nextLabel));
-  }
-  document.getElementById("btn-practice-next").addEventListener("click", ()=> { if(practiceNextAction) practiceNextAction(); });
-  wirePassageAudio();
-  wireListeningAudio();
-}
-
-async function checkPracticeAnswers(){
-  const u = L().ui;
-  let correctCount = 0;
-  const typeBreakdown = {}; // { [exercise.type]: {correct, total} } — chi tiết theo dạng bài con, lưu vào quiz_results
-  currentPracticeItems.forEach(ex=>{
-    const cat = exerciseCategory(ex.type);
-    let userAnswer = "";
-    if(cat === "ordering"){
-      const st = orderStates[ex.id];
-      userAnswer = st ? st.answer.map(w=>w.text).join(" ") : "";
-    } else if(cat === "choice"){
-      const checked = document.querySelector(`input[name="ex-${ex.id}"]:checked`);
-      userAnswer = checked ? checked.value : "";
-    } else {
-      const inp = document.getElementById(`input-${ex.id}`);
-      userAnswer = inp ? inp.value : "";
-    }
-    const isCorrect = normalizeAnswer(userAnswer) === normalizeAnswer(ex.correct_answer);
-    if(isCorrect) correctCount++;
-    if(!typeBreakdown[ex.type]) typeBreakdown[ex.type] = { correct: 0, total: 0 };
-    typeBreakdown[ex.type].total++;
-    if(isCorrect) typeBreakdown[ex.type].correct++;
-    const itemEl = document.getElementById(`exercise-${ex.id}`);
-    itemEl.classList.remove("correct", "incorrect");
-    itemEl.classList.add(isCorrect ? "correct" : "incorrect");
-    const fb = document.getElementById(`feedback-${ex.id}`);
-    let msg = isCorrect ? u.correctMsg : (u.wrongPrefix + ex.correct_answer);
-    if(ex.explanation) msg += " — " + ex.explanation;
-    fb.textContent = msg;
-  });
-  const scoreEl = document.getElementById("practice-score");
-  if(scoreEl) scoreEl.textContent = fmt(u.scoreLabel, {correct: correctCount, total: currentPracticeItems.length});
-  document.getElementById("btn-check-practice").style.display = "none";
-  document.getElementById("practice-after-actions").style.display = "block";
-
-  if(CURRENT_USER && (practiceKind === "writing" || practiceKind === "reading" || practiceKind === "listening" || practiceKind === "math") && currentPracticeItems.length > 0){
-    const { error } = await sb.from("quiz_results").insert({
-      user_id: CURRENT_USER.id,
-      language: currentLanguage,
-      level: level,
-      practice_kind: practiceKind,
-      source_id: currentPracticeSourceId,
-      correct_count: correctCount,
-      total_count: currentPracticeItems.length,
-      type_breakdown: typeBreakdown
-    });
-    if(error) console.warn("Lưu quiz_results thất bại:", error.message);
-  }
-}
-
-// ============================================================
-// Thống kê — lịch sử điểm kiểm tra (Luyện tập → Viết/Đọc) của chính học sinh
-// ============================================================
-async function loadStats(){
-  const u = L().ui;
-  const area = document.getElementById("content-area");
-  area.innerHTML = `<div class="loading-msg">${u.loading}</div>`;
-
-  const { data, error } = await sb.from("quiz_results")
-    .select("*")
-    .eq("user_id", CURRENT_USER.id)
-    .order("created_at", { ascending: false })
-    .limit(20);
-  if(error){ area.innerHTML = `<div class="empty-msg">${u.errorPrefix}${error.message}</div>`; return; }
-  if(!data || data.length === 0){ area.innerHTML = `<div class="empty-msg">${u.statsEmpty}</div>`; return; }
-
-  const totalCorrect = data.reduce((s,r)=>s+r.correct_count, 0);
-  const totalQuestions = data.reduce((s,r)=>s+r.total_count, 0);
-  const avgPercent = totalQuestions ? Math.round((totalCorrect/totalQuestions)*100) : 0;
-  const weekAgoMs = Date.now() - 7*24*60*60*1000;
-  const thisWeekCount = data.filter(r => new Date(r.created_at).getTime() >= weekAgoMs).length;
-
-  const rowsHtml = data.map(r=>{
-    const kindLabel = { writing: u.kindWriting, reading: u.kindReading, listening: u.kindListening, math: u.tabMath }[r.practice_kind] || r.practice_kind;
-    const langLabel = (LANGS[r.language] && LANGS[r.language].switchLabel) || r.language;
-    const percent = r.total_count ? Math.round((r.correct_count/r.total_count)*100) : 0;
-    const dateStr = new Date(r.created_at).toLocaleString();
-    return `<div class="stats-row">
-      <span>${dateStr}</span>
-      <span>${kindLabel} · ${r.level} · ${langLabel}</span>
-      <span class="stats-row-score">${r.correct_count}/${r.total_count} (${percent}%)</span>
-    </div>`;
-  }).join("");
-
-  area.innerHTML = `
-    <h2 style="color:var(--navy2);margin-top:0;">${u.statsTitle}</h2>
-    <div class="stats-summary">
-      <div class="stats-summary-item"><b>${data.length}</b>${u.statsCountLabel}</div>
-      <div class="stats-summary-item"><b>${avgPercent}%</b>${u.statsAvgLabel}</div>
-      <div class="stats-summary-item"><b>${thisWeekCount}</b>${u.statsWeekLabel}</div>
-    </div>
-    <div class="stats-list">${rowsHtml}</div>
-  `;
-}
-
-// ============================================================
-// Đọc (Reading) & Nói - Đọc đoạn văn (Speaking passage)
-// Cả 2 dùng chung bảng reading_passages; Đọc có thêm câu hỏi (reading_questions).
-// ============================================================
-function splitSentences(text){
-  return String(text||"").split(/(?<=[.!?。！？])\s+/).map(s=>s.trim()).filter(Boolean);
-}
-
-function passageBlockHtml(passage){
-  const pid = String(passage.id);
-  const sentences = splitSentences(passage.passage_text);
-  PASSAGE_SENTENCES_CACHE[pid] = sentences;
-  const u = L().ui;
-  const sentHtml = sentences.map((s,i)=>`<span class="passage-sentence" data-passage-id="${pid}" data-sent-idx="${i}">${escHtml(s)}</span>`).join(" ");
-  return `
-    <div class="reading-passage">
-      <div class="reading-passage-head">
-        <h3 class="reading-passage-title">${escHtml(passage.title)}</h3>
-        <button type="button" class="btn" id="btn-listen-passage" data-passage-id="${pid}">${u.listenFullBtn}</button>
-      </div>
-      <div class="reading-passage-text">${sentHtml}</div>
-    </div>`;
-}
-
-function playSentenceSequence(passageId, sentences, idx, singleOnly, itemClass){
-  itemClass = itemClass || "passage-sentence"; // "passage-sentence" (Đọc, span) hoặc "listening-sentence-btn" (Nghe, button)
-  if(idx >= sentences.length) return;
-  document.querySelectorAll(`.${itemClass}[data-passage-id="${passageId}"]`).forEach(e=>e.classList.remove("playing"));
-  const el = document.querySelector(`.${itemClass}[data-passage-id="${passageId}"][data-sent-idx="${idx}"]`);
-  if(el) el.classList.add("playing");
-  speak(sentences[idx], { onend: () => {
-    if(el) el.classList.remove("playing");
-    if(!singleOnly) playSentenceSequence(passageId, sentences, idx+1, false, itemClass);
-  }});
-}
-
-// Gắn sự kiện cho nút nghe/câu văn — gọi lại an toàn mỗi lần renderPractice (không có gì để gắn thì bỏ qua).
-function wirePassageAudio(){
-  const fullBtn = document.getElementById("btn-listen-passage");
-  if(fullBtn){
-    fullBtn.addEventListener("click", ()=>{
-      const pid = fullBtn.dataset.passageId;
-      playSentenceSequence(pid, PASSAGE_SENTENCES_CACHE[pid] || [], 0, false);
-    });
-  }
-  document.querySelectorAll(".passage-sentence").forEach(el=>{
-    el.addEventListener("click", ()=>{
-      const pid = el.dataset.passageId;
-      const idx = parseInt(el.dataset.sentIdx, 10);
-      playSentenceSequence(pid, PASSAGE_SENTENCES_CACHE[pid] || [], idx, true);
-    });
-  });
-}
-
-async function loadReadingPassagePool(){
-  const key = `${currentLanguage}|${level}`;
-  if(readingPoolCache[key] === undefined){
-    const { data, error } = await sb.from("reading_passages").select("*").eq("language", currentLanguage).eq("level", level);
-    if(error) return { error };
-    readingPoolCache[key] = data || [];
-  }
-  return { pool: readingPoolCache[key] };
-}
-
-async function loadReadingPractice(myReq){
-  const area = document.getElementById("content-area");
-  area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
-  const { pool, error } = await loadReadingPassagePool();
-  if(myReq !== practiceRequestSeq) return;
-  if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
-  if(pool.length === 0){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyReading}</div>`; return; }
-  await pickRandomReadingPassage(pool, myReq);
-}
-
-async function pickRandomReadingPassage(pool, myReq){
-  if(myReq === undefined) myReq = ++practiceRequestSeq; // gọi từ nút "Đoạn khác" — tính như 1 yêu cầu mới
-  const area = document.getElementById("content-area");
-  const passage = pool[Math.floor(Math.random()*pool.length)];
-  area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
-  const { data: questions, error } = await sb.from("reading_questions").select("*").eq("passage_id", passage.id).order("order_index");
-  if(myReq !== practiceRequestSeq) return;
-  if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
-  currentPracticeSourceId = passage.id;
-  practiceNextAction = () => pickRandomReadingPassage(pool);
-  renderPractice(shuffle(questions || []), passageBlockHtml(passage), L().ui.anotherPassageBtn);
-}
-
-// ============================================================
-// Nghe (Listening) — kho riêng (listening_passages/listening_questions), có
-// chấm điểm giống Đọc, nhưng KHÔNG hiện chữ đoạn văn — chỉ có nút nghe theo
-// từng câu + nghe toàn bài, học sinh phải nghe rồi trả lời câu hỏi.
-// ============================================================
-function listeningPassageBlockHtml(passage){
-  const pid = String(passage.id);
-  const sentences = splitSentences(passage.passage_text);
-  LISTENING_SENTENCES_CACHE[pid] = sentences;
-  const u = L().ui;
-  const sentBtnsHtml = sentences.map((s,i)=>
-    `<button type="button" class="listening-sentence-btn" data-passage-id="${pid}" data-sent-idx="${i}">🔊 ${u.sentenceLabel} ${i+1}</button>`
-  ).join(" ");
-  return `
-    <div class="reading-passage">
-      <div class="reading-passage-head">
-        <h3 class="reading-passage-title">${escHtml(passage.title)}</h3>
-        <button type="button" class="btn" id="btn-listen-full-listening" data-passage-id="${pid}">${u.listenFullBtn}</button>
-      </div>
-      <div class="listening-sentence-buttons">${sentBtnsHtml}</div>
-    </div>`;
-}
-
-// Gắn sự kiện cho các nút nghe của "Nghe" — tách hẳn id/class khỏi wirePassageAudio()
-// (Đọc) để tránh gắn trùng sự kiện hoặc đọc nhầm cache khi 2 hàm cùng chạy mỗi lần renderPractice().
-function wireListeningAudio(){
-  const fullBtn = document.getElementById("btn-listen-full-listening");
-  if(fullBtn){
-    fullBtn.addEventListener("click", ()=>{
-      const pid = fullBtn.dataset.passageId;
-      playSentenceSequence(pid, LISTENING_SENTENCES_CACHE[pid] || [], 0, false, "listening-sentence-btn");
-    });
-  }
-  document.querySelectorAll(".listening-sentence-btn").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      const pid = btn.dataset.passageId;
-      const idx = parseInt(btn.dataset.sentIdx, 10);
-      playSentenceSequence(pid, LISTENING_SENTENCES_CACHE[pid] || [], idx, true, "listening-sentence-btn");
-    });
-  });
-}
-
-async function loadListeningPassagePool(){
-  const key = `${currentLanguage}|${level}`;
-  if(listeningPoolCache[key] === undefined){
-    const { data, error } = await sb.from("listening_passages").select("*").eq("language", currentLanguage).eq("level", level);
-    if(error) return { error };
-    listeningPoolCache[key] = data || [];
-  }
-  return { pool: listeningPoolCache[key] };
-}
-
-async function loadListeningPractice(myReq){
-  const area = document.getElementById("content-area");
-  area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
-  const { pool, error } = await loadListeningPassagePool();
-  if(myReq !== practiceRequestSeq) return;
-  if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
-  if(pool.length === 0){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyListening}</div>`; return; }
-  await pickRandomListeningPassage(pool, myReq);
-}
-
-async function pickRandomListeningPassage(pool, myReq){
-  if(myReq === undefined) myReq = ++practiceRequestSeq; // gọi từ nút "Đoạn khác"
-  const area = document.getElementById("content-area");
-  const passage = pool[Math.floor(Math.random()*pool.length)];
-  area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
-  const { data: questions, error } = await sb.from("listening_questions").select("*").eq("passage_id", passage.id).order("order_index");
-  if(myReq !== practiceRequestSeq) return;
-  if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
-  currentPracticeSourceId = passage.id;
-  practiceNextAction = () => pickRandomListeningPassage(pool);
-  renderPractice(shuffle(questions || []), listeningPassageBlockHtml(passage), L().ui.anotherPassageBtn);
-}
-
-// ============================================================
-// Nói - Hội thoại (Speaking dialogue): app đọc 1 vai, người học tự đọc vai còn lại.
-// ============================================================
-function dialogueRoleLabel(role, dialogue){
-  return role === "A" ? (dialogue.role_a_name || "A") : (dialogue.role_b_name || "B");
-}
-
-async function loadSpeakingDialogue(myReq){
-  if(myReq === undefined) myReq = ++practiceRequestSeq; // gọi từ nút "Hội thoại khác"
-  const key = `${currentLanguage}|${level}`;
-  const area = document.getElementById("content-area");
-  area.innerHTML = `<div class="loading-msg">${L().ui.loading}</div>`;
-  if(dialoguePoolCache[key] === undefined){
-    const { data, error } = await sb.from("dialogues").select("*").eq("language", currentLanguage).eq("level", level);
-    if(myReq !== practiceRequestSeq) return;
-    if(error){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${error.message}</div>`; return; }
-    dialoguePoolCache[key] = data || [];
-  }
-  const pool = dialoguePoolCache[key];
-  if(pool.length === 0){ area.innerHTML = `<div class="empty-msg">${L().ui.emptyDialogue}</div>`; return; }
-  const dialogue = pool[Math.floor(Math.random()*pool.length)];
-  const { data: lines, error: linesError } = await sb.from("dialogue_lines").select("*").eq("dialogue_id", dialogue.id).order("order_index");
-  if(myReq !== practiceRequestSeq) return;
-  if(linesError){ area.innerHTML = `<div class="empty-msg">${L().ui.errorPrefix}${linesError.message}</div>`; return; }
-  renderDialogueRolePicker(dialogue, lines || []);
-}
-
-function renderDialogueRolePicker(dialogue, lines){
-  const area = document.getElementById("content-area");
-  const u = L().ui;
-  area.innerHTML = `
-    <div class="reading-passage">
-      <h3 class="reading-passage-title">${escHtml(dialogue.title)}</h3>
-      ${dialogue.scenario ? `<p style="color:var(--text-2);margin:0;">${escHtml(dialogue.scenario)}</p>` : ""}
-    </div>
-    <div class="role-picker">
-      <p style="font-weight:700;margin:0 0 10px;">${u.chooseRolePrompt}</p>
-      <label class="exercise-option"><input type="radio" name="dialogue-role" value="A" checked> ${escHtml(dialogueRoleLabel("A", dialogue))}</label>
-      <label class="exercise-option"><input type="radio" name="dialogue-role" value="B"> ${escHtml(dialogueRoleLabel("B", dialogue))}</label>
-      <div style="margin-top:14px;">
-        <button class="btn" id="btn-start-dialogue">${u.startDialogueBtn}</button>
-      </div>
-    </div>`;
-  document.getElementById("btn-start-dialogue").addEventListener("click", ()=>{
-    const checked = document.querySelector('input[name="dialogue-role"]:checked');
-    dialogueUserRole = checked ? checked.value : "A";
-    dialogueIndex = 0;
-    currentDialogue = dialogue;
-    currentDialogueLines = lines;
-    renderDialogueStep();
-  });
-}
-
-function renderDialogueStep(){
-  const area = document.getElementById("content-area");
-  const u = L().ui;
-  const dialogue = currentDialogue;
-  const lines = currentDialogueLines;
-  const finished = dialogueIndex >= lines.length;
-
-  const linesHtml = lines.map((ln, idx)=>{
-    const isUserLine = ln.speaker === dialogueUserRole;
-    const roleName = dialogueRoleLabel(ln.speaker, dialogue);
-    const state = idx < dialogueIndex ? "done" : (idx === dialogueIndex ? "current" : "upcoming");
-    let actionHtml = "";
-    if(state === "current" && isUserLine){
-      actionHtml = `<div class="dialogue-your-turn">${u.yourTurnLabel}</div><button class="btn" id="btn-dialogue-continue">${u.continueBtn}</button>`;
-    } else if(state === "current" && !isUserLine){
-      actionHtml = `<button class="btn" id="btn-dialogue-continue" style="display:none;">${u.continueBtn}</button>`;
-    }
-    return `
-      <div class="dialogue-line dialogue-${isUserLine?"user":"app"} dialogue-${state}" id="dialogue-line-${idx}">
-        <div class="dialogue-speaker">${escHtml(roleName)}${isUserLine ? " 🎙️" : " 🔊"}</div>
-        <div class="dialogue-text">${escHtml(ln.line_text)}</div>
-        ${actionHtml}
-      </div>`;
-  }).join("");
-
-  area.innerHTML = `
-    <div class="dialogue-wrap">
-      <h3 class="reading-passage-title">${escHtml(dialogue.title)}</h3>
-      <div class="dialogue-lines">${linesHtml}</div>
-      ${finished ? `
-        <div style="text-align:center;margin-top:16px;">
-          <p style="font-weight:700;color:var(--green);">${u.dialogueDoneMsg}</p>
-          <button class="btn" id="btn-dialogue-restart" style="margin-right:10px;">${u.restartDialogueBtn}</button>
-          <button class="btn" id="btn-dialogue-another">${u.anotherDialogueBtn}</button>
-        </div>` : ""}
-    </div>`;
-
-  if(finished){
-    document.getElementById("btn-dialogue-restart").addEventListener("click", ()=>{ dialogueIndex=0; renderDialogueStep(); });
-    document.getElementById("btn-dialogue-another").addEventListener("click", ()=> loadSpeakingDialogue());
-    return;
-  }
-
-  const currentLine = lines[dialogueIndex];
-  const isUserLine = currentLine.speaker === dialogueUserRole;
-  const continueBtn = document.getElementById("btn-dialogue-continue");
-  continueBtn.addEventListener("click", ()=>{ dialogueIndex++; renderDialogueStep(); });
-
-  if(!isUserLine){
-    // App tự đọc lời thoại của mình, xong mới hiện nút Tiếp tục để người học chủ động qua câu kế.
-    const genderHint = currentLine.speaker === "A" ? "female" : "male";
-    speak(currentLine.line_text, { genderHint, onend: () => { continueBtn.style.display = "inline-block"; } });
-  }
-
-  const el = document.getElementById(`dialogue-line-${dialogueIndex}`);
-  if(el) el.scrollIntoView({behavior:"smooth", block:"center"});
-}
-
-boot();
+let initialLang = "vi";
+try{
+  const saved = localStorage.getItem("ilapra_landing_lang");
+  if(saved === "vi" || saved === "en") initialLang = saved;
+  else if(!saved && navigator.language && navigator.language.toLowerCase().startsWith("en")) initialLang = "en";
+}catch(e){}
+applyLang(initialLang);
+
+document.getElementById("btn-lang-vi").addEventListener("click", ()=> applyLang("vi"));
+document.getElementById("btn-lang-en").addEventListener("click", ()=> applyLang("en"));
 </script>
+
 </body>
 </html>

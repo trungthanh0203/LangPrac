@@ -4,12 +4,15 @@
 // - Tài nguyên tĩnh ít đổi (icon, logo, manifest): "cache trước, mạng sau" (cache-first)
 //   kèm âm thầm cập nhật lại cache ở nền (stale-while-revalidate) — mở app lần sau
 //   gần như tức thì, không phải chờ mạng tải lại icon mỗi lần.
-// - index.html / languages.json: "mạng trước, cache sau" (network-first) — luôn ưu
-//   tiên bản mới nhất khi có mạng, chỉ dùng bản cache khi mất mạng.
+// - app.html (trang học thật) / languages.json: "mạng trước, cache sau"
+//   (network-first) — luôn ưu tiên bản mới nhất khi có mạng, chỉ dùng bản
+//   cache khi mất mạng. index.html (trang giới thiệu/landing) không cần
+//   precache riêng — vẫn được phục vụ đúng qua nhánh network-first mặc định
+//   ở cuối file (mọi GET cùng gốc không nằm trong 2 danh sách dưới).
 // - Dữ liệu Supabase (từ vựng/ngữ pháp/tài khoản): KHÔNG đụng tới, luôn đi thẳng
 //   ra mạng để đảm bảo chính xác, mới nhất.
 
-const CACHE_NAME = "mrthanh-learn-v3";
+const CACHE_NAME = "ilapra-v4";
 
 const STATIC_ASSETS = [
   "/manifest.json",
@@ -21,7 +24,7 @@ const STATIC_ASSETS = [
 ];
 
 const SHELL_ASSETS = [
-  "/index.html",
+  "/app.html",
   "/languages.json",
 ];
 
