@@ -508,10 +508,18 @@ document.getElementById("btn-logout").addEventListener("click", async ()=>{
   showAuthScreen();
 });
 
+let lastVisibilityLogAt = 0;
+const VISIBILITY_LOG_MIN_INTERVAL_MS = 8000; // chặn spam activity_log khi chuyển tab/khoá-mở màn hình liên tục
+
 document.addEventListener("visibilitychange", ()=>{
   // Xấp xỉ "đang học"/"không học": không có idle-timer thật, chỉ ghi lại lúc
   // người dùng chuyển tab/thu nhỏ app (app_hidden) và lúc quay lại (app_visible).
+  // Có throttle vì sự kiện này có thể bắn liên tục (chuyển tab nhanh, khoá màn
+  // hình di động nhiều lần) — không throttle sẽ làm activity_log phình to vô ích.
   if(!CURRENT_USER) return;
+  const now = Date.now();
+  if(now - lastVisibilityLogAt < VISIBILITY_LOG_MIN_INTERVAL_MS) return;
+  lastVisibilityLogAt = now;
   logActivity(document.hidden ? "app_hidden" : "app_visible", { language: currentLanguage });
 });
 

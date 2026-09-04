@@ -198,7 +198,7 @@ async function buildStudentBlock(studentId, studentEmail, dateStr){
   const [{ data: quizzes }, { data: dayQuizzes }, { data: dayActivity }] = await Promise.all([
     sb.from("quiz_results").select("*").eq("user_id", studentId).order("created_at", { ascending: false }).limit(20),
     sb.from("quiz_results").select("*").eq("user_id", studentId).gte("created_at", dayStart).lte("created_at", dayEnd),
-    sb.from("activity_log").select("*").eq("user_id", studentId).gte("created_at", dayStart).lte("created_at", dayEnd)
+    sb.from("activity_log").select("*").eq("user_id", studentId).gte("created_at", dayStart).lte("created_at", dayEnd).order("created_at", { ascending: false }).limit(200) // chặn trần phòng khi 1 ngày có quá nhiều sự kiện
   ]);
 
   const studentLabel = escHtml(studentEmail);
