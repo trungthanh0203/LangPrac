@@ -1131,14 +1131,22 @@ function isSafeHref(href){
 // <a href="#bai-1">chữ</a> gõ thẳng, hoặc markdown [chữ](#bai-1)). Luôn xử lý liên
 // kết trước, rồi ĐẬM trước NGHIÊNG, để 1 cặp ** không bị hiểu nhầm thành 2 cặp *
 // lồng nhau. Mọi thẻ HTML khác vẫn bị escape như cũ, không mở thêm lỗ hổng nào khác.
+// Dấu ngoặc kép trong thuộc tính id="..."/href="...": chấp nhận CẢ nháy thẳng
+// (") lẫn nháy cong (" ") — trình soạn thảo văn bản (Word, Notes...) hay tự đổi
+// nháy thẳng thành nháy cong khi gõ rồi dán vào, y hệt sự cố đã gặp trước đây với
+// SQL Editor (xem mục 13.8 tài liệu bàn giao) — nếu chỉ nhận đúng 1 kiểu, thẻ
+// <a id="..."> sẽ không khớp và hiện nguyên văn thay vì render thành liên kết/neo.
+const QUOTE = '(?:&quot;|"|‘|’|“|”)';
+const RE_ANCHOR_ID = new RegExp('&lt;a id=' + QUOTE + '([a-zA-Z0-9_-]+)' + QUOTE + '&gt;(.*?)&lt;\\/a&gt;', 'gi');
+const RE_ANCHOR_HREF = new RegExp('&lt;a href=' + QUOTE + '(.*?)' + QUOTE + '&gt;(.*?)&lt;\\/a&gt;', 'gi');
 function formatInlineStyles(escapedText){
   return escapedText
     .replace(/&lt;b&gt;/gi, '<b>').replace(/&lt;\/b&gt;/gi, '</b>')
     .replace(/&lt;strong&gt;/gi, '<strong>').replace(/&lt;\/strong&gt;/gi, '</strong>')
     .replace(/&lt;i&gt;/gi, '<i>').replace(/&lt;\/i&gt;/gi, '</i>')
     .replace(/&lt;em&gt;/gi, '<em>').replace(/&lt;\/em&gt;/gi, '</em>')
-    .replace(/&lt;a id=&quot;([a-zA-Z0-9_-]+)&quot;&gt;(.*?)&lt;\/a&gt;/gi, '<a id="$1">$2</a>')
-    .replace(/&lt;a href=&quot;(.*?)&quot;&gt;(.*?)&lt;\/a&gt;/gi, (m, href, txt) => isSafeHref(href) ? `<a href="${href}">${txt}</a>` : m)
+    .replace(RE_ANCHOR_ID, '<a id="$1">$2</a>')
+    .replace(RE_ANCHOR_HREF, (m, href, txt) => isSafeHref(href) ? `<a href="${href}">${txt}</a>` : m)
     .replace(/\[(.+?)\]\((.+?)\)/g, (m, txt, href) => isSafeHref(href) ? `<a href="${href}">${txt}</a>` : m)
     .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>');
