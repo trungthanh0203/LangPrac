@@ -100,8 +100,7 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
 <div class="wrap" id="main-wrap" style="display:none;">
   <header class="top">
     <div>
-      <h1>Quản lý Từ vựng & Ngữ pháp Đa ngôn ngữ</h1>
-      <div class="sub">Quản trị chung dữ liệu cho trang học: app.html — thêm ngôn ngữ mới trong languages.json</div>
+      <h1>Quản trị nội dung</h1>
     </div>
     <div class="filters">
       <select id="f-language"><option value="all">Tất cả ngôn ngữ</option></select>
@@ -796,12 +795,12 @@ function normalizeText(s){ return String(s||"").trim().toLowerCase().replace(/\s
 // Tra các từ/câu đã tồn tại cho từng cặp (language, level, type) xuất hiện trong dữ liệu sắp nhập
 async function fetchExistingVocabKeys(rows){
   const triples = Array.from(new Set(rows.map(r => r.language+"|"+r.level+"|"+r.type)));
-  const existing = new Set();
+  const existing = new Map(); // key -> id dòng đã có sẵn, dùng để CẬP NHẬT thay vì bỏ qua khi trùng
   for(const t of triples){
     const [language, level, type] = t.split("|");
-    const { data, error } = await sb.from("vocab_items").select("de_text").eq("language", language).eq("level", level).eq("type", type);
+    const { data, error } = await sb.from("vocab_items").select("id, de_text").eq("language", language).eq("level", level).eq("type", type);
     if(error) continue; // best-effort: nếu tra lỗi thì bỏ qua, không chặn việc nhập
-    (data||[]).forEach(d => existing.add(t + "|" + normalizeText(d.de_text)));
+    (data||[]).forEach(d => existing.set(t + "|" + normalizeText(d.de_text), d.id));
   }
   return existing;
 }
@@ -813,11 +812,11 @@ function exerciseDedupeKey(question, correctAnswer){
   return normalizeText(q || correctAnswer);
 }
 async function fetchExistingExerciseKeys(lessonIds){
-  const existing = new Set();
+  const existing = new Map(); // key -> id, dùng để CẬP NHẬT thay vì bỏ qua khi trùng
   for(const id of lessonIds){
-    const { data, error } = await sb.from("grammar_exercises").select("question, correct_answer").eq("lesson_id", id);
+    const { data, error } = await sb.from("grammar_exercises").select("id, question, correct_answer").eq("lesson_id", id);
     if(error) continue;
-    (data||[]).forEach(d => existing.add(id + "|" + exerciseDedupeKey(d.question, d.correct_answer)));
+    (data||[]).forEach(d => existing.set(id + "|" + exerciseDedupeKey(d.question, d.correct_answer), d.id));
   }
   return existing;
 }
@@ -872,33 +871,29 @@ document.getElementById("btn-import").addEventListener("click", async ()=>{
       return;
     }
 
-    // Chống trùng: bỏ qua các dòng đã tồn tại sẵn trong CSDL (cùng ngôn ngữ/trình độ/loại/nội dung),
-    // đồng thời tự loại trùng lặp ngay trong chính đoạn CSV vừa dán vào.
-    const existingKeys = await fetchExistingVocabKeys(rows);
-    const newRows = [];
-    let dupCount = 0;
+    // Dòng nào đã có sẵn (cùng ngôn ngữ/trình độ/loại/nội dung) thì CẬP NHẬT theo nội dung
+    // mới dán vào thay vì bỏ qua; trùng lặp ngay trong chính đoạn CSV vừa dán thì chỉ giữ dòng đầu.
+    const existingMap = await fetchExistingVocabKeys(rows);
+    const finalRows = [];
+    const seenInBatch = new Set();
+    let insertCount = 0, updateCount = 0;
     rows.forEach(r=>{
       const key = r.language+"|"+r.level+"|"+r.type+"|"+normalizeText(r.de_text);
-      if(existingKeys.has(key)){ dupCount++; return; }
-      existingKeys.add(key);
-      newRows.push(r);
+      if(seenInBatch.has(key)) return;
+      seenInBatch.add(key);
+      const existingId = existingMap.get(key);
+      if(existingId){ r.id = existingId; updateCount++; } else { insertCount++; }
+      finalRows.push(r);
     });
 
-    if(newRows.length === 0){
-      resultEl.className = "result-msg err";
-      resultEl.textContent = `Cả ${rows.length} dòng đều đã tồn tại sẵn trong hệ thống, không có gì để nhập thêm.` + (errors.length ? ("\n" + errors.join("\n")) : "");
-      return;
-    }
-
-    const { error } = await sb.from("vocab_items").insert(newRows);
+    const { error } = await sb.from("vocab_items").upsert(finalRows);
     if(error){
       resultEl.className = "result-msg err";
       resultEl.textContent = "Lỗi khi nhập: " + error.message;
       return;
     }
     resultEl.className = "result-msg ok";
-    resultEl.textContent = `Đã nhập thành công ${newRows.length} dòng.`
-      + (dupCount ? ` Bỏ qua ${dupCount} dòng đã tồn tại sẵn.` : "")
+    resultEl.textContent = `Đã nhập ${insertCount} dòng mới` + (updateCount ? `, cập nhật ${updateCount} dòng đã có sẵn` : "") + "."
       + (errors.length ? ("\nCác dòng bị bỏ qua do lỗi định dạng:\n" + errors.join("\n")) : "");
     document.getElementById("csv-input").value = "";
     await loadData();
@@ -1364,34 +1359,30 @@ document.getElementById("btn-import-ex").addEventListener("click", async ()=>{
       return;
     }
 
-    // Chống trùng: bỏ qua các câu bài tập đã tồn tại sẵn trong cùng bài học,
-    // đồng thời tự loại trùng lặp ngay trong chính đoạn CSV vừa dán vào.
+    // Câu nào đã tồn tại sẵn trong cùng bài học thì CẬP NHẬT theo nội dung mới dán vào
+    // thay vì bỏ qua; trùng lặp ngay trong chính đoạn CSV vừa dán thì chỉ giữ dòng đầu.
     const lessonIds = Array.from(new Set(rows.map(r=>r.lesson_id)));
-    const existingExKeys = await fetchExistingExerciseKeys(lessonIds);
-    const newRows = [];
-    let dupCount = 0;
+    const existingExMap = await fetchExistingExerciseKeys(lessonIds);
+    const finalRows = [];
+    const seenInBatch = new Set();
+    let insertCount = 0, updateCount = 0;
     rows.forEach(r=>{
       const key = r.lesson_id + "|" + exerciseDedupeKey(r.question, r.correct_answer);
-      if(existingExKeys.has(key)){ dupCount++; return; }
-      existingExKeys.add(key);
-      newRows.push(r);
+      if(seenInBatch.has(key)) return;
+      seenInBatch.add(key);
+      const existingId = existingExMap.get(key);
+      if(existingId){ r.id = existingId; updateCount++; } else { insertCount++; }
+      finalRows.push(r);
     });
 
-    if(newRows.length === 0){
-      resultEl.className = "result-msg err";
-      resultEl.textContent = `Cả ${rows.length} câu đều đã tồn tại sẵn trong bài học tương ứng, không có gì để nhập thêm.` + (errors.length ? ("\n" + errors.join("\n")) : "");
-      return;
-    }
-
-    const { error } = await sb.from("grammar_exercises").insert(newRows);
+    const { error } = await sb.from("grammar_exercises").upsert(finalRows);
     if(error){
       resultEl.className = "result-msg err";
       resultEl.textContent = "Lỗi khi nhập: " + error.message;
       return;
     }
     resultEl.className = "result-msg ok";
-    resultEl.textContent = `Đã nhập thành công ${newRows.length} bài tập.`
-      + (dupCount ? ` Bỏ qua ${dupCount} câu đã tồn tại sẵn.` : "")
+    resultEl.textContent = `Đã nhập ${insertCount} bài tập mới` + (updateCount ? `, cập nhật ${updateCount} câu đã có sẵn` : "") + "."
       + (errors.length ? ("\nCác dòng bị bỏ qua do lỗi định dạng:\n" + errors.join("\n")) : "");
     document.getElementById("ex-csv-input").value = "";
     if(CURRENT_LESSON) await loadExercises(CURRENT_LESSON.id);
@@ -1586,12 +1577,12 @@ document.getElementById("btn-add-rq").addEventListener("click", openAddRQ);
 // ---- Nhập nhanh đoạn văn từ CSV ----
 async function fetchExistingPassageKeys(rows){
   const pairs = Array.from(new Set(rows.map(r => r.language+"|"+r.level)));
-  const existing = new Set();
+  const existing = new Map(); // key -> id, dùng để CẬP NHẬT thay vì bỏ qua khi trùng
   for(const pair of pairs){
     const [language, level] = pair.split("|");
-    const { data, error } = await sb.from("reading_passages").select("title").eq("language", language).eq("level", level);
+    const { data, error } = await sb.from("reading_passages").select("id, title").eq("language", language).eq("level", level);
     if(error) continue;
-    (data||[]).forEach(d => existing.add(pair + "|" + normalizeText(d.title)));
+    (data||[]).forEach(d => existing.set(pair + "|" + normalizeText(d.title), d.id));
   }
   return existing;
 }
@@ -1637,26 +1628,24 @@ document.getElementById("btn-import-passage").addEventListener("click", async ()
       return;
     }
 
-    const existingKeys = await fetchExistingPassageKeys(rows);
-    const newRows = [];
-    let dupCount = 0;
+    // Đoạn văn nào trùng tiêu đề (cùng ngôn ngữ/trình độ) thì CẬP NHẬT nội dung mới thay vì bỏ qua.
+    const existingMap = await fetchExistingPassageKeys(rows);
+    const finalRows = [];
+    const seenInBatch = new Set();
+    let insertCount = 0, updateCount = 0;
     rows.forEach(r=>{
       const key = r.language+"|"+r.level+"|"+normalizeText(r.title);
-      if(existingKeys.has(key)){ dupCount++; return; }
-      existingKeys.add(key);
-      newRows.push(r);
+      if(seenInBatch.has(key)) return;
+      seenInBatch.add(key);
+      const existingId = existingMap.get(key);
+      if(existingId){ r.id = existingId; updateCount++; } else { insertCount++; }
+      finalRows.push(r);
     });
-    if(newRows.length === 0){
-      resultEl.className = "result-msg err";
-      resultEl.textContent = `Cả ${rows.length} đoạn văn đều đã tồn tại sẵn (trùng tiêu đề), không có gì để nhập thêm.`;
-      return;
-    }
 
-    const { error } = await sb.from("reading_passages").insert(newRows);
+    const { error } = await sb.from("reading_passages").upsert(finalRows);
     if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
     resultEl.className = "result-msg ok";
-    resultEl.textContent = `Đã nhập thành công ${newRows.length} đoạn văn.`
-      + (dupCount ? ` Bỏ qua ${dupCount} đoạn đã tồn tại sẵn (trùng tiêu đề).` : "")
+    resultEl.textContent = `Đã nhập ${insertCount} đoạn văn mới` + (updateCount ? `, cập nhật ${updateCount} đoạn đã có sẵn (trùng tiêu đề)` : "") + "."
       + (errors.length ? ("\nCác dòng bị bỏ qua do lỗi định dạng:\n" + errors.join("\n")) : "");
     document.getElementById("passage-csv-input").value = "";
     await loadPassages();
@@ -1729,22 +1718,23 @@ document.getElementById("btn-import-rq").addEventListener("click", async ()=>{
     if(rows.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = "Không có dòng nào nhập được.\n" + errors.join("\n"); return; }
 
     const passageIds = Array.from(new Set(rows.map(r=>r.passage_id)));
-    const existingKeys = await fetchExistingExerciseKeysGeneric("reading_questions", "passage_id", passageIds);
-    const newRows = [];
-    let dupCount = 0;
+    const existingMap = await fetchExistingExerciseKeysGeneric("reading_questions", "passage_id", passageIds);
+    const finalRows = [];
+    const seenInBatch = new Set();
+    let insertCount = 0, updateCount = 0;
     rows.forEach(r=>{
       const key = r.passage_id + "|" + exerciseDedupeKey(r.question, r.correct_answer);
-      if(existingKeys.has(key)){ dupCount++; return; }
-      existingKeys.add(key);
-      newRows.push(r);
+      if(seenInBatch.has(key)) return;
+      seenInBatch.add(key);
+      const existingId = existingMap.get(key);
+      if(existingId){ r.id = existingId; updateCount++; } else { insertCount++; }
+      finalRows.push(r);
     });
-    if(newRows.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = `Cả ${rows.length} câu đều đã tồn tại sẵn, không có gì để nhập thêm.`; return; }
 
-    const { error } = await sb.from("reading_questions").insert(newRows);
+    const { error } = await sb.from("reading_questions").upsert(finalRows);
     if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
     resultEl.className = "result-msg ok";
-    resultEl.textContent = `Đã nhập thành công ${newRows.length} câu hỏi.`
-      + (dupCount ? ` Bỏ qua ${dupCount} câu đã tồn tại sẵn.` : "")
+    resultEl.textContent = `Đã nhập ${insertCount} câu hỏi mới` + (updateCount ? `, cập nhật ${updateCount} câu đã có sẵn` : "") + "."
       + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
     document.getElementById("rq-csv-input").value = "";
     if(CURRENT_PASSAGE) await loadRQ(CURRENT_PASSAGE.id);
@@ -1938,12 +1928,12 @@ document.getElementById("btn-add-lq").addEventListener("click", openAddLQ);
 // ---- Nhập nhanh đoạn văn Nghe từ CSV ----
 async function fetchExistingLiPassageKeys(rows){
   const pairs = Array.from(new Set(rows.map(r => r.language+"|"+r.level)));
-  const existing = new Set();
+  const existing = new Map(); // key -> id, dùng để CẬP NHẬT thay vì bỏ qua khi trùng
   for(const pair of pairs){
     const [language, level] = pair.split("|");
-    const { data, error } = await sb.from("listening_passages").select("title").eq("language", language).eq("level", level);
+    const { data, error } = await sb.from("listening_passages").select("id, title").eq("language", language).eq("level", level);
     if(error) continue;
-    (data||[]).forEach(d => existing.add(pair + "|" + normalizeText(d.title)));
+    (data||[]).forEach(d => existing.set(pair + "|" + normalizeText(d.title), d.id));
   }
   return existing;
 }
@@ -1989,26 +1979,24 @@ document.getElementById("btn-import-lipassage").addEventListener("click", async 
       return;
     }
 
-    const existingKeys = await fetchExistingLiPassageKeys(rows);
-    const newRows = [];
-    let dupCount = 0;
+    // Đoạn văn nào trùng tiêu đề (cùng ngôn ngữ/trình độ) thì CẬP NHẬT nội dung mới thay vì bỏ qua.
+    const existingMap = await fetchExistingLiPassageKeys(rows);
+    const finalRows = [];
+    const seenInBatch = new Set();
+    let insertCount = 0, updateCount = 0;
     rows.forEach(r=>{
       const key = r.language+"|"+r.level+"|"+normalizeText(r.title);
-      if(existingKeys.has(key)){ dupCount++; return; }
-      existingKeys.add(key);
-      newRows.push(r);
+      if(seenInBatch.has(key)) return;
+      seenInBatch.add(key);
+      const existingId = existingMap.get(key);
+      if(existingId){ r.id = existingId; updateCount++; } else { insertCount++; }
+      finalRows.push(r);
     });
-    if(newRows.length === 0){
-      resultEl.className = "result-msg err";
-      resultEl.textContent = `Cả ${rows.length} đoạn văn đều đã tồn tại sẵn (trùng tiêu đề), không có gì để nhập thêm.`;
-      return;
-    }
 
-    const { error } = await sb.from("listening_passages").insert(newRows);
+    const { error } = await sb.from("listening_passages").upsert(finalRows);
     if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
     resultEl.className = "result-msg ok";
-    resultEl.textContent = `Đã nhập thành công ${newRows.length} đoạn văn.`
-      + (dupCount ? ` Bỏ qua ${dupCount} đoạn đã tồn tại sẵn (trùng tiêu đề).` : "")
+    resultEl.textContent = `Đã nhập ${insertCount} đoạn văn mới` + (updateCount ? `, cập nhật ${updateCount} đoạn đã có sẵn (trùng tiêu đề)` : "") + "."
       + (errors.length ? ("\nCác dòng bị bỏ qua do lỗi định dạng:\n" + errors.join("\n")) : "");
     document.getElementById("lipassage-csv-input").value = "";
     await loadLiPassages();
@@ -2081,22 +2069,23 @@ document.getElementById("btn-import-lq").addEventListener("click", async ()=>{
     if(rows.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = "Không có dòng nào nhập được.\n" + errors.join("\n"); return; }
 
     const passageIds = Array.from(new Set(rows.map(r=>r.passage_id)));
-    const existingKeys = await fetchExistingExerciseKeysGeneric("listening_questions", "passage_id", passageIds);
-    const newRows = [];
-    let dupCount = 0;
+    const existingMap = await fetchExistingExerciseKeysGeneric("listening_questions", "passage_id", passageIds);
+    const finalRows = [];
+    const seenInBatch = new Set();
+    let insertCount = 0, updateCount = 0;
     rows.forEach(r=>{
       const key = r.passage_id + "|" + exerciseDedupeKey(r.question, r.correct_answer);
-      if(existingKeys.has(key)){ dupCount++; return; }
-      existingKeys.add(key);
-      newRows.push(r);
+      if(seenInBatch.has(key)) return;
+      seenInBatch.add(key);
+      const existingId = existingMap.get(key);
+      if(existingId){ r.id = existingId; updateCount++; } else { insertCount++; }
+      finalRows.push(r);
     });
-    if(newRows.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = `Cả ${rows.length} câu đều đã tồn tại sẵn, không có gì để nhập thêm.`; return; }
 
-    const { error } = await sb.from("listening_questions").insert(newRows);
+    const { error } = await sb.from("listening_questions").upsert(finalRows);
     if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
     resultEl.className = "result-msg ok";
-    resultEl.textContent = `Đã nhập thành công ${newRows.length} câu hỏi.`
-      + (dupCount ? ` Bỏ qua ${dupCount} câu đã tồn tại sẵn.` : "")
+    resultEl.textContent = `Đã nhập ${insertCount} câu hỏi mới` + (updateCount ? `, cập nhật ${updateCount} câu đã có sẵn` : "") + "."
       + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
     document.getElementById("lq-csv-input").value = "";
     if(CURRENT_LI_PASSAGE) await loadLQ(CURRENT_LI_PASSAGE.id);
@@ -2255,30 +2244,31 @@ document.getElementById("btn-import-math").addEventListener("click", async ()=>{
     }
     if(rows.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = "Không có dòng nào hợp lệ để nhập.\n" + errors.join("\n"); return; }
 
-    // Chống trùng theo (language, level, domain, question)
+    // Câu nào trùng (language, level, domain, question) thì CẬP NHẬT theo nội dung mới thay vì bỏ qua.
     const pairs = Array.from(new Set(rows.map(r => r.language+"|"+r.level)));
-    const existing = new Set();
+    const existingMap = new Map(); // key -> id
     for(const pair of pairs){
       const [language, level] = pair.split("|");
-      const { data, error: lookupError } = await sb.from("math_problems").select("domain, question").eq("language", language).eq("level", level);
+      const { data, error: lookupError } = await sb.from("math_problems").select("id, domain, question").eq("language", language).eq("level", level);
       if(lookupError) continue;
-      (data||[]).forEach(d => existing.add(pair+"|"+d.domain+"|"+normalizeText(d.question)));
+      (data||[]).forEach(d => existingMap.set(pair+"|"+d.domain+"|"+normalizeText(d.question), d.id));
     }
-    const newRows = [];
-    let dupCount = 0;
+    const finalRows = [];
+    const seenInBatch = new Set();
+    let insertCount = 0, updateCount = 0;
     rows.forEach(r=>{
       const key = r.language+"|"+r.level+"|"+r.domain+"|"+normalizeText(r.question);
-      if(existing.has(key)){ dupCount++; return; }
-      existing.add(key);
-      newRows.push(r);
+      if(seenInBatch.has(key)) return;
+      seenInBatch.add(key);
+      const existingId = existingMap.get(key);
+      if(existingId){ r.id = existingId; updateCount++; } else { insertCount++; }
+      finalRows.push(r);
     });
-    if(newRows.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = `Cả ${rows.length} câu đều đã tồn tại sẵn, không có gì để nhập thêm.`; return; }
 
-    const { error } = await sb.from("math_problems").insert(newRows);
+    const { error } = await sb.from("math_problems").upsert(finalRows);
     if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
     resultEl.className = "result-msg ok";
-    resultEl.textContent = `Đã nhập thành công ${newRows.length} câu Toán.`
-      + (dupCount ? ` Bỏ qua ${dupCount} câu đã tồn tại sẵn.` : "")
+    resultEl.textContent = `Đã nhập ${insertCount} câu Toán mới` + (updateCount ? `, cập nhật ${updateCount} câu đã có sẵn` : "") + "."
       + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
     document.getElementById("math-csv-input").value = "";
     await loadMath();
@@ -2294,11 +2284,11 @@ document.getElementById("btn-import-math").addEventListener("click", async ()=>{
 // Hàm chống trùng dùng chung cho các bảng "câu hỏi/câu thoại gắn với 1 mục cha"
 // (parentCol: tên cột khoá ngoại, vd "passage_id" hoặc "dialogue_id")
 async function fetchExistingExerciseKeysGeneric(table, parentCol, parentIds){
-  const existing = new Set();
+  const existing = new Map(); // key -> id, dùng để CẬP NHẬT thay vì bỏ qua khi trùng
   for(const id of parentIds){
-    const { data, error } = await sb.from(table).select("question, correct_answer").eq(parentCol, id);
+    const { data, error } = await sb.from(table).select("id, question, correct_answer").eq(parentCol, id);
     if(error) continue;
-    (data||[]).forEach(d => existing.add(id + "|" + exerciseDedupeKey(d.question, d.correct_answer)));
+    (data||[]).forEach(d => existing.set(id + "|" + exerciseDedupeKey(d.question, d.correct_answer), d.id));
   }
   return existing;
 }
@@ -2485,12 +2475,12 @@ document.getElementById("btn-add-line").addEventListener("click", openAddLine);
 // ---- Nhập nhanh hội thoại từ CSV ----
 async function fetchExistingDialogueKeys(rows){
   const pairs = Array.from(new Set(rows.map(r => r.language+"|"+r.level)));
-  const existing = new Set();
+  const existing = new Map(); // key -> id, dùng để CẬP NHẬT thay vì bỏ qua khi trùng
   for(const pair of pairs){
     const [language, level] = pair.split("|");
-    const { data, error } = await sb.from("dialogues").select("title").eq("language", language).eq("level", level);
+    const { data, error } = await sb.from("dialogues").select("id, title").eq("language", language).eq("level", level);
     if(error) continue;
-    (data||[]).forEach(d => existing.add(pair + "|" + normalizeText(d.title)));
+    (data||[]).forEach(d => existing.set(pair + "|" + normalizeText(d.title), d.id));
   }
   return existing;
 }
@@ -2525,22 +2515,24 @@ document.getElementById("btn-import-dialogue").addEventListener("click", async (
     }
     if(rows.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = "Không có dòng nào hợp lệ để nhập.\n" + errors.join("\n"); return; }
 
-    const existingKeys = await fetchExistingDialogueKeys(rows);
-    const newRows = [];
-    let dupCount = 0;
+    // Hội thoại nào trùng tiêu đề (cùng ngôn ngữ/trình độ) thì CẬP NHẬT nội dung mới thay vì bỏ qua.
+    const existingMap = await fetchExistingDialogueKeys(rows);
+    const finalRows = [];
+    const seenInBatch = new Set();
+    let insertCount = 0, updateCount = 0;
     rows.forEach(r=>{
       const key = r.language+"|"+r.level+"|"+normalizeText(r.title);
-      if(existingKeys.has(key)){ dupCount++; return; }
-      existingKeys.add(key);
-      newRows.push(r);
+      if(seenInBatch.has(key)) return;
+      seenInBatch.add(key);
+      const existingId = existingMap.get(key);
+      if(existingId){ r.id = existingId; updateCount++; } else { insertCount++; }
+      finalRows.push(r);
     });
-    if(newRows.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = `Cả ${rows.length} hội thoại đều đã tồn tại sẵn (trùng tiêu đề), không có gì để nhập thêm.`; return; }
 
-    const { error } = await sb.from("dialogues").insert(newRows);
+    const { error } = await sb.from("dialogues").upsert(finalRows);
     if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
     resultEl.className = "result-msg ok";
-    resultEl.textContent = `Đã nhập thành công ${newRows.length} hội thoại.`
-      + (dupCount ? ` Bỏ qua ${dupCount} hội thoại đã tồn tại sẵn (trùng tiêu đề).` : "")
+    resultEl.textContent = `Đã nhập ${insertCount} hội thoại mới` + (updateCount ? `, cập nhật ${updateCount} hội thoại đã có sẵn (trùng tiêu đề)` : "") + "."
       + (errors.length ? ("\nCác dòng bị bỏ qua do lỗi định dạng:\n" + errors.join("\n")) : "");
     document.getElementById("dialogue-csv-input").value = "";
     await loadDialogues();
@@ -2607,29 +2599,30 @@ document.getElementById("btn-import-line").addEventListener("click", async ()=>{
     });
     if(rows.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = "Không có dòng nào nhập được.\n" + errors.join("\n"); return; }
 
-    // Chống trùng theo (dialogue_id, nội dung câu thoại)
+    // Câu thoại nào trùng (dialogue_id, nội dung câu) thì CẬP NHẬT (vd đổi vai/thứ tự) thay vì bỏ qua.
     const dialogueIds = Array.from(new Set(rows.map(r=>r.dialogue_id)));
-    const existing = new Set();
+    const existingMap = new Map(); // key -> id
     for(const id of dialogueIds){
-      const { data, error } = await sb.from("dialogue_lines").select("line_text").eq("dialogue_id", id);
+      const { data, error } = await sb.from("dialogue_lines").select("id, line_text").eq("dialogue_id", id);
       if(error) continue;
-      (data||[]).forEach(d => existing.add(id + "|" + normalizeText(d.line_text)));
+      (data||[]).forEach(d => existingMap.set(id + "|" + normalizeText(d.line_text), d.id));
     }
-    const newRows = [];
-    let dupCount = 0;
+    const finalRows = [];
+    const seenInBatch = new Set();
+    let insertCount = 0, updateCount = 0;
     rows.forEach(r=>{
       const key = r.dialogue_id + "|" + normalizeText(r.line_text);
-      if(existing.has(key)){ dupCount++; return; }
-      existing.add(key);
-      newRows.push(r);
+      if(seenInBatch.has(key)) return;
+      seenInBatch.add(key);
+      const existingId = existingMap.get(key);
+      if(existingId){ r.id = existingId; updateCount++; } else { insertCount++; }
+      finalRows.push(r);
     });
-    if(newRows.length === 0){ resultEl.className = "result-msg err"; resultEl.textContent = `Cả ${rows.length} câu thoại đều đã tồn tại sẵn, không có gì để nhập thêm.`; return; }
 
-    const { error } = await sb.from("dialogue_lines").insert(newRows);
+    const { error } = await sb.from("dialogue_lines").upsert(finalRows);
     if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
     resultEl.className = "result-msg ok";
-    resultEl.textContent = `Đã nhập thành công ${newRows.length} câu thoại.`
-      + (dupCount ? ` Bỏ qua ${dupCount} câu đã tồn tại sẵn.` : "")
+    resultEl.textContent = `Đã nhập ${insertCount} câu thoại mới` + (updateCount ? `, cập nhật ${updateCount} câu đã có sẵn` : "") + "."
       + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
     document.getElementById("line-csv-input").value = "";
     if(CURRENT_DIALOGUE) await loadLines(CURRENT_DIALOGUE.id);
