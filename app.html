@@ -1113,14 +1113,24 @@ function formatGrammarContent(text){
     return `<div class="grammar-section">${head}<div class="grammar-section-body">${bodyHtml}</div></div>`;
   }).join('');
 }
+// Chữ đậm trong nội dung bài học: escHtml() đã escape hết thẻ HTML để an toàn,
+// hàm này sau đó "mở khoá" lại đúng 2 dạng in đậm hay gặp khi soạn nội dung —
+// thẻ <b>/<strong> gõ thẳng, và cú pháp markdown **...** — thành <b> thật, mọi
+// thẻ HTML khác vẫn bị escape như cũ (không mở thêm lỗ hổng nào khác).
+function formatInlineBold(escapedText){
+  return escapedText
+    .replace(/&lt;b&gt;/gi, '<b>').replace(/&lt;\/b&gt;/gi, '</b>')
+    .replace(/&lt;strong&gt;/gi, '<strong>').replace(/&lt;\/strong&gt;/gi, '</strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+}
 function formatBlockLines(lines){
   const text = lines.join('\n');
   const blocks = text.trim().split(/\n\s*\n/);
   return blocks.filter(b=>b.trim()).map(block=>{
     const ls = block.split('\n').map(l=>l.trim()).filter(Boolean);
     let html = '', listBuf = [], textBuf = [];
-    const flushList = ()=>{ if(listBuf.length){ html += '<ul>' + listBuf.map(l=>`<li>${escHtml(l.slice(2))}</li>`).join('') + '</ul>'; listBuf = []; } };
-    const flushText = ()=>{ if(textBuf.length){ html += '<p>' + textBuf.map(escHtml).join('<br>') + '</p>'; textBuf = []; } };
+    const flushList = ()=>{ if(listBuf.length){ html += '<ul>' + listBuf.map(l=>`<li>${formatInlineBold(escHtml(l.slice(2)))}</li>`).join('') + '</ul>'; listBuf = []; } };
+    const flushText = ()=>{ if(textBuf.length){ html += '<p>' + textBuf.map(l=>formatInlineBold(escHtml(l))).join('<br>') + '</p>'; textBuf = []; } };
     ls.forEach(l=>{ if(l.startsWith('- ')){ flushText(); listBuf.push(l); } else { flushList(); textBuf.push(l); } });
     flushList(); flushText();
     return html;
