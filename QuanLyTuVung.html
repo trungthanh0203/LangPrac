@@ -82,6 +82,9 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
 .dash-card .num{display:block;font-size:24px;font-weight:800;color:var(--navy2);}
 .dash-card .label{display:block;font-size:11.5px;color:var(--text-2);margin-bottom:4px;}
 .dash-card.warn .num{color:var(--red);}
+.dash-card.clickable{cursor:pointer;transition:box-shadow .15s;}
+.dash-card.clickable:hover{box-shadow:0 4px 14px rgba(20,42,77,0.18);}
+.dash-card.active-filter{outline:2px solid var(--teal);outline-offset:-2px;}
 tr.dash-idle{background:var(--red-light);}
 td.content-cell-zero{background:var(--red-light);color:var(--red);font-weight:700;text-align:center;}
 td.content-cell{text-align:center;}
@@ -1200,7 +1203,7 @@ let dashSort = { key: "last_activity_at", dir: "asc" }; // mặc định: im ắ
 // Bộ lọc từ 4 biểu đồ thống kê (bấm cột/lát cắt để lọc bảng bên dưới, giống cơ
 // chế bên Dashboard Nội dung mục 13.28) — độc lập với ô tìm kiếm/cảnh báo im ắng
 // đã có sẵn, kết hợp AND với nhau khi lọc bảng.
-let DASH_FILTER = { day: null, activityDay: null, scoreBucket: null, intensityBucket: null, language: null, recency: null };
+let DASH_FILTER = { day: null, activityDay: null, scoreBucket: null, intensityBucket: null, language: null, recency: null, noParent: false, noTeacher: false, notActiveToday: false };
 
 function daysSince(dateStr){
   if(!dateStr) return Infinity;
@@ -1246,7 +1249,15 @@ function setStudScoreFilter(key){ DASH_FILTER.scoreBucket = (DASH_FILTER.scoreBu
 function setStudIntensityFilter(key){ DASH_FILTER.intensityBucket = (DASH_FILTER.intensityBucket===key) ? null : key; refreshStudentStats(); }
 function setStudLangFilter(key){ DASH_FILTER.language = (DASH_FILTER.language===key) ? null : key; refreshStudentStats(); }
 function setStudRecencyFilter(key){ DASH_FILTER.recency = (DASH_FILTER.recency===key) ? null : key; refreshStudentStats(); }
-function clearStudFilters(){ DASH_FILTER = { day:null, activityDay:null, scoreBucket:null, intensityBucket:null, language:null, recency:null }; refreshStudentStats(); }
+function clearStudFilters(){ DASH_FILTER = { day:null, activityDay:null, scoreBucket:null, intensityBucket:null, language:null, recency:null, noParent:false, noTeacher:false, notActiveToday:false }; refreshStudentStats(); }
+function setStudNoParentFilter(){ DASH_FILTER.noParent = !DASH_FILTER.noParent; refreshStudentStats(); if(DASH_FILTER.noParent) scrollToStudentTable(); }
+function setStudNoTeacherFilter(){ DASH_FILTER.noTeacher = !DASH_FILTER.noTeacher; refreshStudentStats(); if(DASH_FILTER.noTeacher) scrollToStudentTable(); }
+function setStudNotActiveTodayFilter(){ DASH_FILTER.notActiveToday = !DASH_FILTER.notActiveToday; refreshStudentStats(); if(DASH_FILTER.notActiveToday) scrollToStudentTable(); }
+function scrollToStudentTable(){
+  const tableCard = document.getElementById("dash-table-body").closest(".card");
+  if(tableCard) tableCard.scrollIntoView({ block: "start" });
+}
+function activeTodayOf(s){ return !!(s.last_activity_at && new Date(s.last_activity_at).toDateString() === new Date().toDateString()); }
 
 function renderStudFilterBar(){
   const bar = document.getElementById("dash-filter-bar");
@@ -1269,6 +1280,9 @@ function renderStudFilterBar(){
     const def = computeRecencyBuckets(DASH_STUDENTS).find(b=>b.key===DASH_FILTER.recency);
     parts.push(`Hoạt động gần nhất: <b>${escHtmlAdmin(def ? def.label : DASH_FILTER.recency)}</b>`);
   }
+  if(DASH_FILTER.noParent) parts.push(`<b>Chưa có phụ huynh</b>`);
+  if(DASH_FILTER.noTeacher) parts.push(`<b>Chưa có giáo viên</b>`);
+  if(DASH_FILTER.notActiveToday) parts.push(`<b>Chưa làm bài trong ngày</b>`);
   if(!parts.length){ bar.style.display = "none"; bar.innerHTML = ""; return; }
   bar.style.display = "flex";
   bar.innerHTML = `🔎 Đang lọc — ${parts.join(" · ")} <button class="btn-sm" id="dash-clear-filter" style="margin-left:auto;">Bỏ lọc tất cả</button>`;
@@ -1278,6 +1292,7 @@ function renderStudFilterBar(){
 // Vẽ lại 4 biểu đồ thống kê (luôn hiện đủ toàn bộ học sinh, chỉ làm mờ phần
 // không được chọn) + bảng chi tiết (áp dụng bộ lọc) + thanh trạng thái lọc.
 function refreshStudentStats(){
+  renderDashCards(DASH_STUDENTS);
   renderSignupTrendChart(DASH_STUDENTS);
   renderActivityTrendChart(DASH_STUDENTS);
   renderDonutChart(document.getElementById("dash-score-donut"), document.getElementById("dash-score-legend"), computeScoreBuckets(DASH_STUDENTS), { selectedKey: DASH_FILTER.scoreBucket, onSelect: setStudScoreFilter });
@@ -1300,15 +1315,16 @@ async function loadDashboard(){
   }
 
   DASH_STUDENTS = students || [];
-  DASH_FILTER = { day:null, activityDay:null, scoreBucket:null, intensityBucket:null, language:null, recency:null };
-  renderDashCards(DASH_STUDENTS);
+  DASH_FILTER = { day:null, activityDay:null, scoreBucket:null, intensityBucket:null, language:null, recency:null, noParent:false, noTeacher:false, notActiveToday:false };
   refreshStudentStats();
 }
 
+// 3/5 thẻ (chưa có phụ huynh/giáo viên/chưa làm bài hôm nay) bấm được để lọc +
+// cuộn xuống bảng chi tiết cuối tab (setStudNoParentFilter()/setStudNoTeacherFilter()/
+// setStudNotActiveTodayFilter()) — viền teal khi đang là bộ lọc active.
 function renderDashCards(students){
   const total = students.length;
-  const today = new Date().toDateString();
-  const activeToday = students.filter(s => s.last_activity_at && new Date(s.last_activity_at).toDateString() === today).length;
+  const activeToday = students.filter(activeTodayOf).length;
   const notActiveToday = total - activeToday;
   const withScores = students.filter(s => s.avg_score_pct != null);
   const avgScore = withScores.length ? Math.round(withScores.reduce((sum,s)=>sum+Number(s.avg_score_pct),0) / withScores.length) : null;
@@ -1318,10 +1334,13 @@ function renderDashCards(students){
   document.getElementById("dash-cards").innerHTML = `
     <div class="dash-card"><span class="label">Tổng học sinh</span><span class="num">${total}</span></div>
     <div class="dash-card"><span class="label">Điểm trung bình tổng</span><span class="num">${avgScore==null?'—':avgScore+'%'}</span></div>
-    <div class="dash-card${noParent>0?' warn':''}"><span class="label">Học sinh chưa có phụ huynh</span><span class="num">${noParent}</span></div>
-    <div class="dash-card${noTeacher>0?' warn':''}"><span class="label">Học sinh chưa có giáo viên</span><span class="num">${noTeacher}</span></div>
-    <div class="dash-card${notActiveToday>0?' warn':''}"><span class="label">Học sinh chưa làm bài trong ngày</span><span class="num">${notActiveToday}</span></div>
+    <div class="dash-card clickable${noParent>0?' warn':''}${DASH_FILTER.noParent?' active-filter':''}" id="kpi-no-parent"><span class="label">Học sinh chưa có phụ huynh</span><span class="num">${noParent}</span></div>
+    <div class="dash-card clickable${noTeacher>0?' warn':''}${DASH_FILTER.noTeacher?' active-filter':''}" id="kpi-no-teacher"><span class="label">Học sinh chưa có giáo viên</span><span class="num">${noTeacher}</span></div>
+    <div class="dash-card clickable${notActiveToday>0?' warn':''}${DASH_FILTER.notActiveToday?' active-filter':''}" id="kpi-not-active-today"><span class="label">Học sinh chưa làm bài trong ngày</span><span class="num">${notActiveToday}</span></div>
   `;
+  document.getElementById("kpi-no-parent").addEventListener("click", setStudNoParentFilter);
+  document.getElementById("kpi-no-teacher").addEventListener("click", setStudNoTeacherFilter);
+  document.getElementById("kpi-not-active-today").addEventListener("click", setStudNotActiveTodayFilter);
 }
 
 // Biểu đồ cột SVG tự vẽ — số học sinh có HOẠT ĐỘNG GẦN NHẤT rơi vào từng ngày
@@ -1605,6 +1624,9 @@ function renderDashTable(){
     if(DASH_FILTER.intensityBucket && intensityBucketKeyOf(s) !== DASH_FILTER.intensityBucket) return false;
     if(DASH_FILTER.language && languageKeyOf(s) !== DASH_FILTER.language) return false;
     if(DASH_FILTER.recency && recencyBucketKeyOf(s) !== DASH_FILTER.recency) return false;
+    if(DASH_FILTER.noParent && s.parent_emails) return false;
+    if(DASH_FILTER.noTeacher && s.teacher_emails) return false;
+    if(DASH_FILTER.notActiveToday && activeTodayOf(s)) return false;
     return true;
   });
 

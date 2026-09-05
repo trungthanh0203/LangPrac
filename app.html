@@ -148,6 +148,8 @@ header.top{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#ff
 .game-complete h3{color:var(--green);font-size:20px;}
 .btn{padding:9px 18px;border-radius:8px;border:none;font-size:13.5px;font-weight:700;cursor:pointer;background:var(--teal);color:#fff;}
 .config-warning{max-width:600px;margin:60px auto;background:var(--amber-light);color:#8a5a15;padding:20px 24px;border-radius:10px;font-size:13px;line-height:1.6;}
+.preview-mode-banner{background:var(--amber-light);color:#8a5a15;padding:10px 16px;border-radius:10px;margin:12px 0;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px;flex-wrap:wrap;}
+.btn-exit-preview{background:#fff;border:1px solid rgba(0,0,0,0.15);border-radius:6px;padding:6px 12px;font-size:12.5px;cursor:pointer;font-weight:700;color:#8a5a15;}
 .empty-msg{text-align:center;color:var(--text-3);padding:50px 20px;}
 footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 0 4px;}
 .reminder-setting{text-align:center;margin-top:14px;}
@@ -327,6 +329,13 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
   </header>
   <div class="flag-strip" id="flag-strip"></div>
 
+  <!-- Chỉ hiện khi phụ huynh/giáo viên bấm "Xem giao diện học sinh" từ dashboard
+       của họ (mục 13.32) — nhắc rõ đang ở chế độ xem thử + nút quay lại nhanh. -->
+  <div class="preview-mode-banner" id="preview-mode-banner" style="display:none;">
+    <span id="preview-mode-text"></span>
+    <button id="btn-exit-preview" class="btn-exit-preview"></button>
+  </div>
+
   <div class="mode-tabs">
     <button id="tab-flash" class="active"></button>
     <button id="tab-game"></button>
@@ -445,8 +454,13 @@ async function boot(){
   const { data: { session } } = await sb.auth.getSession();
   if(session){
     if(await isAdminUser(session.user.id)){ window.location.href = "QuanLyTuVung.html"; return; }
-    if(await isParentUser(session.user.id)){ window.location.href = "PhuHuynh.html"; return; }
-    if(await isTeacherUser(session.user.id)){ window.location.href = "GiaoVien.html"; return; }
+    // Phụ huynh/giáo viên bấm "Xem giao diện học sinh" (mục 13.32) đặt cờ này
+    // trước khi mở app.html — có cờ thì bỏ qua redirect về đúng dashboard của
+    // họ, cho vào thẳng giao diện học sinh bằng chính tài khoản của mình.
+    if(sessionStorage.getItem("viewAsStudent") !== "1"){
+      if(await isParentUser(session.user.id)){ window.location.href = "PhuHuynh.html"; return; }
+      if(await isTeacherUser(session.user.id)){ window.location.href = "GiaoVien.html"; return; }
+    }
     await enterApp(session.user);
   }
   else { showAuthScreen(); }
@@ -526,8 +540,10 @@ document.getElementById("login-form").addEventListener("submit", async (e)=>{
   btn.disabled = false; btn.textContent = "Đăng nhập";
   if(error){ msg.className = "auth-msg err"; msg.textContent = error.message; return; }
   if(await isAdminUser(data.user.id)){ window.location.href = "QuanLyTuVung.html"; return; }
-  if(await isParentUser(data.user.id)){ window.location.href = "PhuHuynh.html"; return; }
-  if(await isTeacherUser(data.user.id)){ window.location.href = "GiaoVien.html"; return; }
+  if(sessionStorage.getItem("viewAsStudent") !== "1"){
+    if(await isParentUser(data.user.id)){ window.location.href = "PhuHuynh.html"; return; }
+    if(await isTeacherUser(data.user.id)){ window.location.href = "GiaoVien.html"; return; }
+  }
   await enterApp(data.user);
 });
 
@@ -568,6 +584,8 @@ document.getElementById("btn-logout").addEventListener("click", async ()=>{
   await logActivity("logout");
   await sb.auth.signOut();
   CURRENT_USER = null; CURRENT_PROFILE = null; CURRENT_SESSION_ID = null;
+  sessionStorage.removeItem("viewAsStudent");
+  document.getElementById("preview-mode-banner").style.display = "none";
   document.getElementById("main-wrap").classList.add("hidden");
   document.getElementById("login-form").reset();
   showAuthScreen();
@@ -588,6 +606,19 @@ document.addEventListener("visibilitychange", ()=>{
   logActivity(document.hidden ? "app_hidden" : "app_visible", { language: currentLanguage });
 });
 
+// Hiện thanh nhắc + nút quay lại khi phụ huynh/giáo viên đang xem thử giao diện
+// học sinh (mục 13.32) — tránh họ quên mất mình không thật sự là học sinh, và
+// luôn có đường quay lại đúng dashboard của họ (PhuHuynh.html/GiaoVien.html).
+function showPreviewBanner(role, email){
+  const roleLabel = role === "teacher" ? "Giáo viên" : "Phụ huynh";
+  const backPage = role === "teacher" ? "GiaoVien.html" : "PhuHuynh.html";
+  document.getElementById("preview-mode-text").textContent = `🔍 Đang xem giao diện học sinh bằng tài khoản ${roleLabel} (${email})`;
+  const btn = document.getElementById("btn-exit-preview");
+  btn.textContent = `Quay lại Dashboard ${roleLabel}`;
+  btn.onclick = ()=>{ sessionStorage.removeItem("viewAsStudent"); window.location.href = backPage; };
+  document.getElementById("preview-mode-banner").style.display = "flex";
+}
+
 async function enterApp(user){
   CURRENT_USER = user;
   const { data: profile } = await sb.from("profiles").select("*").eq("id", user.id).maybeSingle();
@@ -597,6 +628,10 @@ async function enterApp(user){
   document.getElementById("install-guide-section").classList.add("hidden");
   document.getElementById("main-wrap").classList.remove("hidden");
   document.getElementById("user-email-label").textContent = user.email;
+
+  if(sessionStorage.getItem("viewAsStudent") === "1" && profile && (profile.role === "parent" || profile.role === "teacher")){
+    showPreviewBanner(profile.role, user.email);
+  }
 
   buildLangSelect();
   buildVoiceSelect();

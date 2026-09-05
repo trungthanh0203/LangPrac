@@ -104,6 +104,7 @@ header.top h1{font-size:18px;margin:0;font-weight:700;}
     <h1>👪 Bảng theo dõi học tập</h1>
     <div style="display:flex;align-items:center;gap:14px;">
       <span id="parent-email-label" style="font-size:13px;opacity:.85;"></span>
+      <button class="btn btn-outline" id="btn-view-as-student">🎓 Xem giao diện học sinh</button>
       <button class="btn btn-outline" id="btn-logout">Đăng xuất</button>
     </div>
   </header>
@@ -212,6 +213,14 @@ document.getElementById("register-form").addEventListener("submit", async (e)=>{
 document.getElementById("btn-logout").addEventListener("click", doLogout);
 document.getElementById("btn-logout-denied").addEventListener("click", doLogout);
 async function doLogout(){ await sb.auth.signOut(); showScreen("login"); }
+
+// Cho phụ huynh xem thử giao diện học sinh bằng chính tài khoản của mình (mục
+// 13.32) — lưu cờ tạm trong sessionStorage (chỉ tồn tại trong tab hiện tại),
+// app.html đọc cờ này để bỏ qua redirect về đúng PhuHuynh.html như bình thường.
+document.getElementById("btn-view-as-student").addEventListener("click", ()=>{
+  sessionStorage.setItem("viewAsStudent", "1");
+  window.location.href = "app.html";
+});
 
 let CURRENT_PARENT_ID = null;
 
