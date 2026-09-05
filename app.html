@@ -166,6 +166,7 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
 .grammar-section-body ul{margin:0 0 10px 20px;padding:0;line-height:1.65;}
 .grammar-section-body li{margin-bottom:4px;}
 .grammar-subheading{font-size:13.5px;font-weight:700;color:var(--navy2);margin:14px 0 6px;}
+.grammar-section-body a{color:var(--navy2);text-decoration:underline;}
 .exercise-section{border-top:1px solid var(--border);margin-top:22px;padding-top:20px;}
 .exercise-heading{font-size:16px;margin:0 0 14px;color:var(--text-1);}
 .exercise-item{background:var(--bg-page);border:2px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:12px;}
@@ -1117,17 +1118,28 @@ function formatGrammarContent(text){
     return `<div class="grammar-section">${head}<div class="grammar-section-body">${bodyHtml}</div></div>`;
   }).join('');
 }
+// Chỉ cho phép href là neo nội bộ (#id) hoặc URL http(s) — chặn javascript:/data:...
+// để không mở lỗ hổng XSS qua thuộc tính href khi "mở khoá" thẻ <a> bên dưới.
+function isSafeHref(href){
+  return /^#[\w-]*$/.test(href) || /^https?:\/\//i.test(href);
+}
 // escHtml() đã escape hết thẻ HTML để an toàn — hàm này sau đó "mở khoá" lại đúng
 // các dạng định dạng hay gặp khi soạn nội dung: in đậm (thẻ <b>/<strong> gõ thẳng,
-// hoặc cú pháp markdown **...**) và in nghiêng (thẻ <i>/<em>, hoặc cú pháp *...*).
-// Luôn xử lý ĐẬM trước NGHIÊNG để 1 cặp ** không bị hiểu nhầm thành 2 cặp * lồng
-// nhau. Mọi thẻ HTML khác vẫn bị escape như cũ, không mở thêm lỗ hổng nào khác.
+// hoặc cú pháp markdown **...**), in nghiêng (thẻ <i>/<em>, hoặc cú pháp *...*), và
+// liên kết nội bộ — điểm neo <a id="bai-1"></a> (gõ thẳng, không có cú pháp markdown
+// tương ứng vì đây là điểm neo không hiển thị chữ) + liên kết trỏ tới neo đó (thẻ
+// <a href="#bai-1">chữ</a> gõ thẳng, hoặc markdown [chữ](#bai-1)). Luôn xử lý liên
+// kết trước, rồi ĐẬM trước NGHIÊNG, để 1 cặp ** không bị hiểu nhầm thành 2 cặp *
+// lồng nhau. Mọi thẻ HTML khác vẫn bị escape như cũ, không mở thêm lỗ hổng nào khác.
 function formatInlineStyles(escapedText){
   return escapedText
     .replace(/&lt;b&gt;/gi, '<b>').replace(/&lt;\/b&gt;/gi, '</b>')
     .replace(/&lt;strong&gt;/gi, '<strong>').replace(/&lt;\/strong&gt;/gi, '</strong>')
     .replace(/&lt;i&gt;/gi, '<i>').replace(/&lt;\/i&gt;/gi, '</i>')
     .replace(/&lt;em&gt;/gi, '<em>').replace(/&lt;\/em&gt;/gi, '</em>')
+    .replace(/&lt;a id=&quot;([a-zA-Z0-9_-]+)&quot;&gt;(.*?)&lt;\/a&gt;/gi, '<a id="$1">$2</a>')
+    .replace(/&lt;a href=&quot;(.*?)&quot;&gt;(.*?)&lt;\/a&gt;/gi, (m, href, txt) => isSafeHref(href) ? `<a href="${href}">${txt}</a>` : m)
+    .replace(/\[(.+?)\]\((.+?)\)/g, (m, txt, href) => isSafeHref(href) ? `<a href="${href}">${txt}</a>` : m)
     .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>');
 }
