@@ -76,6 +76,30 @@ tr.dash-idle{background:var(--red-light);}
 td.content-cell-zero{background:var(--red-light);color:var(--red);font-weight:700;text-align:center;}
 td.content-cell{text-align:center;}
 .content-lang-badge{font-weight:700;}
+/* Dashboard "📊 Nội dung" — lưới 4 biểu đồ kiểu drill-down (mục 13.28) */
+.content-dash-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--gap);}
+@media (max-width:900px){.content-dash-grid{grid-template-columns:1fr;}}
+.chart-hint{font-size:12px;color:var(--text-2);margin-bottom:10px;}
+.content-filter-bar{display:none;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--navy2);background:var(--teal-light);border-radius:8px;padding:9px 14px;margin-bottom:var(--gap);}
+.content-donut-wrap{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+.content-donut-legend{display:flex;flex-direction:column;gap:4px;font-size:12.5px;flex:1;min-width:140px;}
+.content-legend-item{display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 6px;border-radius:6px;transition:opacity .15s;}
+.content-legend-item:hover{background:var(--bg-page);}
+.content-legend-item.dim{opacity:.4;}
+.content-legend-dot{width:11px;height:11px;border-radius:3px;flex:none;}
+.content-hbar-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;cursor:pointer;padding:3px 6px;border-radius:6px;transition:opacity .15s;}
+.content-hbar-row:hover{background:var(--bg-page);}
+.content-hbar-row.dim{opacity:.35;}
+.content-hbar-label{width:110px;flex:none;font-size:11.5px;color:var(--text-2);text-align:right;}
+.content-hbar-track{flex:1;background:var(--bg-page);border-radius:6px;height:15px;overflow:hidden;}
+.content-hbar-fill{display:block;height:100%;border-radius:6px;transition:width .2s;}
+.content-hbar-value{width:30px;flex:none;font-size:12px;font-weight:700;color:var(--navy2);text-align:right;}
+.content-stack-row{margin-bottom:11px;}
+.content-stack-label{font-size:11.5px;color:var(--text-2);margin-bottom:4px;}
+.content-stack-track{display:flex;height:17px;border-radius:6px;overflow:hidden;background:var(--bg-page);}
+.content-stack-track span{display:block;height:100%;}
+th.content-col-highlight{background:var(--teal)!important;}
+td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
 </style>
 </head>
 <body>
@@ -140,13 +164,39 @@ td.content-cell{text-align:center;}
 
     <div id="content-dash-section" style="display:none;">
       <div class="dash-cards" id="content-dash-cards"></div>
-      <div class="card">
-        <h3>Tổng nội dung theo ngôn ngữ</h3>
-        <div id="content-dash-chart"></div>
+
+      <div id="content-dash-filter-bar" class="content-filter-bar"></div>
+
+      <div class="content-dash-grid">
+        <div class="card">
+          <h3>Cơ cấu nội dung theo Ngôn ngữ</h3>
+          <div class="chart-hint">Bấm vào phần biểu đồ hoặc chú thích để lọc theo ngôn ngữ.</div>
+          <div class="content-donut-wrap">
+            <div id="content-dash-donut"></div>
+            <div id="content-dash-donut-legend" class="content-donut-legend"></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Số lượng theo Trình độ</h3>
+          <div class="chart-hint">Bấm vào cột để lọc nhanh bảng chi tiết bên dưới.</div>
+          <div id="content-dash-level-chart"></div>
+        </div>
+        <div class="card">
+          <h3>Số lượng theo Kỹ năng</h3>
+          <div class="chart-hint">Bấm vào dòng để đánh dấu cột tương ứng trong bảng chi tiết.</div>
+          <div id="content-dash-skill-chart"></div>
+        </div>
+        <div class="card">
+          <h3>Thành phần kỹ năng theo Trình độ</h3>
+          <div class="chart-hint">Mỗi cột = 1 trình độ, chia theo tỷ lệ % từng kỹ năng bên trong trình độ đó.</div>
+          <div id="content-dash-stack-chart"></div>
+          <div id="content-dash-stack-legend" class="content-donut-legend" style="flex-direction:row;flex-wrap:wrap;gap:10px;margin-top:8px;"></div>
+        </div>
       </div>
+
       <div class="card">
-        <h3>Chi tiết theo ngôn ngữ &amp; trình độ</h3>
-        <div style="font-size:12px;color:var(--text-2);margin-bottom:10px;">
+        <h3>Danh sách chi tiết theo ngôn ngữ &amp; trình độ</h3>
+        <div class="chart-hint">
           Ô nào tô đỏ nhạt = trình độ đó CHƯA có nội dung cho kỹ năng tương ứng —
           quét nhanh để biết chỗ nào cần bổ sung.
         </div>
@@ -155,18 +205,18 @@ td.content-cell{text-align:center;}
             <thead>
               <tr>
                 <th rowspan="2">Ngôn ngữ / Trình độ</th>
-                <th rowspan="2">Từ vựng</th>
+                <th rowspan="2" data-skill-col="vocab_count">Từ vựng</th>
                 <th colspan="2">Ngữ pháp</th>
                 <th colspan="2">Đọc</th>
                 <th colspan="2">Nghe</th>
                 <th colspan="2">Nói</th>
-                <th rowspan="2">Toán</th>
+                <th rowspan="2" data-skill-col="math_count">Toán</th>
               </tr>
               <tr>
-                <th>Lý thuyết</th><th>Bài tập</th>
-                <th>Đoạn văn</th><th>Câu hỏi</th>
-                <th>Đoạn văn</th><th>Câu hỏi</th>
-                <th>Hội thoại</th><th>Câu thoại</th>
+                <th data-skill-col="grammar_lesson_count">Lý thuyết</th><th data-skill-col="grammar_exercise_count">Bài tập</th>
+                <th data-skill-col="reading_passage_count">Đoạn văn</th><th data-skill-col="reading_question_count">Câu hỏi</th>
+                <th data-skill-col="listening_passage_count">Đoạn văn</th><th data-skill-col="listening_question_count">Câu hỏi</th>
+                <th data-skill-col="dialogue_count">Hội thoại</th><th data-skill-col="dialogue_line_count">Câu thoại</th>
               </tr>
             </thead>
             <tbody id="content-dash-table-body"></tbody>
@@ -1342,17 +1392,39 @@ function openResetUserPassword(userId, email){
 
 // ============================================================
 // Dashboard "📊 Nội dung" — tổng quan số liệu nội dung mọi ngôn ngữ/kỹ năng,
-// từ tổng quan lớn (thẻ số liệu + biểu đồ theo ngôn ngữ) đến chi tiết nhỏ
-// (bảng ma trận ngôn ngữ x trình độ x kỹ năng) — gọi RPC admin_content_stats()
+// tổ chức kiểu drill-down từ lớn đến bé (theo mẫu dashboard HR người dùng gửi,
+// mục 13.28): thẻ tổng quan → biểu đồ tròn theo Ngôn ngữ (bấm để lọc) → biểu đồ
+// cột theo Trình độ của ngôn ngữ đang lọc (bấm để lọc tiếp) → biểu đồ ngang theo
+// Kỹ năng bên trong phạm vi đang lọc (bấm để tô cột tương ứng) → biểu đồ cột
+// chồng % thành phần kỹ năng của từng trình độ (chỉ xem, không bấm lọc, giống
+// chart "Đánh giá hiệu suất theo Phòng ban" trong ảnh mẫu — không có hướng dẫn
+// bấm) → bảng chi tiết phản ánh đúng bộ lọc hiện tại. Gọi RPC admin_content_stats()
 // (37_migration_add_content_dashboard.sql).
 // ============================================================
-const CONTENT_METRICS = [
-  "vocab_count", "grammar_lesson_count", "grammar_exercise_count",
-  "reading_passage_count", "reading_question_count",
-  "listening_passage_count", "listening_question_count",
-  "dialogue_count", "dialogue_line_count", "math_count"
+const SKILL_DEFS = [
+  { key: "vocab_count", label: "Từ vựng", color: "#2b6cb0" },
+  { key: "grammar_lesson_count", label: "Ngữ pháp - Lý thuyết", color: "#0ea5a0" },
+  { key: "grammar_exercise_count", label: "Ngữ pháp - Bài tập", color: "#7fd4cf" },
+  { key: "reading_passage_count", label: "Đọc - Đoạn văn", color: "#d69e2e" },
+  { key: "reading_question_count", label: "Đọc - Câu hỏi", color: "#f2c572" },
+  { key: "listening_passage_count", label: "Nghe - Đoạn văn", color: "#805ad5" },
+  { key: "listening_question_count", label: "Nghe - Câu hỏi", color: "#c4a6ec" },
+  { key: "dialogue_count", label: "Nói - Hội thoại", color: "#d64545" },
+  { key: "dialogue_line_count", label: "Nói - Câu thoại", color: "#f0a0a0" },
+  { key: "math_count", label: "Toán", color: "#1f3864" }
 ];
+const CONTENT_METRICS = SKILL_DEFS.map(s => s.key);
+const CONTENT_LANG_PALETTE = ["#1f3864", "#0ea5a0", "#d69e2e", "#805ad5", "#d64545", "#2b6cb0"];
+function langColor(lang){
+  const idx = LANGS_ORDER.indexOf(lang);
+  return CONTENT_LANG_PALETTE[(idx >= 0 ? idx : 0) % CONTENT_LANG_PALETTE.length];
+}
+
 let CONTENT_DASH_STATS = [];
+// Bộ lọc drill-down hiện tại: language (từ biểu đồ tròn) → levelKey "lang||level"
+// (từ biểu đồ cột Trình độ). CONTENT_SKILL_HIGHLIGHT chỉ tô cột bảng, không lọc dòng.
+let CONTENT_FILTER = { language: null, levelKey: null };
+let CONTENT_SKILL_HIGHLIGHT = null;
 
 async function loadContentDashboard(){
   const cardsEl = document.getElementById("content-dash-cards");
@@ -1364,9 +1436,10 @@ async function loadContentDashboard(){
     return;
   }
   CONTENT_DASH_STATS = data || [];
+  CONTENT_FILTER = { language: null, levelKey: null };
+  CONTENT_SKILL_HIGHLIGHT = null;
   renderContentDashCards(CONTENT_DASH_STATS);
-  renderContentDashChart(CONTENT_DASH_STATS);
-  renderContentDashTable(CONTENT_DASH_STATS);
+  refreshContentDashboard();
 }
 
 function renderContentDashCards(stats){
@@ -1383,45 +1456,188 @@ function renderContentDashCards(stats){
   `;
 }
 
-// Biểu đồ cột SVG tự vẽ — tổng số mục nội dung (cộng dồn mọi kỹ năng) theo từng
-// ngôn ngữ, cùng kỹ thuật đã dùng ở renderDashChart().
-function renderContentDashChart(stats){
-  const el = document.getElementById("content-dash-chart");
-  if(!stats.length){ el.innerHTML = `<p style="color:var(--text-2);font-size:12.5px;">Chưa có dữ liệu nội dung.</p>`; return; }
-
-  const totalsByLang = {};
-  stats.forEach(r=>{
-    const t = CONTENT_METRICS.reduce((s,m)=> s + Number(r[m]||0), 0);
-    totalsByLang[r.language] = (totalsByLang[r.language]||0) + t;
+// Lọc theo bộ lọc drill-down hiện tại (dùng chung cho biểu đồ Kỹ năng + bảng chi tiết).
+function getContentFilteredRows(){
+  return CONTENT_DASH_STATS.filter(r=>{
+    if(CONTENT_FILTER.language && r.language !== CONTENT_FILTER.language) return false;
+    if(CONTENT_FILTER.levelKey && (r.language+"||"+r.level) !== CONTENT_FILTER.levelKey) return false;
+    return true;
   });
-  const langs = Object.keys(totalsByLang).sort((a,b)=> (LANGS_ORDER.indexOf(a)) - (LANGS_ORDER.indexOf(b)));
-  const values = langs.map(l=> totalsByLang[l]);
-  const maxVal = Math.max(1, ...values);
-  const barW = 60, gap = 30, chartH = 110, leftPad = 10;
-  const svgW = langs.length * (barW+gap) + leftPad;
-  const bars = langs.map((l,i)=>{
-    const v = values[i];
-    const h = Math.round((v / maxVal) * (chartH - 24));
-    const x = leftPad + i*(barW+gap);
-    const y = chartH - h;
-    const label = (LANGS_CFG[l] && LANGS_CFG[l].adminLabel) || l;
-    return `
-      <text x="${x+barW/2}" y="${chartH-h-8}" font-size="13" fill="var(--navy2)" text-anchor="middle" font-weight="700">${v}</text>
-      <rect x="${x}" y="${y}" width="${barW}" height="${Math.max(h,2)}" fill="var(--navy2)" rx="4"></rect>
-      <text x="${x+barW/2}" y="${chartH+20}" font-size="12" fill="var(--text-2)" text-anchor="middle">${escHtmlAdmin(label)}</text>
-    `;
-  }).join("");
-  el.innerHTML = `<svg viewBox="0 0 ${svgW} ${chartH+28}" width="100%" style="max-width:${svgW}px;">${bars}</svg>`;
 }
 
-function renderContentDashTable(stats){
-  document.getElementById("content-dash-table-body").innerHTML = stats.map(r=>{
+function setLanguageFilter(lang){
+  if(CONTENT_FILTER.language === lang){ CONTENT_FILTER.language = null; CONTENT_FILTER.levelKey = null; }
+  else { CONTENT_FILTER.language = lang; CONTENT_FILTER.levelKey = null; }
+  refreshContentDashboard();
+}
+function setLevelFilter(lang, level){
+  const key = lang + "||" + level;
+  if(CONTENT_FILTER.levelKey === key){ CONTENT_FILTER.levelKey = null; }
+  else { CONTENT_FILTER.language = lang; CONTENT_FILTER.levelKey = key; }
+  refreshContentDashboard();
+}
+function setSkillHighlight(skillKey){
+  CONTENT_SKILL_HIGHLIGHT = (CONTENT_SKILL_HIGHLIGHT === skillKey) ? null : skillKey;
+  refreshContentDashboard();
+}
+function clearContentFilters(){
+  CONTENT_FILTER = { language: null, levelKey: null };
+  CONTENT_SKILL_HIGHLIGHT = null;
+  refreshContentDashboard();
+}
+
+function refreshContentDashboard(){
+  renderContentDashDonut();
+  renderContentDashLevelChart();
+  renderContentDashSkillChart();
+  renderContentDashStackChart();
+  renderContentDashTable();
+  renderContentDashFilterBar();
+  document.querySelectorAll("#content-dash-section thead [data-skill-col]").forEach(th=>{
+    th.classList.toggle("content-col-highlight", CONTENT_SKILL_HIGHLIGHT === th.dataset.skillCol);
+  });
+}
+
+// Biểu đồ tròn (donut) SVG tự vẽ — tỉ trọng tổng nội dung theo Ngôn ngữ, gốc của
+// chuỗi drill-down (giống chart "Cơ cấu theo Quốc tịch" trong ảnh mẫu). Bấm vào
+// lát cắt hoặc chú thích để lọc toàn bộ dashboard theo ngôn ngữ đó.
+function renderContentDashDonut(){
+  const el = document.getElementById("content-dash-donut");
+  const legendEl = document.getElementById("content-dash-donut-legend");
+  const totals = {};
+  CONTENT_DASH_STATS.forEach(r=>{
+    totals[r.language] = (totals[r.language]||0) + CONTENT_METRICS.reduce((s,m)=> s + Number(r[m]||0), 0);
+  });
+  const langs = Object.keys(totals).sort((a,b)=> LANGS_ORDER.indexOf(a) - LANGS_ORDER.indexOf(b));
+  const total = langs.reduce((s,l)=> s + totals[l], 0);
+  if(!total){
+    el.innerHTML = `<p style="color:var(--text-2);font-size:12.5px;">Chưa có dữ liệu.</p>`;
+    legendEl.innerHTML = "";
+    return;
+  }
+  const R = 70, C = 2*Math.PI*R, cx = 100, cy = 100, strokeW = 30;
+  let offset = 0;
+  const segs = langs.map(l=>{
+    const value = totals[l];
+    const len = (value/total) * C;
+    const isDim = CONTENT_FILTER.language && CONTENT_FILTER.language !== l;
+    const seg = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${langColor(l)}" stroke-width="${strokeW}" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-offset}" data-lang="${l}" style="cursor:pointer;opacity:${isDim?0.3:1};transition:opacity .15s;"></circle>`;
+    offset += len;
+    return seg;
+  }).join("");
+  el.innerHTML = `<div style="position:relative;width:200px;height:200px;">
+    <svg viewBox="0 0 200 200" width="200" height="200" style="transform:rotate(-90deg);">${segs}</svg>
+    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
+      <div style="font-size:22px;font-weight:800;color:var(--navy2);">${total}</div>
+      <div style="font-size:11px;color:var(--text-2);">mục nội dung</div>
+    </div>
+  </div>`;
+  legendEl.innerHTML = langs.map(l=>{
+    const value = totals[l];
+    const pct = Math.round(value/total*100);
+    const label = (LANGS_CFG[l] && LANGS_CFG[l].adminLabel) || l;
+    const isDim = CONTENT_FILTER.language && CONTENT_FILTER.language !== l;
+    return `<div class="content-legend-item${isDim?' dim':''}" data-lang="${l}">
+      <span class="content-legend-dot" style="background:${langColor(l)};"></span>
+      <span style="flex:1;">${escHtmlAdmin(label)}</span>
+      <b>${value}</b>&nbsp;<span style="color:var(--text-2);">(${pct}%)</span>
+    </div>`;
+  }).join("");
+  el.querySelectorAll("[data-lang]").forEach(node => node.addEventListener("click", ()=> setLanguageFilter(node.dataset.lang)));
+  legendEl.querySelectorAll("[data-lang]").forEach(node => node.addEventListener("click", ()=> setLanguageFilter(node.dataset.lang)));
+}
+
+// Biểu đồ cột SVG — tổng nội dung theo Trình độ CỦA ngôn ngữ đang lọc (hoặc mọi
+// cặp ngôn ngữ+trình độ nếu chưa lọc ngôn ngữ nào) — bước 2 của drill-down, giống
+// chart "Số lượng theo Phòng ban" (bấm cột để lọc tiếp).
+function renderContentDashLevelChart(){
+  const el = document.getElementById("content-dash-level-chart");
+  const rows = CONTENT_DASH_STATS.filter(r=> !CONTENT_FILTER.language || r.language === CONTENT_FILTER.language);
+  if(!rows.length){ el.innerHTML = `<p style="color:var(--text-2);font-size:12.5px;">Chưa có dữ liệu.</p>`; return; }
+
+  const items = rows.map(r=> ({ row:r, total: CONTENT_METRICS.reduce((s,m)=> s + Number(r[m]||0), 0) }));
+  const maxVal = Math.max(1, ...items.map(t=>t.total));
+  const barW = 44, gap = 18, chartH = 110, leftPad = 10;
+  const svgW = items.length * (barW+gap) + leftPad;
+  const bars = items.map((t,i)=>{
+    const h = Math.round((t.total/maxVal) * (chartH-24));
+    const x = leftPad + i*(barW+gap);
+    const y = chartH - h;
+    const key = t.row.language + "||" + t.row.level;
+    const isDim = CONTENT_FILTER.levelKey && CONTENT_FILTER.levelKey !== key;
+    const label = CONTENT_FILTER.language ? t.row.level : `${(LANGS_CFG[t.row.language] && LANGS_CFG[t.row.language].flagEmoji) || ""}${t.row.level}`;
+    return `
+      <g data-lang="${t.row.language}" data-level="${escHtmlAdmin(t.row.level)}" style="cursor:pointer;opacity:${isDim?0.35:1};transition:opacity .15s;">
+        <text x="${x+barW/2}" y="${chartH-h-8}" font-size="11.5" fill="var(--navy2)" text-anchor="middle" font-weight="700">${t.total}</text>
+        <rect x="${x}" y="${y}" width="${barW}" height="${Math.max(h,2)}" fill="${langColor(t.row.language)}" rx="4"></rect>
+        <text x="${x+barW/2}" y="${chartH+18}" font-size="11" fill="var(--text-2)" text-anchor="middle">${escHtmlAdmin(label)}</text>
+      </g>`;
+  }).join("");
+  el.innerHTML = `<svg viewBox="0 0 ${svgW} ${chartH+26}" width="100%" style="max-width:${svgW}px;">${bars}</svg>`;
+  el.querySelectorAll("[data-level]").forEach(node => node.addEventListener("click", ()=> setLevelFilter(node.dataset.lang, node.dataset.level)));
+}
+
+// Biểu đồ cột ngang (HTML/CSS, không cần SVG) — tổng theo Kỹ năng BÊN TRONG phạm
+// vi đang lọc (ngôn ngữ/trình độ) — bước 3 "thống kê bên trong trình độ", giống
+// chart "Số lượng theo Nhà máy". Bấm 1 dòng để tô cột tương ứng trong bảng dưới.
+function renderContentDashSkillChart(){
+  const el = document.getElementById("content-dash-skill-chart");
+  const rows = getContentFilteredRows();
+  if(!rows.length){ el.innerHTML = `<p style="color:var(--text-2);font-size:12.5px;">Chưa có dữ liệu.</p>`; return; }
+
+  const totals = SKILL_DEFS.map(s => ({ ...s, value: rows.reduce((sum,r)=> sum + Number(r[s.key]||0), 0) }));
+  const maxVal = Math.max(1, ...totals.map(t=>t.value));
+  el.innerHTML = totals.map(t=>{
+    const pct = Math.round((t.value/maxVal) * 100);
+    const isDim = CONTENT_SKILL_HIGHLIGHT && CONTENT_SKILL_HIGHLIGHT !== t.key;
+    return `<div class="content-hbar-row${isDim?' dim':''}" data-skill="${t.key}">
+      <span class="content-hbar-label">${escHtmlAdmin(t.label)}</span>
+      <span class="content-hbar-track"><span class="content-hbar-fill" style="width:${pct}%;background:${t.color};"></span></span>
+      <span class="content-hbar-value">${t.value}</span>
+    </div>`;
+  }).join("");
+  el.querySelectorAll("[data-skill]").forEach(node => node.addEventListener("click", ()=> setSkillHighlight(node.dataset.skill)));
+}
+
+// Biểu đồ cột chồng % (HTML/CSS) — thành phần kỹ năng bên trong TỪNG trình độ của
+// ngôn ngữ đang lọc (hoặc mọi cặp ngôn ngữ+trình độ nếu chưa lọc) — chỉ để xem so
+// sánh cơ cấu, KHÔNG bấm lọc (giống chart "Đánh giá hiệu suất theo Phòng ban" mẫu
+// — không có ghi chú "bấm để lọc").
+function renderContentDashStackChart(){
+  const el = document.getElementById("content-dash-stack-chart");
+  const legendEl = document.getElementById("content-dash-stack-legend");
+  const rows = CONTENT_DASH_STATS.filter(r=> !CONTENT_FILTER.language || r.language === CONTENT_FILTER.language);
+  if(!rows.length){ el.innerHTML = `<p style="color:var(--text-2);font-size:12.5px;">Chưa có dữ liệu.</p>`; legendEl.innerHTML = ""; return; }
+
+  el.innerHTML = rows.map(r=>{
+    const total = CONTENT_METRICS.reduce((s,m)=> s + Number(r[m]||0), 0) || 1;
+    const label = CONTENT_FILTER.language ? r.level : `${(LANGS_CFG[r.language] && LANGS_CFG[r.language].flagEmoji) || ""} ${r.level}`;
+    const segs = SKILL_DEFS.map(s=>{
+      const v = Number(r[s.key]||0);
+      const pct = v/total*100;
+      if(pct <= 0) return "";
+      return `<span style="width:${pct}%;background:${s.color};" title="${escHtmlAdmin(s.label)}: ${v}"></span>`;
+    }).join("");
+    return `<div class="content-stack-row">
+      <div class="content-stack-label">${escHtmlAdmin(label)}</div>
+      <div class="content-stack-track">${segs}</div>
+    </div>`;
+  }).join("");
+  legendEl.innerHTML = SKILL_DEFS.map(s => `<div class="content-legend-item" style="cursor:default;padding:2px 4px;">
+    <span class="content-legend-dot" style="background:${s.color};"></span><span>${escHtmlAdmin(s.label)}</span>
+  </div>`).join("");
+}
+
+function renderContentDashTable(){
+  const rows = getContentFilteredRows();
+  document.getElementById("content-dash-table-body").innerHTML = rows.map(r=>{
     const langCfg = LANGS_CFG[r.language];
     const langLabel = (langCfg && langCfg.adminLabel) || r.language;
     const levelLabel = langCfg?.levels.find(lv=>lv.code===r.level)?.label || r.level;
     const cell = (m)=>{
       const v = Number(r[m]||0);
-      return `<td class="${v===0?'content-cell-zero':'content-cell'}">${v}</td>`;
+      const cls = (v===0 ? 'content-cell-zero' : 'content-cell') + (CONTENT_SKILL_HIGHLIGHT===m ? ' content-col-highlight' : '');
+      return `<td class="${cls}">${v}</td>`;
     };
     return `
       <tr>
@@ -1433,7 +1649,30 @@ function renderContentDashTable(stats){
         ${cell("dialogue_count")}${cell("dialogue_line_count")}
         ${cell("math_count")}
       </tr>`;
-  }).join("") || `<tr><td colspan="11">Chưa có dữ liệu nội dung.</td></tr>`;
+  }).join("") || `<tr><td colspan="11">Không có dữ liệu khớp bộ lọc hiện tại.</td></tr>`;
+}
+
+function renderContentDashFilterBar(){
+  const bar = document.getElementById("content-dash-filter-bar");
+  const parts = [];
+  if(CONTENT_FILTER.language){
+    const label = (LANGS_CFG[CONTENT_FILTER.language] && LANGS_CFG[CONTENT_FILTER.language].adminLabel) || CONTENT_FILTER.language;
+    parts.push(`Ngôn ngữ: <b>${escHtmlAdmin(label)}</b>`);
+  }
+  if(CONTENT_FILTER.levelKey){
+    const level = CONTENT_FILTER.levelKey.split("||")[1];
+    const langCfg = LANGS_CFG[CONTENT_FILTER.language];
+    const levelLabel = langCfg?.levels.find(lv=>lv.code===level)?.label || level;
+    parts.push(`Trình độ: <b>${escHtmlAdmin(levelLabel)}</b>`);
+  }
+  if(CONTENT_SKILL_HIGHLIGHT){
+    const def = SKILL_DEFS.find(s=>s.key===CONTENT_SKILL_HIGHLIGHT);
+    parts.push(`Cột đang tô: <b>${escHtmlAdmin(def ? def.label : CONTENT_SKILL_HIGHLIGHT)}</b>`);
+  }
+  if(!parts.length){ bar.style.display = "none"; bar.innerHTML = ""; return; }
+  bar.style.display = "flex";
+  bar.innerHTML = `🔎 Đang lọc — ${parts.join(" · ")} <button class="btn-sm" id="content-dash-clear-filter" style="margin-left:auto;">Bỏ lọc tất cả</button>`;
+  document.getElementById("content-dash-clear-filter").addEventListener("click", clearContentFilters);
 }
 
 // ============================================================
