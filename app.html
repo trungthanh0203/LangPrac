@@ -1113,7 +1113,7 @@ function formatGrammarContent(text){
   return sections.map((sec, idx)=>{
     const bodyHtml = formatBlockLines(sec.lines);
     const head = sec.title
-      ? `<div class="grammar-section-head"><span class="grammar-section-num">${idx+1}</span><span class="grammar-section-title">${escHtml(sec.title)}</span></div>`
+      ? `<div class="grammar-section-head"><span class="grammar-section-num">${idx+1}</span><span class="grammar-section-title">${formatInlineStyles(escHtml(sec.title))}</span></div>`
       : '';
     return `<div class="grammar-section">${head}<div class="grammar-section-body">${bodyHtml}</div></div>`;
   }).join('');
