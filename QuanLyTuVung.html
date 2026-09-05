@@ -579,19 +579,30 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
 
       <div id="dash-filter-bar" class="content-filter-bar"></div>
 
-      <div class="card">
-        <h3>Học sinh đăng ký mới (30 ngày gần nhất)</h3>
-        <div class="chart-hint">Đếm theo ngày TẠO tài khoản — khác với biểu đồ "Xu hướng hoạt động" bên dưới (đếm học sinh CÓ HOẠT ĐỘNG học trong ngày, không phải đăng ký mới). Bấm 1 cột để lọc bảng chi tiết bên dưới.</div>
-        <div id="dash-signup-chart" style="overflow-x:auto;"></div>
-      </div>
-
-      <div class="card">
-        <h3>Xu hướng hoạt động (7 ngày gần nhất)</h3>
-        <div class="chart-hint">Đếm học sinh CÓ HOẠT ĐỘNG học trong ngày (mở bài/làm bài) — xem biểu đồ "Học sinh đăng ký mới" ở trên để biết số tài khoản mới tạo.</div>
-        <div id="dash-chart"></div>
+      <div class="content-dash-grid">
+        <div class="card">
+          <h3>Học sinh đăng ký mới (30 ngày gần nhất)</h3>
+          <div class="chart-hint">Đếm theo ngày TẠO tài khoản. Bấm 1 cột để lọc bảng chi tiết bên dưới.</div>
+          <div id="dash-signup-chart" style="overflow-x:auto;"></div>
+        </div>
+        <div class="card">
+          <h3>Xu hướng hoạt động (7 ngày gần nhất)</h3>
+          <div class="chart-hint">Đếm học sinh CÓ HOẠT ĐỘNG học trong ngày (mở bài/làm bài).</div>
+          <div id="dash-chart"></div>
+        </div>
       </div>
 
       <div class="content-dash-grid">
+        <div class="card">
+          <h3>Cường độ luyện tập (số bài làm / ngày)</h3>
+          <div class="chart-hint">Tổng số bài đã làm chia cho số ngày kể từ lúc đăng ký — càng cao càng luyện tập đều. Bấm 1 cột để lọc bảng chi tiết bên dưới.</div>
+          <div id="dash-intensity-chart" style="overflow-x:auto;"></div>
+        </div>
+        <div class="card">
+          <h3>Học sinh theo mức độ hoạt động gần nhất</h3>
+          <div class="chart-hint">Số ngày kể từ lần hoạt động gần nhất của từng học sinh. Bấm 1 cột để lọc bảng chi tiết bên dưới.</div>
+          <div id="dash-recency-chart" style="overflow-x:auto;"></div>
+        </div>
         <div class="card">
           <h3>Tỉ lệ học sinh theo mức điểm trung bình</h3>
           <div class="chart-hint">Điểm trung bình mọi bài đã làm của từng học sinh, chia theo 4 mức. Rê chuột vào từng phần để xem chi tiết, bấm để lọc bảng bên dưới.</div>
@@ -607,16 +618,6 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
             <div id="dash-lang-donut"></div>
             <div id="dash-lang-legend" class="content-donut-legend"></div>
           </div>
-        </div>
-        <div class="card">
-          <h3>Cường độ luyện tập (số bài làm / ngày)</h3>
-          <div class="chart-hint">Tổng số bài đã làm chia cho số ngày kể từ lúc đăng ký — càng cao càng luyện tập đều. Bấm 1 cột để lọc bảng chi tiết bên dưới.</div>
-          <div id="dash-intensity-chart"></div>
-        </div>
-        <div class="card">
-          <h3>Học sinh theo mức độ hoạt động gần nhất</h3>
-          <div class="chart-hint">Số ngày kể từ lần hoạt động gần nhất của từng học sinh. Bấm 1 cột để lọc bảng chi tiết bên dưới.</div>
-          <div id="dash-recency-chart" style="overflow-x:auto;"></div>
         </div>
       </div>
 
@@ -1209,10 +1210,10 @@ function scoreBucketKeyOf(s){
 function intensityBucketKeyOf(s){
   const days = Math.max(1, daysSince(s.created_at));
   const rate = Number(s.quiz_count||0) / days;
-  if(rate <= 1) return "0-1";
-  if(rate <= 2) return "1-2";
-  if(rate <= 3) return "2-3";
-  return "3+";
+  const level = Math.floor(rate);
+  if(level <= 0) return "0";
+  if(level >= 6) return "6+";
+  return String(level);
 }
 function languageKeyOf(s){ return s.selected_language || "none"; }
 // Số ngày kể từ hoạt động gần nhất, gộp thành 8 mức: 0..5 ngày riêng lẻ, "6+"
@@ -1450,15 +1451,22 @@ function computeScoreBuckets(students){
 // nay. Dùng intensityBucketKeyOf() — cùng hàm renderDashTable() dùng để lọc.
 function computeIntensityBuckets(students){
   const buckets = [
-    { key:"0-1", label:"0–1 bài/ngày", color:"var(--red)", value:0 },
-    { key:"1-2", label:"1–2 bài/ngày", color:"var(--amber)", value:0 },
-    { key:"2-3", label:"2–3 bài/ngày", color:"var(--teal)", value:0 },
-    { key:"3+", label:"Trên 3 bài/ngày", color:"var(--green)", value:0 }
+    { key:"0", label:"0 bài/ngày", color:"var(--red)", value:0 },
+    { key:"1", label:"1 bài/ngày", color:"#e8890c", value:0 },
+    { key:"2", label:"2 bài/ngày", color:"var(--amber)", value:0 },
+    { key:"3", label:"3 bài/ngày", color:"var(--teal)", value:0 },
+    { key:"4", label:"4 bài/ngày", color:"#8bc34a", value:0 },
+    { key:"5", label:"5 bài/ngày", color:"var(--green)", value:0 },
+    { key:"6+", label:"Trên 6 bài/ngày", color:"#1b5e20", value:0 }
   ];
   const byKey = Object.fromEntries(buckets.map(b=>[b.key,b]));
   students.forEach(s=> byKey[intensityBucketKeyOf(s)].value++);
   return buckets;
 }
+
+// Nhãn rút gọn riêng cho trục cột (label đầy đủ ở trên vẫn dùng cho tooltip) —
+// 7 cột cạnh nhau nên nhãn dài dễ đè lên nhau, cùng cách xử lý RECENCY_AXIS_LABEL.
+const INTENSITY_AXIS_LABEL = { "0":"0", "1":"1", "2":"2", "3":"3", "4":"4", "5":"5", "6+":"Trên 6" };
 
 // Bấm 1 cột để lọc bảng chi tiết theo đúng mức cường độ đó (setStudIntensityFilter()).
 function renderIntensityChart(students){
@@ -1467,7 +1475,7 @@ function renderIntensityChart(students){
   const total = buckets.reduce((s,b)=> s+b.value, 0);
   if(!total){ el.innerHTML = `<p style="color:var(--text-2);font-size:12.5px;">Chưa có dữ liệu.</p>`; return; }
   const maxVal = Math.max(1, ...buckets.map(b=>b.value));
-  const barW = 64, gap = 26, chartH = 110, leftPad = 10;
+  const barW = 50, gap = 18, chartH = 110, leftPad = 10;
   const svgW = buckets.length * (barW+gap) + leftPad;
   const bars = buckets.map((b,i)=>{
     const h = Math.round((b.value/maxVal) * (chartH-30));
@@ -1477,14 +1485,14 @@ function renderIntensityChart(students){
     const isDim = DASH_FILTER.intensityBucket && DASH_FILTER.intensityBucket !== b.key;
     return `
       <g data-bucket="${b.key}" style="cursor:pointer;opacity:${isDim?0.35:1};transition:opacity .15s;">
-        <text x="${x+barW/2}" y="${chartH-h-20}" font-size="13" fill="var(--navy2)" text-anchor="middle" font-weight="700">${b.value}</text>
-        <text x="${x+barW/2}" y="${chartH-h-6}" font-size="10.5" fill="var(--text-2)" text-anchor="middle">(${pct}%)</text>
+        <text x="${x+barW/2}" y="${chartH-h-20}" font-size="12" fill="var(--navy2)" text-anchor="middle" font-weight="700">${b.value}</text>
+        <text x="${x+barW/2}" y="${chartH-h-6}" font-size="9.5" fill="var(--text-2)" text-anchor="middle">(${pct}%)</text>
         <rect x="${x}" y="${y}" width="${barW}" height="${Math.max(h,2)}" fill="${b.color}" rx="4"><title>${escHtmlAdmin(b.label)}: ${b.value} (${pct}%)</title></rect>
-        <text x="${x+barW/2}" y="${chartH+20}" font-size="11.5" fill="var(--text-2)" text-anchor="middle">${escHtmlAdmin(b.label)}</text>
+        <text x="${x+barW/2}" y="${chartH+18}" font-size="9.5" fill="var(--text-2)" text-anchor="middle">${escHtmlAdmin(INTENSITY_AXIS_LABEL[b.key] || b.label)}</text>
       </g>
     `;
   }).join("");
-  el.innerHTML = `<svg viewBox="0 0 ${svgW} ${chartH+28}" width="100%" style="max-width:${svgW}px;">${bars}</svg>`;
+  el.innerHTML = `<svg viewBox="0 0 ${svgW} ${chartH+28}" width="100%" style="max-width:${svgW}px;min-width:${svgW}px;">${bars}</svg>`;
   el.querySelectorAll("[data-bucket]").forEach(node => node.addEventListener("click", ()=> setStudIntensityFilter(node.dataset.bucket)));
 }
 
