@@ -1065,7 +1065,17 @@ function renderGame(){
   });
 }
 
-function onLeftClick(id){ selectedLeftId = (selectedLeftId === id) ? null : id; renderGame(); }
+function onLeftClick(id){
+  const wasSelected = selectedLeftId === id;
+  selectedLeftId = wasSelected ? null : id;
+  renderGame();
+  if(!wasSelected){
+    // Đọc to từ/câu ngoại ngữ vừa chọn (cột trái) — chưa từng có ở tab Trò chơi,
+    // chỉ có ở Flashcard trước đây.
+    const it = leftOrder.find(x => x.id === id);
+    if(it) speak(it.de_text);
+  }
+}
 
 function onRightClick(rightId){
   if(selectedLeftId === null) return;
