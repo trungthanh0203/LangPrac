@@ -170,7 +170,7 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
         </div>
         <div class="field-row"><label>Tiêu đề bài học</label><input id="g-title" placeholder="Vd: Präsens & Grundlagen des Satzbaus"></div>
         <div class="field-row">
-          <label>Nội dung giải thích — dùng dòng bắt đầu bằng "## " để tạo 1 mục mới (sẽ tự động đánh số 1, 2, 3...); trong mỗi mục, để 1 dòng trống ngăn đoạn văn, dòng bắt đầu bằng "- " sẽ hiển thị thành gạch đầu dòng</label>
+          <label>Nội dung giải thích — "## Tên mục" tạo 1 mục mới (tự đánh số 1, 2, 3...); "### Tên mục con" tạo tiêu đề phụ trong mục; để 1 dòng trống ngăn đoạn văn; dòng bắt đầu bằng "- " hoặc "* " hiển thị thành gạch đầu dòng; "**chữ**" hoặc &lt;b&gt;chữ&lt;/b&gt; = in đậm, "*chữ*" hoặc &lt;i&gt;chữ&lt;/i&gt; = in nghiêng</label>
           <textarea id="g-content" style="min-height:260px;" placeholder="## Tên mục thứ nhất&#10;Đoạn giải thích...&#10;- Gạch đầu dòng 1&#10;- Gạch đầu dòng 2&#10;&#10;## Tên mục thứ hai&#10;Đoạn giải thích tiếp theo..."></textarea>
         </div>
         <button class="btn btn-primary" id="btn-save-lesson">Lưu bài học</button>
@@ -860,6 +860,9 @@ document.getElementById("btn-import").addEventListener("click", async ()=>{
       const cols = parseCsvLine(lines[i]);
       const obj = {};
       headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+      if(cols.length > headers.length){
+        errors.push(`⚠️ Dòng ${i+1}: phát hiện nhiều cột hơn dự kiến (${cols.length} thay vì ${headers.length}) — khả năng nội dung có dấu ngoặc kép (") chưa escape đúng chuẩn CSV (cần gõ "" cho 1 dấu " thật), làm nội dung bị CẮT CỤT khi nhập. Dòng này vẫn được nhập nhưng nên kiểm tra lại.`);
+      }
       if(!hasLangCol || !obj.language){ obj.language = defaultLang; }
       if(!obj.level || !obj.type || !obj.de_text || !obj.vi_meaning){
         errors.push(`Dòng ${i+1}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
@@ -909,7 +912,7 @@ document.getElementById("btn-import").addEventListener("click", async ()=>{
     }
     resultEl.className = "result-msg ok";
     resultEl.textContent = `Đã nhập ${insertCount} dòng mới` + (updateCount ? `, cập nhật ${updateCount} dòng đã có sẵn` : "") + "."
-      + (errors.length ? ("\nCác dòng bị bỏ qua do lỗi định dạng:\n" + errors.join("\n")) : "");
+      + (errors.length ? ("\nGhi chú:\n" + errors.join("\n")) : "");
     document.getElementById("csv-input").value = "";
     await loadData();
   } catch(err){
@@ -1247,6 +1250,9 @@ document.getElementById("btn-import-lesson").addEventListener("click", async ()=
       const cols = allRows[i];
       const obj = {};
       headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+      if(cols.length > headers.length){
+        errors.push(`⚠️ Dòng dữ liệu #${i}: phát hiện nhiều cột hơn dự kiến (${cols.length} thay vì ${headers.length}) — khả năng nội dung có dấu ngoặc kép (") chưa escape đúng chuẩn CSV (cần gõ "" cho 1 dấu " thật), làm nội dung bị CẮT CỤT khi nhập. Dòng này vẫn được nhập nhưng nên kiểm tra lại — nếu bài dài/có dấu ngoặc kép, nên dùng ô "Nội dung giải thích" nhập trực tiếp thay vì CSV.`);
+      }
       if(!obj.language || !obj.level || !obj.title || !obj.content){
         errors.push(`Dòng dữ liệu #${i}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
         continue;
@@ -1281,7 +1287,7 @@ document.getElementById("btn-import-lesson").addEventListener("click", async ()=
       return;
     }
     resultEl.className = "result-msg ok";
-    resultEl.textContent = `Đã nhập/ghi đè thành công ${rows.length} bài học.` + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
+    resultEl.textContent = `Đã nhập/ghi đè thành công ${rows.length} bài học.` + (errors.length ? ("\nGhi chú:\n" + errors.join("\n")) : "");
     document.getElementById("lesson-csv-input").value = "";
     // Nếu bài học vừa nhập trùng đúng ngôn ngữ/trình độ đang xem thì tải lại luôn
     await loadLesson();
@@ -1318,6 +1324,9 @@ document.getElementById("btn-import-ex").addEventListener("click", async ()=>{
       const cols = parseCsvLine(lines[i]);
       const obj = {};
       headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+      if(cols.length > headers.length){
+        errors.push(`⚠️ Dòng ${i+1}: phát hiện nhiều cột hơn dự kiến (${cols.length} thay vì ${headers.length}) — khả năng nội dung có dấu ngoặc kép (") chưa escape đúng chuẩn CSV (cần gõ "" cho 1 dấu " thật), làm nội dung bị CẮT CỤT khi nhập. Dòng này vẫn được nhập nhưng nên kiểm tra lại.`);
+      }
       const questionRequired = obj.type !== "sentence_ordering"; // bài sắp xếp câu không cần câu hỏi riêng, giao diện tự hiện nhãn chung
       if(!obj.language || !obj.level || !obj.type || (questionRequired && !obj.question) || !obj.correct_answer){
         errors.push(`Dòng ${i+1}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
@@ -1407,7 +1416,7 @@ document.getElementById("btn-import-ex").addEventListener("click", async ()=>{
     }
     resultEl.className = "result-msg ok";
     resultEl.textContent = `Đã nhập ${insertCount} bài tập mới` + (updateCount ? `, cập nhật ${updateCount} câu đã có sẵn` : "") + "."
-      + (errors.length ? ("\nCác dòng bị bỏ qua do lỗi định dạng:\n" + errors.join("\n")) : "");
+      + (errors.length ? ("\nGhi chú:\n" + errors.join("\n")) : "");
     document.getElementById("ex-csv-input").value = "";
     if(CURRENT_LESSON) await loadExercises(CURRENT_LESSON.id);
   } catch(err){
@@ -1632,6 +1641,9 @@ document.getElementById("btn-import-passage").addEventListener("click", async ()
       const cols = allRows[i];
       const obj = {};
       headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+      if(cols.length > headers.length){
+        errors.push(`⚠️ Dòng dữ liệu #${i}: phát hiện nhiều cột hơn dự kiến (${cols.length} thay vì ${headers.length}) — khả năng nội dung có dấu ngoặc kép (") chưa escape đúng chuẩn CSV (cần gõ "" cho 1 dấu " thật), làm nội dung bị CẮT CỤT khi nhập. Dòng này vẫn được nhập nhưng nên kiểm tra lại — nếu đoạn dài/có dấu ngoặc kép, nên dùng form "Thêm đoạn văn" nhập trực tiếp thay vì CSV.`);
+      }
       if(!obj.language || !obj.level || !obj.title || !obj.passage_text){
         errors.push(`Dòng dữ liệu #${i}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
         continue;
@@ -1670,7 +1682,7 @@ document.getElementById("btn-import-passage").addEventListener("click", async ()
     if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
     resultEl.className = "result-msg ok";
     resultEl.textContent = `Đã nhập ${insertCount} đoạn văn mới` + (updateCount ? `, cập nhật ${updateCount} đoạn đã có sẵn (trùng tiêu đề)` : "") + "."
-      + (errors.length ? ("\nCác dòng bị bỏ qua do lỗi định dạng:\n" + errors.join("\n")) : "");
+      + (errors.length ? ("\nGhi chú:\n" + errors.join("\n")) : "");
     document.getElementById("passage-csv-input").value = "";
     await loadPassages();
   } catch(err){
@@ -1704,6 +1716,9 @@ document.getElementById("btn-import-rq").addEventListener("click", async ()=>{
       const cols = parseCsvLine(lines[i]);
       const obj = {};
       headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+      if(cols.length > headers.length){
+        errors.push(`⚠️ Dòng ${i+1}: phát hiện nhiều cột hơn dự kiến (${cols.length} thay vì ${headers.length}) — khả năng nội dung có dấu ngoặc kép (") chưa escape đúng chuẩn CSV (cần gõ "" cho 1 dấu " thật), làm nội dung bị CẮT CỤT khi nhập. Dòng này vẫn được nhập nhưng nên kiểm tra lại.`);
+      }
       if(!obj.language || !obj.level || !obj.passage_title || !obj.type || !obj.question || !obj.correct_answer){
         errors.push(`Dòng ${i+1}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
         continue;
@@ -1759,7 +1774,7 @@ document.getElementById("btn-import-rq").addEventListener("click", async ()=>{
     if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
     resultEl.className = "result-msg ok";
     resultEl.textContent = `Đã nhập ${insertCount} câu hỏi mới` + (updateCount ? `, cập nhật ${updateCount} câu đã có sẵn` : "") + "."
-      + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
+      + (errors.length ? ("\nGhi chú:\n" + errors.join("\n")) : "");
     document.getElementById("rq-csv-input").value = "";
     if(CURRENT_PASSAGE) await loadRQ(CURRENT_PASSAGE.id);
   } catch(err){
@@ -1983,6 +1998,9 @@ document.getElementById("btn-import-lipassage").addEventListener("click", async 
       const cols = allRows[i];
       const obj = {};
       headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+      if(cols.length > headers.length){
+        errors.push(`⚠️ Dòng dữ liệu #${i}: phát hiện nhiều cột hơn dự kiến (${cols.length} thay vì ${headers.length}) — khả năng nội dung có dấu ngoặc kép (") chưa escape đúng chuẩn CSV (cần gõ "" cho 1 dấu " thật), làm nội dung bị CẮT CỤT khi nhập. Dòng này vẫn được nhập nhưng nên kiểm tra lại — nếu đoạn dài/có dấu ngoặc kép, nên dùng form "Thêm đoạn văn" nhập trực tiếp thay vì CSV.`);
+      }
       if(!obj.language || !obj.level || !obj.title || !obj.passage_text){
         errors.push(`Dòng dữ liệu #${i}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
         continue;
@@ -2021,7 +2039,7 @@ document.getElementById("btn-import-lipassage").addEventListener("click", async 
     if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
     resultEl.className = "result-msg ok";
     resultEl.textContent = `Đã nhập ${insertCount} đoạn văn mới` + (updateCount ? `, cập nhật ${updateCount} đoạn đã có sẵn (trùng tiêu đề)` : "") + "."
-      + (errors.length ? ("\nCác dòng bị bỏ qua do lỗi định dạng:\n" + errors.join("\n")) : "");
+      + (errors.length ? ("\nGhi chú:\n" + errors.join("\n")) : "");
     document.getElementById("lipassage-csv-input").value = "";
     await loadLiPassages();
   } catch(err){
@@ -2055,6 +2073,9 @@ document.getElementById("btn-import-lq").addEventListener("click", async ()=>{
       const cols = parseCsvLine(lines[i]);
       const obj = {};
       headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+      if(cols.length > headers.length){
+        errors.push(`⚠️ Dòng ${i+1}: phát hiện nhiều cột hơn dự kiến (${cols.length} thay vì ${headers.length}) — khả năng nội dung có dấu ngoặc kép (") chưa escape đúng chuẩn CSV (cần gõ "" cho 1 dấu " thật), làm nội dung bị CẮT CỤT khi nhập. Dòng này vẫn được nhập nhưng nên kiểm tra lại.`);
+      }
       if(!obj.language || !obj.level || !obj.passage_title || !obj.type || !obj.question || !obj.correct_answer){
         errors.push(`Dòng ${i+1}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
         continue;
@@ -2110,7 +2131,7 @@ document.getElementById("btn-import-lq").addEventListener("click", async ()=>{
     if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
     resultEl.className = "result-msg ok";
     resultEl.textContent = `Đã nhập ${insertCount} câu hỏi mới` + (updateCount ? `, cập nhật ${updateCount} câu đã có sẵn` : "") + "."
-      + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
+      + (errors.length ? ("\nGhi chú:\n" + errors.join("\n")) : "");
     document.getElementById("lq-csv-input").value = "";
     if(CURRENT_LI_PASSAGE) await loadLQ(CURRENT_LI_PASSAGE.id);
   } catch(err){
@@ -2252,6 +2273,9 @@ document.getElementById("btn-import-math").addEventListener("click", async ()=>{
       const cols = allRows[i];
       const obj = {};
       headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+      if(cols.length > headers.length){
+        errors.push(`⚠️ Dòng dữ liệu #${i}: phát hiện nhiều cột hơn dự kiến (${cols.length} thay vì ${headers.length}) — khả năng nội dung có dấu ngoặc kép (") chưa escape đúng chuẩn CSV (cần gõ "" cho 1 dấu " thật), làm nội dung bị CẮT CỤT khi nhập. Dòng này vẫn được nhập nhưng nên kiểm tra lại.`);
+      }
       if(!obj.language || !obj.level || !obj.domain || !obj.type || !obj.question || !obj.correct_answer){
         errors.push(`Dòng dữ liệu #${i}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
         continue;
@@ -2293,7 +2317,7 @@ document.getElementById("btn-import-math").addEventListener("click", async ()=>{
     if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
     resultEl.className = "result-msg ok";
     resultEl.textContent = `Đã nhập ${insertCount} câu Toán mới` + (updateCount ? `, cập nhật ${updateCount} câu đã có sẵn` : "") + "."
-      + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
+      + (errors.length ? ("\nGhi chú:\n" + errors.join("\n")) : "");
     document.getElementById("math-csv-input").value = "";
     await loadMath();
   } catch(err){
@@ -2529,6 +2553,9 @@ document.getElementById("btn-import-dialogue").addEventListener("click", async (
       const cols = allRows[i];
       const obj = {};
       headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+      if(cols.length > headers.length){
+        errors.push(`⚠️ Dòng dữ liệu #${i}: phát hiện nhiều cột hơn dự kiến (${cols.length} thay vì ${headers.length}) — khả năng nội dung có dấu ngoặc kép (") chưa escape đúng chuẩn CSV (cần gõ "" cho 1 dấu " thật), làm nội dung bị CẮT CỤT khi nhập. Dòng này vẫn được nhập nhưng nên kiểm tra lại.`);
+      }
       if(!obj.language || !obj.level || !obj.title || !obj.role_a_name || !obj.role_b_name){
         errors.push(`Dòng dữ liệu #${i}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
         continue;
@@ -2557,7 +2584,7 @@ document.getElementById("btn-import-dialogue").addEventListener("click", async (
     if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
     resultEl.className = "result-msg ok";
     resultEl.textContent = `Đã nhập ${insertCount} hội thoại mới` + (updateCount ? `, cập nhật ${updateCount} hội thoại đã có sẵn (trùng tiêu đề)` : "") + "."
-      + (errors.length ? ("\nCác dòng bị bỏ qua do lỗi định dạng:\n" + errors.join("\n")) : "");
+      + (errors.length ? ("\nGhi chú:\n" + errors.join("\n")) : "");
     document.getElementById("dialogue-csv-input").value = "";
     await loadDialogues();
   } catch(err){
@@ -2591,6 +2618,9 @@ document.getElementById("btn-import-line").addEventListener("click", async ()=>{
       const cols = parseCsvLine(lines[i]);
       const obj = {};
       headers.forEach((h,idx)=>{ obj[h] = cols[idx] !== undefined ? cols[idx] : ""; });
+      if(cols.length > headers.length){
+        errors.push(`⚠️ Dòng ${i+1}: phát hiện nhiều cột hơn dự kiến (${cols.length} thay vì ${headers.length}) — khả năng nội dung có dấu ngoặc kép (") chưa escape đúng chuẩn CSV (cần gõ "" cho 1 dấu " thật), làm nội dung bị CẮT CỤT khi nhập. Dòng này vẫn được nhập nhưng nên kiểm tra lại.`);
+      }
       if(!obj.language || !obj.level || !obj.dialogue_title || !obj.speaker || !obj.line_text){
         errors.push(`Dòng ${i+1}: thiếu dữ liệu bắt buộc, đã bỏ qua.`);
         continue;
@@ -2647,7 +2677,7 @@ document.getElementById("btn-import-line").addEventListener("click", async ()=>{
     if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
     resultEl.className = "result-msg ok";
     resultEl.textContent = `Đã nhập ${insertCount} câu thoại mới` + (updateCount ? `, cập nhật ${updateCount} câu đã có sẵn` : "") + "."
-      + (errors.length ? ("\nCác dòng bị bỏ qua:\n" + errors.join("\n")) : "");
+      + (errors.length ? ("\nGhi chú:\n" + errors.join("\n")) : "");
     document.getElementById("line-csv-input").value = "";
     if(CURRENT_DIALOGUE) await loadLines(CURRENT_DIALOGUE.id);
   } catch(err){
