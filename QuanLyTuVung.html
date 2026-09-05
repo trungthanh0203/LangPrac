@@ -17,9 +17,19 @@
 *{box-sizing:border-box;}
 body{margin:0;font-family:Arial,"Segoe UI",sans-serif;background:var(--bg-page);color:var(--text-1);font-size:14px;}
 .wrap{max-width:1200px;margin:0 auto;padding:20px;}
-header.top{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#fff;border-radius:var(--radius);padding:20px 24px;margin-bottom:var(--gap);display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;}
+header.top{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#fff;border-radius:var(--radius);padding:16px 24px;margin-bottom:var(--gap);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;}
 header.top h1{font-size:20px;margin:0 0 4px;font-weight:700;}
 header.top .sub{font-size:12.5px;color:rgba(255,255,255,0.7);}
+header.top .header-left{display:flex;align-items:center;gap:14px;}
+header.top .brand-block{display:flex;align-items:center;gap:10px;}
+header.top .brand-block img{width:34px;height:34px;border-radius:8px;}
+header.top .brand-text{display:flex;flex-direction:column;line-height:1.2;}
+header.top .brand-text .name{font-weight:800;color:#fff;font-size:17px;}
+header.top .brand-text .tagline{font-size:11px;color:rgba(255,255,255,0.75);font-style:italic;}
+header.top .header-divider{width:1px;height:32px;background:rgba(255,255,255,0.25);}
+header.top .header-page-label{font-size:14px;font-weight:700;color:#fff;}
+header.top .header-center{flex:1;text-align:center;font-size:14px;font-weight:700;color:#fff;}
+header.top .header-admin-email{color:rgba(255,255,255,0.85);font-size:12.5px;}
 .filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
 .filters select,.filters input[type=text]{padding:7px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.12);color:#fff;font-size:12.5px;}
 .filters select option{color:#1a2332;}
@@ -135,10 +145,22 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
 
 <div class="wrap" id="main-wrap" style="display:none;">
   <header class="top">
-    <div>
-      <h1>Quản trị nội dung</h1>
+    <div class="header-left">
+      <div class="brand-block">
+        <img src="icons/logo.png" alt="">
+        <div class="brand-text">
+          <span class="name">iLapra</span>
+          <span class="tagline">Tôi luyện ngoại ngữ</span>
+        </div>
+      </div>
+      <div class="header-divider"></div>
+      <div class="header-page-label">Quản trị nội dung</div>
     </div>
+    <!-- Chỗ dành cho tên trung tâm ngoại ngữ mua/sử dụng app này — chưa có dữ
+         liệu, sẽ điền sau khi có thông tin khách hàng (mục 13.30). -->
+    <div class="header-center" id="header-center-name"></div>
     <div class="filters">
+      <span class="header-admin-email" id="header-admin-email"></span>
       <button class="btn btn-outline" id="btn-logout">Đăng xuất</button>
     </div>
   </header>
@@ -555,38 +577,46 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
     <div id="dashboard-section">
       <div class="dash-cards" id="dash-cards"></div>
 
+      <div id="dash-filter-bar" class="content-filter-bar"></div>
+
+      <div class="card">
+        <h3>Học sinh đăng ký mới (30 ngày gần nhất)</h3>
+        <div class="chart-hint">Đếm theo ngày TẠO tài khoản — khác với biểu đồ "Xu hướng hoạt động" bên dưới (đếm học sinh CÓ HOẠT ĐỘNG học trong ngày, không phải đăng ký mới). Bấm 1 cột để lọc bảng chi tiết bên dưới.</div>
+        <div id="dash-signup-chart" style="overflow-x:auto;"></div>
+      </div>
+
       <div class="card">
         <h3>Xu hướng hoạt động (7 ngày gần nhất)</h3>
-        <div class="chart-hint">Đếm học sinh CÓ HOẠT ĐỘNG học trong ngày (mở bài/làm bài) — khác với biểu đồ "Học sinh đăng ký mới" bên dưới (đếm tài khoản mới tạo).</div>
+        <div class="chart-hint">Đếm học sinh CÓ HOẠT ĐỘNG học trong ngày (mở bài/làm bài) — xem biểu đồ "Học sinh đăng ký mới" ở trên để biết số tài khoản mới tạo.</div>
         <div id="dash-chart"></div>
       </div>
 
       <div class="content-dash-grid">
         <div class="card">
-          <h3>Học sinh đăng ký mới (30 ngày gần nhất)</h3>
-          <div class="chart-hint">Đếm theo ngày TẠO tài khoản — đây mới là thống kê "đăng ký mới", không phải biểu đồ "Xu hướng hoạt động" ở trên.</div>
-          <div id="dash-signup-chart" style="overflow-x:auto;"></div>
-        </div>
-        <div class="card">
           <h3>Tỉ lệ học sinh theo mức điểm trung bình</h3>
-          <div class="chart-hint">Điểm trung bình mọi bài đã làm của từng học sinh, chia theo 4 mức.</div>
+          <div class="chart-hint">Điểm trung bình mọi bài đã làm của từng học sinh, chia theo 4 mức. Rê chuột vào từng phần để xem chi tiết, bấm để lọc bảng bên dưới.</div>
           <div class="content-donut-wrap">
             <div id="dash-score-donut"></div>
             <div id="dash-score-legend" class="content-donut-legend"></div>
           </div>
         </div>
         <div class="card">
-          <h3>Cường độ luyện tập (số bài làm / ngày)</h3>
-          <div class="chart-hint">Tổng số bài đã làm chia cho số ngày kể từ lúc đăng ký — càng cao càng luyện tập đều.</div>
-          <div id="dash-intensity-chart"></div>
-        </div>
-        <div class="card">
           <h3>Tỉ lệ học sinh theo Ngôn ngữ đang học</h3>
-          <div class="chart-hint">Theo ngôn ngữ đang chọn học hiện tại của từng học sinh.</div>
+          <div class="chart-hint">Theo ngôn ngữ đang chọn học hiện tại của từng học sinh. Rê chuột vào từng phần để xem chi tiết, bấm để lọc bảng bên dưới.</div>
           <div class="content-donut-wrap">
             <div id="dash-lang-donut"></div>
             <div id="dash-lang-legend" class="content-donut-legend"></div>
           </div>
+        </div>
+        <div class="card">
+          <h3>Cường độ luyện tập (số bài làm / ngày)</h3>
+          <div class="chart-hint">Tổng số bài đã làm chia cho số ngày kể từ lúc đăng ký — càng cao càng luyện tập đều. Bấm 1 cột để lọc bảng chi tiết bên dưới.</div>
+          <div id="dash-intensity-chart"></div>
+        </div>
+        <div class="card">
+          <h3>Học sinh theo mức độ hoạt động gần nhất</h3>
+          <div class="chart-hint">Số ngày kể từ lần hoạt động gần nhất của từng học sinh. Bấm 1 cột để lọc bảng chi tiết bên dưới.</div>
+          <div id="dash-recency-chart" style="overflow-x:auto;"></div>
         </div>
       </div>
 
@@ -609,7 +639,7 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
               <th class="dash-sortable" data-sort="last_activity_at" style="cursor:pointer;">Hoạt động gần nhất ⇅</th>
               <th>Số bài đã làm</th>
               <th class="dash-sortable" data-sort="avg_score_pct" style="cursor:pointer;">Điểm TB ⇅</th>
-              <th>Phụ huynh liên kết</th><th>Nhắc học</th><th></th>
+              <th>Phụ huynh liên kết</th><th>Giáo viên</th><th></th>
             </tr></thead>
             <tbody id="dash-table-body"></tbody>
           </table>
@@ -777,6 +807,7 @@ async function afterLogin(){
   if(!user){ showScreen("login"); return; }
   const { data: adminRow } = await sb.from("admins").select("user_id").eq("user_id", user.id).limit(1);
   if(!adminRow || !adminRow.length){ showScreen("denied"); return; }
+  document.getElementById("header-admin-email").textContent = user.email || "";
   showScreen("main");
   loadData();
   switchGroup("users"); // mặc định mở nhóm "Quản trị người dùng" (tab Học sinh) khi vào trang
@@ -1153,10 +1184,89 @@ document.getElementById("sec-content-dash").addEventListener("click", ()=> switc
 // ============================================================
 let DASH_STUDENTS = [];
 let dashSort = { key: "last_activity_at", dir: "asc" }; // mặc định: im ắng lâu nhất lên đầu
+// Bộ lọc từ 4 biểu đồ thống kê (bấm cột/lát cắt để lọc bảng bên dưới, giống cơ
+// chế bên Dashboard Nội dung mục 13.28) — độc lập với ô tìm kiếm/cảnh báo im ắng
+// đã có sẵn, kết hợp AND với nhau khi lọc bảng.
+let DASH_FILTER = { day: null, scoreBucket: null, intensityBucket: null, language: null, recency: null };
 
 function daysSince(dateStr){
   if(!dateStr) return Infinity;
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+}
+
+// Hàm phân loại dùng CHUNG giữa lúc đếm cho biểu đồ (compute*Buckets) và lúc lọc
+// bảng chi tiết (renderDashTable) — đảm bảo bấm vào 1 phần biểu đồ luôn lọc ra
+// đúng những học sinh đã được đếm vào phần đó.
+function signupDayKeyOf(s){ return s.created_at ? new Date(s.created_at).toISOString().slice(0,10) : null; }
+function scoreBucketKeyOf(s){
+  if(s.avg_score_pct == null) return "none";
+  const v = Number(s.avg_score_pct);
+  if(v <= 25) return "0-25";
+  if(v <= 50) return "26-50";
+  if(v <= 75) return "51-75";
+  return "76-100";
+}
+function intensityBucketKeyOf(s){
+  const days = Math.max(1, daysSince(s.created_at));
+  const rate = Number(s.quiz_count||0) / days;
+  if(rate <= 1) return "0-1";
+  if(rate <= 2) return "1-2";
+  if(rate <= 3) return "2-3";
+  return "3+";
+}
+function languageKeyOf(s){ return s.selected_language || "none"; }
+// Số ngày kể từ hoạt động gần nhất, gộp thành 8 mức: 0..5 ngày riêng lẻ, "6+"
+// (trên 5 ngày) và "never" (chưa từng hoạt động lần nào).
+function recencyBucketKeyOf(s){
+  if(!s.last_activity_at) return "never";
+  const d = daysSince(s.last_activity_at);
+  if(d <= 5) return String(Math.max(d,0));
+  return "6+";
+}
+
+function setStudSignupDayFilter(day){ DASH_FILTER.day = (DASH_FILTER.day===day) ? null : day; refreshStudentStats(); }
+function setStudScoreFilter(key){ DASH_FILTER.scoreBucket = (DASH_FILTER.scoreBucket===key) ? null : key; refreshStudentStats(); }
+function setStudIntensityFilter(key){ DASH_FILTER.intensityBucket = (DASH_FILTER.intensityBucket===key) ? null : key; refreshStudentStats(); }
+function setStudLangFilter(key){ DASH_FILTER.language = (DASH_FILTER.language===key) ? null : key; refreshStudentStats(); }
+function setStudRecencyFilter(key){ DASH_FILTER.recency = (DASH_FILTER.recency===key) ? null : key; refreshStudentStats(); }
+function clearStudFilters(){ DASH_FILTER = { day:null, scoreBucket:null, intensityBucket:null, language:null, recency:null }; refreshStudentStats(); }
+
+function renderStudFilterBar(){
+  const bar = document.getElementById("dash-filter-bar");
+  const parts = [];
+  if(DASH_FILTER.day) parts.push(`Ngày đăng ký: <b>${new Date(DASH_FILTER.day+"T00:00:00").toLocaleDateString("vi-VN")}</b>`);
+  if(DASH_FILTER.scoreBucket){
+    const def = computeScoreBuckets(DASH_STUDENTS).find(b=>b.key===DASH_FILTER.scoreBucket);
+    parts.push(`Điểm TB: <b>${escHtmlAdmin(def ? def.label : DASH_FILTER.scoreBucket)}</b>`);
+  }
+  if(DASH_FILTER.intensityBucket){
+    const def = computeIntensityBuckets(DASH_STUDENTS).find(b=>b.key===DASH_FILTER.intensityBucket);
+    parts.push(`Cường độ: <b>${escHtmlAdmin(def ? def.label : DASH_FILTER.intensityBucket)}</b>`);
+  }
+  if(DASH_FILTER.language){
+    const label = DASH_FILTER.language === "none" ? "Chưa chọn ngôn ngữ" : ((LANGS_CFG[DASH_FILTER.language] && LANGS_CFG[DASH_FILTER.language].adminLabel) || DASH_FILTER.language);
+    parts.push(`Ngôn ngữ: <b>${escHtmlAdmin(label)}</b>`);
+  }
+  if(DASH_FILTER.recency){
+    const def = computeRecencyBuckets(DASH_STUDENTS).find(b=>b.key===DASH_FILTER.recency);
+    parts.push(`Hoạt động gần nhất: <b>${escHtmlAdmin(def ? def.label : DASH_FILTER.recency)}</b>`);
+  }
+  if(!parts.length){ bar.style.display = "none"; bar.innerHTML = ""; return; }
+  bar.style.display = "flex";
+  bar.innerHTML = `🔎 Đang lọc — ${parts.join(" · ")} <button class="btn-sm" id="dash-clear-filter" style="margin-left:auto;">Bỏ lọc tất cả</button>`;
+  document.getElementById("dash-clear-filter").addEventListener("click", clearStudFilters);
+}
+
+// Vẽ lại 4 biểu đồ thống kê (luôn hiện đủ toàn bộ học sinh, chỉ làm mờ phần
+// không được chọn) + bảng chi tiết (áp dụng bộ lọc) + thanh trạng thái lọc.
+function refreshStudentStats(){
+  renderSignupTrendChart(DASH_STUDENTS);
+  renderDonutChart(document.getElementById("dash-score-donut"), document.getElementById("dash-score-legend"), computeScoreBuckets(DASH_STUDENTS), { selectedKey: DASH_FILTER.scoreBucket, onSelect: setStudScoreFilter });
+  renderIntensityChart(DASH_STUDENTS);
+  renderDonutChart(document.getElementById("dash-lang-donut"), document.getElementById("dash-lang-legend"), computeLanguageBuckets(DASH_STUDENTS), { selectedKey: DASH_FILTER.language, onSelect: setStudLangFilter });
+  renderRecencyChart(DASH_STUDENTS);
+  renderDashTable();
+  renderStudFilterBar();
 }
 
 async function loadDashboard(){
@@ -1174,13 +1284,10 @@ async function loadDashboard(){
   }
 
   DASH_STUDENTS = students || [];
+  DASH_FILTER = { day:null, scoreBucket:null, intensityBucket:null, language:null, recency:null };
   renderDashCards(DASH_STUDENTS);
   renderDashChart(trendErr ? [] : (trend || []));
-  renderSignupTrendChart(DASH_STUDENTS);
-  renderDonutChart(document.getElementById("dash-score-donut"), document.getElementById("dash-score-legend"), computeScoreBuckets(DASH_STUDENTS));
-  renderIntensityChart(DASH_STUDENTS);
-  renderDonutChart(document.getElementById("dash-lang-donut"), document.getElementById("dash-lang-legend"), computeLanguageBuckets(DASH_STUDENTS));
-  renderDashTable();
+  refreshStudentStats();
 }
 
 function renderDashCards(students){
@@ -1237,7 +1344,8 @@ function renderDashChart(trend){
 // theo `created_at` của `profiles` (KHÁC với renderDashChart() ở trên — hàm đó
 // đếm học sinh có hoạt động học trong ngày dựa vào activity_log, không phải
 // đăng ký mới). 30 cột nên chỉ hiện nhãn ngày mỗi 5 cột (tránh rối), số liệu
-// chính xác từng ngày xem qua tooltip <title> khi rê chuột.
+// chính xác từng ngày xem qua tooltip <title> khi rê chuột. Bấm 1 cột để lọc
+// bảng chi tiết theo đúng ngày đó (setStudSignupDayFilter()).
 function renderSignupTrendChart(students){
   const el = document.getElementById("dash-signup-chart");
   const days = [];
@@ -1247,9 +1355,8 @@ function renderSignupTrendChart(students){
   }
   const counts = Object.fromEntries(days.map(d=>[d,0]));
   students.forEach(s=>{
-    if(!s.created_at) return;
-    const d = new Date(s.created_at).toISOString().slice(0,10);
-    if(d in counts) counts[d]++;
+    const d = signupDayKeyOf(s);
+    if(d && d in counts) counts[d]++;
   });
   const values = days.map(d=>counts[d]);
   const maxVal = Math.max(1, ...values);
@@ -1263,32 +1370,39 @@ function renderSignupTrendChart(students){
     const dateObj = new Date(d+"T00:00:00");
     const showDateLabel = (i % 5 === 0) || i === days.length-1;
     const dateLabel = showDateLabel ? dateObj.toLocaleDateString("vi-VN", {day:"2-digit", month:"2-digit"}) : "";
+    const isDim = DASH_FILTER.day && DASH_FILTER.day !== d;
     return `
-      <g>
+      <g data-day="${d}" style="cursor:pointer;opacity:${isDim?0.35:1};transition:opacity .15s;">
         ${v>0 ? `<text x="${x+barW/2}" y="${chartH-h-4}" font-size="8.5" fill="var(--navy2)" text-anchor="middle" font-weight="700">${v}</text>` : ""}
         <rect x="${x}" y="${y}" width="${barW}" height="${Math.max(h,1)}" fill="var(--navy2)" rx="2"><title>${dateObj.toLocaleDateString("vi-VN")}: ${v} học sinh mới</title></rect>
         ${dateLabel ? `<text x="${x+barW/2}" y="${chartH+16}" font-size="9" fill="var(--text-2)" text-anchor="middle">${dateLabel}</text>` : ""}
       </g>`;
   }).join("");
   el.innerHTML = `<svg viewBox="0 0 ${svgW} ${chartH+24}" width="100%" style="max-width:${svgW}px;min-width:${svgW}px;">${bars}</svg>`;
+  el.querySelectorAll("[data-day]").forEach(node => node.addEventListener("click", ()=> setStudSignupDayFilter(node.dataset.day)));
 }
 
-// Vẽ 1 donut chart SVG tự vẽ + chú thích — dùng chung cho các thống kê tỉ lệ
-// TĨNH (không bấm lọc) ở Dashboard Học sinh, cùng kỹ thuật donut Ngôn ngữ đã có
-// ở Dashboard Nội dung (mục 13.28) nhưng tách thành hàm dùng chung vì không cần
-// giữ trạng thái lọc riêng như bên đó.
-function renderDonutChart(containerEl, legendEl, segments){
+// Vẽ 1 donut chart SVG tự vẽ + chú thích — dùng chung cho các thống kê tỉ lệ ở
+// Dashboard Học sinh, cùng kỹ thuật donut Ngôn ngữ đã có ở Dashboard Nội dung
+// (mục 13.28). Mỗi lát cắt/dòng chú thích có <title> để rê chuột xem tên +
+// số lượng + %; truyền `opts.onSelect` để cho bấm lọc (opts.selectedKey điều
+// khiển làm mờ phần không được chọn, giống hệt cơ chế bên Dashboard Nội dung).
+function renderDonutChart(containerEl, legendEl, segments, opts){
+  opts = opts || {};
   const total = segments.reduce((s,seg)=> s + seg.value, 0);
   if(!total){
     containerEl.innerHTML = `<p style="color:var(--text-2);font-size:12.5px;">Chưa có dữ liệu.</p>`;
     legendEl.innerHTML = "";
     return;
   }
+  const clickable = !!opts.onSelect;
   const R = 70, C = 2*Math.PI*R, cx = 100, cy = 100, strokeW = 30;
   let offset = 0;
   const arcs = segments.filter(seg=>seg.value>0).map(seg=>{
     const len = (seg.value/total) * C;
-    const html = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${seg.color}" stroke-width="${strokeW}" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-offset}"></circle>`;
+    const pct = Math.round(seg.value/total*100);
+    const isDim = opts.selectedKey && opts.selectedKey !== seg.key;
+    const html = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${seg.color}" stroke-width="${strokeW}" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-offset}" data-key="${seg.key}" style="${clickable?'cursor:pointer;':''}opacity:${isDim?0.3:1};transition:opacity .15s;"><title>${escHtmlAdmin(seg.label)}: ${seg.value} (${pct}%)</title></circle>`;
     offset += len;
     return html;
   }).join("");
@@ -1301,16 +1415,23 @@ function renderDonutChart(containerEl, legendEl, segments){
   </div>`;
   legendEl.innerHTML = segments.map(seg=>{
     const pct = Math.round(seg.value/total*100);
-    return `<div class="content-legend-item" style="cursor:default;">
+    const isDim = opts.selectedKey && opts.selectedKey !== seg.key;
+    return `<div class="content-legend-item${isDim?' dim':''}" data-key="${seg.key}" style="cursor:${clickable?'pointer':'default'};" title="${escHtmlAdmin(seg.label)}: ${seg.value} (${pct}%)">
       <span class="content-legend-dot" style="background:${seg.color};"></span>
       <span style="flex:1;">${escHtmlAdmin(seg.label)}</span>
       <b>${seg.value}</b>&nbsp;<span style="color:var(--text-2);">(${pct}%)</span>
     </div>`;
   }).join("");
+  if(clickable){
+    containerEl.querySelectorAll("[data-key]").forEach(node => node.addEventListener("click", ()=> opts.onSelect(node.dataset.key)));
+    legendEl.querySelectorAll("[data-key]").forEach(node => node.addEventListener("click", ()=> opts.onSelect(node.dataset.key)));
+  }
 }
 
 // 4 mức điểm trung bình theo đúng yêu cầu + 1 mức "Chưa làm bài" (avg_score_pct
 // null) để không lặng lẽ bỏ sót học sinh chưa có bài làm nào khỏi biểu đồ.
+// Dùng scoreBucketKeyOf() — CÙNG hàm renderDashTable() dùng để lọc, đảm bảo bấm
+// vào 1 phần luôn lọc ra đúng những học sinh đã được đếm vào phần đó.
 function computeScoreBuckets(students){
   const buckets = [
     { key:"0-25", label:"0–25% (Cần cải thiện)", color:"var(--red)", value:0 },
@@ -1319,19 +1440,14 @@ function computeScoreBuckets(students){
     { key:"76-100", label:"76–100% (Tốt)", color:"var(--green)", value:0 },
     { key:"none", label:"Chưa làm bài", color:"var(--text-3)", value:0 }
   ];
-  students.forEach(s=>{
-    if(s.avg_score_pct == null){ buckets[4].value++; return; }
-    const v = Number(s.avg_score_pct);
-    if(v <= 25) buckets[0].value++;
-    else if(v <= 50) buckets[1].value++;
-    else if(v <= 75) buckets[2].value++;
-    else buckets[3].value++;
-  });
+  const byKey = Object.fromEntries(buckets.map(b=>[b.key,b]));
+  students.forEach(s=> byKey[scoreBucketKeyOf(s)].value++);
   return buckets;
 }
 
 // Cường độ luyện tập = tổng số bài đã làm (quiz_count) / số ngày kể từ lúc đăng
-// ký (created_at) — tối thiểu 1 ngày để tránh chia 0 với tài khoản mới tạo hôm nay.
+// ký (created_at) — tối thiểu 1 ngày để tránh chia 0 với tài khoản mới tạo hôm
+// nay. Dùng intensityBucketKeyOf() — cùng hàm renderDashTable() dùng để lọc.
 function computeIntensityBuckets(students){
   const buckets = [
     { key:"0-1", label:"0–1 bài/ngày", color:"var(--red)", value:0 },
@@ -1339,17 +1455,12 @@ function computeIntensityBuckets(students){
     { key:"2-3", label:"2–3 bài/ngày", color:"var(--teal)", value:0 },
     { key:"3+", label:"Trên 3 bài/ngày", color:"var(--green)", value:0 }
   ];
-  students.forEach(s=>{
-    const days = Math.max(1, daysSince(s.created_at));
-    const rate = Number(s.quiz_count||0) / days;
-    if(rate <= 1) buckets[0].value++;
-    else if(rate <= 2) buckets[1].value++;
-    else if(rate <= 3) buckets[2].value++;
-    else buckets[3].value++;
-  });
+  const byKey = Object.fromEntries(buckets.map(b=>[b.key,b]));
+  students.forEach(s=> byKey[intensityBucketKeyOf(s)].value++);
   return buckets;
 }
 
+// Bấm 1 cột để lọc bảng chi tiết theo đúng mức cường độ đó (setStudIntensityFilter()).
 function renderIntensityChart(students){
   const el = document.getElementById("dash-intensity-chart");
   const buckets = computeIntensityBuckets(students);
@@ -1363,23 +1474,80 @@ function renderIntensityChart(students){
     const x = leftPad + i*(barW+gap);
     const y = chartH - h;
     const pct = Math.round(b.value/total*100);
+    const isDim = DASH_FILTER.intensityBucket && DASH_FILTER.intensityBucket !== b.key;
     return `
-      <text x="${x+barW/2}" y="${chartH-h-20}" font-size="13" fill="var(--navy2)" text-anchor="middle" font-weight="700">${b.value}</text>
-      <text x="${x+barW/2}" y="${chartH-h-6}" font-size="10.5" fill="var(--text-2)" text-anchor="middle">(${pct}%)</text>
-      <rect x="${x}" y="${y}" width="${barW}" height="${Math.max(h,2)}" fill="${b.color}" rx="4"></rect>
-      <text x="${x+barW/2}" y="${chartH+20}" font-size="11.5" fill="var(--text-2)" text-anchor="middle">${escHtmlAdmin(b.label)}</text>
+      <g data-bucket="${b.key}" style="cursor:pointer;opacity:${isDim?0.35:1};transition:opacity .15s;">
+        <text x="${x+barW/2}" y="${chartH-h-20}" font-size="13" fill="var(--navy2)" text-anchor="middle" font-weight="700">${b.value}</text>
+        <text x="${x+barW/2}" y="${chartH-h-6}" font-size="10.5" fill="var(--text-2)" text-anchor="middle">(${pct}%)</text>
+        <rect x="${x}" y="${y}" width="${barW}" height="${Math.max(h,2)}" fill="${b.color}" rx="4"><title>${escHtmlAdmin(b.label)}: ${b.value} (${pct}%)</title></rect>
+        <text x="${x+barW/2}" y="${chartH+20}" font-size="11.5" fill="var(--text-2)" text-anchor="middle">${escHtmlAdmin(b.label)}</text>
+      </g>
     `;
   }).join("");
   el.innerHTML = `<svg viewBox="0 0 ${svgW} ${chartH+28}" width="100%" style="max-width:${svgW}px;">${bars}</svg>`;
+  el.querySelectorAll("[data-bucket]").forEach(node => node.addEventListener("click", ()=> setStudIntensityFilter(node.dataset.bucket)));
+}
+
+// 8 mức "hoạt động gần nhất" theo đúng yêu cầu (0-5 ngày riêng lẻ) + 2 mức bổ
+// sung "Trên 5 ngày" và "Chưa từng hoạt động" để không lặng lẽ bỏ sót học sinh
+// im ắng lâu/chưa từng học ra khỏi biểu đồ. Màu chuyển dần xanh (mới) → đỏ (lâu)
+// → xám (chưa từng), dùng recencyBucketKeyOf() — cùng hàm renderDashTable() lọc.
+function computeRecencyBuckets(students){
+  const buckets = [
+    { key:"0", label:"Hôm nay", color:"var(--green)", value:0 },
+    { key:"1", label:"1 ngày trước", color:"#8bc34a", value:0 },
+    { key:"2", label:"2 ngày trước", color:"var(--teal)", value:0 },
+    { key:"3", label:"3 ngày trước", color:"var(--amber)", value:0 },
+    { key:"4", label:"4 ngày trước", color:"#e8890c", value:0 },
+    { key:"5", label:"5 ngày trước", color:"var(--red)", value:0 },
+    { key:"6+", label:"Trên 5 ngày", color:"#a13a3a", value:0 },
+    { key:"never", label:"Chưa từng hoạt động", color:"var(--text-3)", value:0 }
+  ];
+  const byKey = Object.fromEntries(buckets.map(b=>[b.key,b]));
+  students.forEach(s=> byKey[recencyBucketKeyOf(s)].value++);
+  return buckets;
+}
+
+// Nhãn rút gọn riêng cho trục cột (label đầy đủ ở trên vẫn dùng cho tooltip/chú
+// thích/thanh trạng thái lọc) — 8 cột cạnh nhau nên nhãn dài dễ đè lên nhau.
+const RECENCY_AXIS_LABEL = { "0":"Hôm nay", "1":"1 ngày", "2":"2 ngày", "3":"3 ngày", "4":"4 ngày", "5":"5 ngày", "6+":"Trên 5 ngày", "never":"Chưa HĐ" };
+
+// Bấm 1 cột để lọc bảng chi tiết theo đúng mức hoạt động gần nhất đó
+// (setStudRecencyFilter()).
+function renderRecencyChart(students){
+  const el = document.getElementById("dash-recency-chart");
+  const buckets = computeRecencyBuckets(students);
+  const total = buckets.reduce((s,b)=> s+b.value, 0);
+  if(!total){ el.innerHTML = `<p style="color:var(--text-2);font-size:12.5px;">Chưa có dữ liệu.</p>`; return; }
+  const maxVal = Math.max(1, ...buckets.map(b=>b.value));
+  const barW = 46, gap = 20, chartH = 110, leftPad = 8, rightPad = 16;
+  const svgW = buckets.length * (barW+gap) + leftPad + rightPad;
+  const bars = buckets.map((b,i)=>{
+    const h = Math.round((b.value/maxVal) * (chartH-30));
+    const x = leftPad + i*(barW+gap);
+    const y = chartH - h;
+    const pct = Math.round(b.value/total*100);
+    const isDim = DASH_FILTER.recency && DASH_FILTER.recency !== b.key;
+    return `
+      <g data-bucket="${b.key}" style="cursor:pointer;opacity:${isDim?0.35:1};transition:opacity .15s;">
+        <text x="${x+barW/2}" y="${chartH-h-6}" font-size="11.5" fill="var(--navy2)" text-anchor="middle" font-weight="700">${b.value}</text>
+        <rect x="${x}" y="${y}" width="${barW}" height="${Math.max(h,2)}" fill="${b.color}" rx="4"><title>${escHtmlAdmin(b.label)}: ${b.value} (${pct}%)</title></rect>
+        <text x="${x+barW/2}" y="${chartH+18}" font-size="9.5" fill="var(--text-2)" text-anchor="middle">${escHtmlAdmin(RECENCY_AXIS_LABEL[b.key] || b.label)}</text>
+      </g>
+    `;
+  }).join("");
+  el.innerHTML = `<svg viewBox="0 0 ${svgW} ${chartH+24}" width="100%" style="max-width:${svgW}px;min-width:${svgW}px;">${bars}</svg>`;
+  el.querySelectorAll("[data-bucket]").forEach(node => node.addEventListener("click", ()=> setStudRecencyFilter(node.dataset.bucket)));
 }
 
 // Ngôn ngữ đang chọn học hiện tại (profiles.selected_language) — dùng chung màu
 // với langColor() (định nghĩa ở Dashboard Nội dung, mục 13.28) để cùng 1 ngôn
-// ngữ luôn cùng 1 màu xuyên suốt các trang quản trị.
+// ngữ luôn cùng 1 màu xuyên suốt các trang quản trị. Dùng languageKeyOf() —
+// cùng hàm renderDashTable() dùng để lọc.
 function computeLanguageBuckets(students){
   const counts = {};
   students.forEach(s=>{
-    const lang = s.selected_language || "none";
+    const lang = languageKeyOf(s);
     counts[lang] = (counts[lang]||0) + 1;
   });
   const langs = Object.keys(counts).filter(l=> l!=="none").sort((a,b)=> LANGS_ORDER.indexOf(a) - LANGS_ORDER.indexOf(b));
@@ -1392,7 +1560,15 @@ function renderDashTable(){
   const search = document.getElementById("dash-search").value.trim().toLowerCase();
   const idleDays = parseInt(document.getElementById("dash-idle-days").value, 10);
 
-  let rows = DASH_STUDENTS.filter(s => !search || (s.email||"").toLowerCase().includes(search));
+  let rows = DASH_STUDENTS.filter(s=>{
+    if(search && !(s.email||"").toLowerCase().includes(search)) return false;
+    if(DASH_FILTER.day && signupDayKeyOf(s) !== DASH_FILTER.day) return false;
+    if(DASH_FILTER.scoreBucket && scoreBucketKeyOf(s) !== DASH_FILTER.scoreBucket) return false;
+    if(DASH_FILTER.intensityBucket && intensityBucketKeyOf(s) !== DASH_FILTER.intensityBucket) return false;
+    if(DASH_FILTER.language && languageKeyOf(s) !== DASH_FILTER.language) return false;
+    if(DASH_FILTER.recency && recencyBucketKeyOf(s) !== DASH_FILTER.recency) return false;
+    return true;
+  });
 
   rows = rows.slice().sort((a,b)=>{
     let av = a[dashSort.key], bv = b[dashSort.key];
@@ -1420,7 +1596,7 @@ function renderDashTable(){
         <td>${s.quiz_count}</td>
         <td>${s.avg_score_pct==null ? "—" : s.avg_score_pct+"%"}</td>
         <td>${s.parent_emails ? escHtmlAdmin(s.parent_emails) : "— chưa có"}</td>
-        <td>${s.reminder_enabled ? "✅" : "—"}</td>
+        <td>${s.teacher_emails ? escHtmlAdmin(s.teacher_emails) : "— chưa có"}</td>
         <td><button class="btn-sm" data-edit-student="${s.id}">Sửa</button></td>
       </tr>`;
   }).join("");
