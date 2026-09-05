@@ -61,6 +61,9 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
 .result-msg.ok{background:var(--green-light);color:var(--green);display:block;}
 .result-msg.err{background:var(--red-light);color:var(--red);display:block;white-space:pre-wrap;}
 .config-warning{max-width:600px;margin:60px auto;background:var(--amber-light);color:#8a5a15;padding:20px 24px;border-radius:10px;font-size:13px;line-height:1.6;}
+.dash-group-tabs{display:flex;gap:10px;margin-bottom:10px;}
+.dash-group-tabs button{flex:1;padding:10px;border-radius:10px;border:2px solid var(--navy2);background:#fff;font-size:14px;font-weight:800;color:var(--navy2);cursor:pointer;}
+.dash-group-tabs button.active{background:var(--navy2);color:#fff;}
 .section-tabs{display:flex;gap:10px;margin-bottom:var(--gap);}
 .section-tabs button{flex:1;padding:12px;border-radius:10px;border:2px solid var(--border);background:var(--bg-card);font-size:13.5px;font-weight:700;color:var(--text-2);cursor:pointer;}
 .section-tabs button.active{border-color:var(--teal);color:var(--teal);background:var(--teal-light);}
@@ -120,18 +123,22 @@ tr.dash-idle{background:var(--red-light);}
   <div id="loading" class="loading-msg">Đang tải…</div>
 
   <div id="app" style="display:none;">
+    <div class="dash-group-tabs">
+      <button id="grp-users" class="active">👥 Quản trị người dùng</button>
+      <button id="grp-content">📚 Quản trị nội dung</button>
+    </div>
     <div class="section-tabs">
-      <button id="sec-dashboard">📊 Dashboard</button>
-      <button id="sec-vocab" class="active">📚 Từ vựng</button>
-      <button id="sec-grammar">📘 Ngữ pháp</button>
-      <button id="sec-reading">📖 Đọc</button>
-      <button id="sec-listening">🎧 Nghe</button>
-      <button id="sec-dialogue">🗣️ Hội thoại</button>
-      <button id="sec-math">🔢 Toán</button>
-      <button id="sec-parents">👪 Phụ huynh</button>
+      <button id="sec-dashboard" data-group="users" class="active">🎓 Học sinh</button>
+      <button id="sec-parents" data-group="users">👪 Phụ huynh &amp; Giáo viên</button>
+      <button id="sec-vocab" data-group="content" style="display:none;">📚 Từ vựng</button>
+      <button id="sec-grammar" data-group="content" style="display:none;">📘 Ngữ pháp</button>
+      <button id="sec-reading" data-group="content" style="display:none;">📖 Đọc</button>
+      <button id="sec-listening" data-group="content" style="display:none;">🎧 Nghe</button>
+      <button id="sec-dialogue" data-group="content" style="display:none;">🗣️ Hội thoại</button>
+      <button id="sec-math" data-group="content" style="display:none;">🔢 Toán</button>
     </div>
 
-    <div id="vocab-section">
+    <div id="vocab-section" style="display:none;">
     <div class="card">
       <h3>Nhập nhanh từ file CSV</h3>
       <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">
@@ -425,32 +432,34 @@ tr.dash-idle{background:var(--red-light);}
     </div>
 
     <div id="parents-section" style="display:none;">
-      <div class="card">
-        <h3>Gán vai trò phụ huynh + liên kết học sinh</h3>
-        <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">
-          Phụ huynh TỰ đăng ký tài khoản giống hệt học sinh (qua màn hình đăng ký
-          bình thường của app) — ở đây chỉ cần chọn đúng tài khoản đã đăng ký đó và
-          gán làm phụ huynh + liên kết với học sinh. Không cần tạo tài khoản hộ,
-          không cần cấu hình gì thêm trên Cloudflare.
-        </div>
-        <div class="field-row"><label>Tài khoản phụ huynh (đã đăng ký)</label><select id="p-parent-account"></select></div>
-        <div class="field-row"><label>Liên kết với học sinh</label><select id="p-student"></select></div>
-        <div style="margin-top:10px;"><button class="btn btn-primary" id="btn-create-parent">Gán làm phụ huynh + liên kết</button></div>
-        <div class="result-msg" id="parent-create-result"></div>
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:var(--gap);">
+        Gán phụ huynh/giáo viên cho học sinh ngay trong modal "Sửa" ở tab
+        <b>🎓 Học sinh</b> — cả hai đều TỰ đăng ký tài khoản giống học sinh (qua
+        màn hình đăng ký bình thường của app), admin chỉ cần chọn đúng tài khoản
+        đã đăng ký đó khi sửa hồ sơ học sinh. Ở đây chỉ để xem tổng quan + đổi
+        mật khẩu khi cần.
       </div>
-
       <div class="card">
-        <h3>Danh sách phụ huynh đã liên kết (<span id="parent-link-count">0</span>)</h3>
+        <h3>Phụ huynh (<span id="parent-count">0</span>)</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Email phụ huynh</th><th>Email học sinh</th><th>Ngày tạo</th><th colspan="2"></th></tr></thead>
-            <tbody id="parent-table-body"></tbody>
+            <thead><tr><th>Email</th><th>Số học sinh liên kết</th><th></th></tr></thead>
+            <tbody id="parent-list-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Giáo viên (<span id="teacher-count">0</span>)</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Email</th><th>Số học sinh phụ trách</th><th></th></tr></thead>
+            <tbody id="teacher-list-body"></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <div id="dashboard-section" style="display:none;">
+    <div id="dashboard-section">
       <div class="dash-cards" id="dash-cards"></div>
 
       <div class="card">
@@ -647,6 +656,7 @@ async function afterLogin(){
   if(!adminRow || !adminRow.length){ showScreen("denied"); return; }
   showScreen("main");
   loadData();
+  switchGroup("users"); // mặc định mở nhóm "Quản trị người dùng" (tab Học sinh) khi vào trang
 }
 (async function(){
   const { data: { session } } = await sb.auth.getSession();
@@ -973,6 +983,22 @@ document.getElementById("btn-import").addEventListener("click", async ()=>{
 // Chuyển đổi giữa 4 khu vực quản trị: Từ vựng / Ngữ pháp / Đọc / Hội thoại
 // ============================================================
 const ALL_SECTIONS = ["dashboard", "vocab", "grammar", "reading", "listening", "dialogue", "math", "parents"];
+// Nhóm dashboard lớn (2 cấp điều hướng): "users" = Quản trị người dùng (Học sinh,
+// Phụ huynh & Giáo viên), "content" = Quản trị nội dung (6 tab soạn bài cũ, giữ
+// nguyên logic bên trong, chỉ gom lại 1 nhóm cho gọn).
+const SECTION_GROUP = { dashboard: "users", parents: "users", vocab: "content", grammar: "content", reading: "content", listening: "content", dialogue: "content", math: "content" };
+function switchGroup(group){
+  document.getElementById("grp-users").classList.toggle("active", group === "users");
+  document.getElementById("grp-content").classList.toggle("active", group === "content");
+  ALL_SECTIONS.forEach(name=>{
+    document.getElementById(`sec-${name}`).style.display = (SECTION_GROUP[name] === group) ? "" : "none";
+  });
+  const firstInGroup = ALL_SECTIONS.find(name => SECTION_GROUP[name] === group);
+  switchSection(firstInGroup);
+}
+document.getElementById("grp-users").addEventListener("click", ()=> switchGroup("users"));
+document.getElementById("grp-content").addEventListener("click", ()=> switchGroup("content"));
+
 function switchSection(active){
   ALL_SECTIONS.forEach(name=>{
     document.getElementById(`sec-${name}`).classList.toggle("active", name===active);
@@ -1131,9 +1157,28 @@ document.querySelectorAll(".dash-sortable").forEach(th=>{
   });
 });
 
-function openEditStudent(id){
+async function openEditStudent(id){
   const s = DASH_STUDENTS.find(x => x.id === id);
   if(!s) return;
+
+  // Tải kèm: mọi tài khoản khác (để chọn làm phụ huynh/giáo viên) + liên kết
+  // hiện tại của đúng học sinh này. Đơn giản hoá: nếu 1 học sinh lỡ có NHIỀU
+  // dòng liên kết (hiếm, dữ liệu cũ), chỉ hiện/set dòng ĐẦU TIÊN — dropdown 1
+  // lựa chọn không hợp để sửa quan hệ nhiều-nhiều đầy đủ.
+  const [{ data: allProfiles }, { data: parentLinks }, { data: teacherLinks }] = await Promise.all([
+    sb.from("profiles").select("id,email,role").neq("id", id).order("email"),
+    sb.from("parent_links").select("parent_id").eq("student_id", id),
+    sb.from("teacher_links").select("teacher_id").eq("student_id", id)
+  ]);
+  const currentParentId = (parentLinks && parentLinks[0] && parentLinks[0].parent_id) || "";
+  const currentTeacherId = (teacherLinks && teacherLinks[0] && teacherLinks[0].teacher_id) || "";
+
+  const ROLE_LABEL = { parent: "phụ huynh", teacher: "giáo viên", student: "học sinh" };
+  const personOptions = (currentId) => `<option value="">— Không có —</option>` + (allProfiles||[]).map(p=>{
+    const roleTag = p.role && ROLE_LABEL[p.role] ? ` (${ROLE_LABEL[p.role]})` : "";
+    return `<option value="${p.id}" ${p.id===currentId?"selected":""}>${escHtmlAdmin(p.email||p.id)}${roleTag}</option>`;
+  }).join("");
+
   const langOptions = LANGS_ORDER.map(code => `<option value="${code}" ${code===s.selected_language?"selected":""}>${escHtmlAdmin(LANGS_CFG[code].adminLabel || code)}</option>`).join("");
   document.getElementById("modal").innerHTML = `
     <div class="modal-head"><h2 style="margin:0;font-size:16px;">Sửa hồ sơ — ${escHtmlAdmin(s.email)}</h2><button class="modal-close" id="es-close">&times;</button></div>
@@ -1141,6 +1186,8 @@ function openEditStudent(id){
       <div class="field-row"><label>Số điện thoại</label><input data-f="phone" value="${(s.phone||'').replace(/"/g,'&quot;')}"></div>
       <div class="field-row"><label>Địa chỉ</label><input data-f="address" value="${(s.address||'').replace(/"/g,'&quot;')}"></div>
       <div class="field-row"><label>Ngôn ngữ đang chọn</label><select data-f="selected_language">${langOptions}</select></div>
+      <div class="field-row"><label>Phụ huynh</label><select id="es-parent">${personOptions(currentParentId)}</select></div>
+      <div class="field-row"><label>Giáo viên phụ trách</label><select id="es-teacher">${personOptions(currentTeacherId)}</select></div>
       <div class="result-msg" id="edit-student-result"></div>
       <div class="modal-actions"><button type="button" class="btn btn-ghost" id="es-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Lưu</button></div>
     </form>`;
@@ -1153,73 +1200,79 @@ function openEditStudent(id){
     e.target.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
     const { error } = await sb.from("profiles").update(payload).eq("id", s.id);
     if(error){ document.getElementById("edit-student-result").textContent = "Lỗi: " + error.message; return; }
+
+    await syncPersonLink("parent_links", "parent_id", id, currentParentId, document.getElementById("es-parent").value, "parent");
+    await syncPersonLink("teacher_links", "teacher_id", id, currentTeacherId, document.getElementById("es-teacher").value, "teacher");
+
     closeModal();
     await loadDashboard();
   };
 }
 
+// Đồng bộ 1 loại liên kết (phụ huynh/giáo viên) cho 1 học sinh khi Lưu modal Sửa
+// học sinh: nếu dropdown đổi khác lựa chọn cũ, xoá liên kết cũ (nếu có) + tạo
+// liên kết mới (nếu có chọn) + tự nâng role tài khoản mới lên đúng vai trò —
+// gộp 1 bước, thay cho form "Gán làm phụ huynh + liên kết" cũ đã bỏ.
+async function syncPersonLink(table, idCol, studentId, oldId, newId, role){
+  if(oldId === newId) return; // không đổi gì thì khỏi động vào DB
+  if(oldId){ await sb.from(table).delete().eq(idCol, oldId).eq("student_id", studentId); }
+  if(newId){
+    await sb.from("profiles").update({ role }).eq("id", newId);
+    const { error } = await sb.from(table).insert({ [idCol]: newId, student_id: studentId });
+    if(error && error.code !== "23505") console.warn(`Gán ${role} thất bại:`, error.message);
+  }
+}
+
 // ============================================================
-// Phụ huynh — TỰ đăng ký tài khoản giống hệt học sinh (không admin tạo hộ,
-// không cần service_role key/Worker). Admin chỉ gán role='parent' cho đúng
-// tài khoản đã đăng ký đó + liên kết với 1 học sinh qua parent_links.
+// Phụ huynh & Giáo viên — view CHỈ XEM (tổng quan + đổi mật khẩu). Việc gán
+// phụ huynh/giáo viên cho học sinh đã chuyển sang modal "Sửa" ở tab Học sinh
+// (openEditStudent(), xem "Gán phụ huynh/giáo viên" bên dưới) — cả 2 loại tài
+// khoản đều TỰ đăng ký giống học sinh, admin chỉ chọn đúng tài khoản khi sửa.
 // ============================================================
 async function loadParents(){
-  const { data: allProfiles, error: profilesError } = await sb.from("profiles").select("id,email,role").order("email");
-
-  const parentSel = document.getElementById("p-parent-account");
-  if(profilesError){
-    parentSel.innerHTML = `<option value="">(Lỗi tải danh sách: ${escHtmlAdmin(profilesError.message)})</option>`;
-  } else {
-    parentSel.innerHTML = (allProfiles||[]).map(p=>{
-      const roleLabel = p.role === "parent" ? " — đã là phụ huynh" : "";
-      return `<option value="${p.id}">${escHtmlAdmin(p.email||p.id)}${roleLabel}</option>`;
-    }).join("");
-  }
-
-  const studentSel = document.getElementById("p-student");
-  const students = (allProfiles||[]).filter(p=>p.role === "student");
-  studentSel.innerHTML = students.map(s=>`<option value="${s.id}">${escHtmlAdmin(s.email||s.id)}</option>`).join("");
-
-  const { data: links, error } = await sb.from("parent_links").select("id,parent_id,student_id,created_at").order("created_at",{ascending:false});
-  const tbody = document.getElementById("parent-table-body");
-  if(error){ tbody.innerHTML = `<tr><td colspan="4">Lỗi tải dữ liệu: ${escHtmlAdmin(error.message)}</td></tr>`; return; }
-  if(!links || !links.length){
-    tbody.innerHTML = `<tr><td colspan="4">Chưa có liên kết phụ huynh nào.</td></tr>`;
-    document.getElementById("parent-link-count").textContent = "0";
+  const { data: allProfiles, error } = await sb.from("profiles").select("id,email,role").order("email");
+  if(error){
+    document.getElementById("parent-list-body").innerHTML = `<tr><td colspan="3">Lỗi tải dữ liệu: ${escHtmlAdmin(error.message)}</td></tr>`;
     return;
   }
+  const [{ data: parentLinks }, { data: teacherLinks }] = await Promise.all([
+    sb.from("parent_links").select("parent_id"),
+    sb.from("teacher_links").select("teacher_id")
+  ]);
+  const countBy = (rows, key) => {
+    const m = {};
+    (rows||[]).forEach(r => { m[r[key]] = (m[r[key]]||0) + 1; });
+    return m;
+  };
+  const parentCounts = countBy(parentLinks, "parent_id");
+  const teacherCounts = countBy(teacherLinks, "teacher_id");
 
-  const ids = [...new Set(links.flatMap(l=>[l.parent_id, l.student_id]))];
-  const { data: profs } = await sb.from("profiles").select("id,email").in("id", ids);
-  const emailOf = Object.fromEntries((profs||[]).map(p=>[p.id, p.email]));
-
-  document.getElementById("parent-link-count").textContent = links.length;
-  tbody.innerHTML = links.map(l=>`
+  const renderList = (role, counts) => (allProfiles||[]).filter(p => p.role === role).map(p => `
     <tr>
-      <td>${escHtmlAdmin(emailOf[l.parent_id] || l.parent_id)}</td>
-      <td>${escHtmlAdmin(emailOf[l.student_id] || l.student_id)}</td>
-      <td>${new Date(l.created_at).toLocaleDateString()}</td>
-      <td><button class="btn-sm" data-reset-pw="${l.parent_id}" data-parent-email="${escHtmlAdmin(emailOf[l.parent_id] || l.parent_id).replace(/"/g,'&quot;')}">Đổi mật khẩu</button></td>
-      <td><button class="btn btn-outline" data-del-link="${l.id}">Xoá liên kết</button></td>
+      <td>${escHtmlAdmin(p.email||p.id)}</td>
+      <td>${counts[p.id] || 0}</td>
+      <td><button class="btn-sm" data-reset-pw="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">Đổi mật khẩu</button></td>
     </tr>`).join("");
-  tbody.querySelectorAll("[data-del-link]").forEach(btn=>{
-    btn.addEventListener("click", async ()=>{
-      if(!confirm("Xoá liên kết phụ huynh - học sinh này?")) return;
-      const { error: delError } = await sb.from("parent_links").delete().eq("id", btn.dataset.delLink);
-      if(delError){ alert("Xoá thất bại: " + delError.message); return; }
-      loadParents();
-    });
-  });
-  tbody.querySelectorAll("[data-reset-pw]").forEach(btn=>{
-    btn.addEventListener("click", ()=> openResetParentPassword(btn.dataset.resetPw, btn.dataset.parentEmail));
+
+  const parents = (allProfiles||[]).filter(p => p.role === "parent");
+  const teachers = (allProfiles||[]).filter(p => p.role === "teacher");
+  document.getElementById("parent-count").textContent = parents.length;
+  document.getElementById("teacher-count").textContent = teachers.length;
+  document.getElementById("parent-list-body").innerHTML = parents.length ? renderList("parent", parentCounts) : `<tr><td colspan="3">Chưa có phụ huynh nào.</td></tr>`;
+  document.getElementById("teacher-list-body").innerHTML = teachers.length ? renderList("teacher", teacherCounts) : `<tr><td colspan="3">Chưa có giáo viên nào.</td></tr>`;
+
+  document.querySelectorAll("[data-reset-pw]").forEach(btn=>{
+    btn.addEventListener("click", ()=> openResetUserPassword(btn.dataset.resetPw, btn.dataset.email));
   });
 }
 
-// Đổi mật khẩu phụ huynh — gọi RPC admin_reset_parent_password() (28_migration_...sql),
-// ghi thẳng auth.users bằng pgcrypto, không cần Cloudflare Function/service_role key.
-function openResetParentPassword(parentId, parentEmail){
+// Đổi mật khẩu phụ huynh/giáo viên — gọi RPC dùng chung admin_reset_user_password()
+// (36_migration_add_teacher_role.sql, thay cho admin_reset_parent_password() cũ
+// chỉ dành riêng phụ huynh — ghi thẳng auth.users bằng pgcrypto, không cần
+// Cloudflare Function/service_role key).
+function openResetUserPassword(userId, email){
   document.getElementById("modal").innerHTML = `
-    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Đổi mật khẩu — ${escHtmlAdmin(parentEmail)}</h2><button class="modal-close" id="rp-close">&times;</button></div>
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Đổi mật khẩu — ${escHtmlAdmin(email)}</h2><button class="modal-close" id="rp-close">&times;</button></div>
     <form id="reset-pw-form">
       <div class="field-row"><label>Mật khẩu mới</label><input id="rp-password" type="text" placeholder="Tối thiểu 6 ký tự" autocomplete="new-password"></div>
       <div class="result-msg" id="reset-pw-result"></div>
@@ -1235,44 +1288,12 @@ function openResetParentPassword(parentId, parentEmail){
     if(!newPassword || newPassword.length < 6){ resultEl.textContent = "Mật khẩu phải có ít nhất 6 ký tự."; return; }
     const submitBtn = e.target.querySelector("button[type=submit]");
     submitBtn.disabled = true;
-    const { error } = await sb.rpc("admin_reset_parent_password", { p_parent_id: parentId, p_new_password: newPassword });
+    const { error } = await sb.rpc("admin_reset_user_password", { p_user_id: userId, p_new_password: newPassword });
     submitBtn.disabled = false;
     if(error){ resultEl.textContent = "Lỗi: " + error.message; return; }
     closeModal();
   };
 }
-
-document.getElementById("btn-create-parent").addEventListener("click", async ()=>{
-  const parentId = document.getElementById("p-parent-account").value;
-  const studentId = document.getElementById("p-student").value;
-  const resultEl = document.getElementById("parent-create-result");
-  resultEl.textContent = "";
-  if(!parentId || !studentId){ resultEl.textContent = "Chọn đủ tài khoản phụ huynh và học sinh."; return; }
-  if(parentId === studentId){ resultEl.textContent = "Không thể chọn cùng 1 tài khoản cho cả 2 vai trò."; return; }
-
-  const btn = document.getElementById("btn-create-parent");
-  btn.disabled = true; btn.textContent = "Đang gán...";
-  try{
-    const { error: roleError } = await sb.from("profiles").update({ role: "parent" }).eq("id", parentId);
-    if(roleError){ resultEl.textContent = "Lỗi gán vai trò phụ huynh: " + roleError.message; return; }
-
-    const { error: linkError } = await sb.from("parent_links").insert({ parent_id: parentId, student_id: studentId });
-    if(linkError){
-      resultEl.textContent = linkError.code === "23505"
-        ? "Đã tạo vai trò phụ huynh, nhưng liên kết này đã tồn tại từ trước."
-        : "Đã gán vai trò phụ huynh nhưng liên kết với học sinh thất bại: " + linkError.message;
-      loadParents();
-      return;
-    }
-
-    resultEl.textContent = "✅ Đã gán vai trò phụ huynh và liên kết thành công.";
-    loadParents();
-  } catch(err){
-    resultEl.textContent = "Lỗi: " + err.message;
-  } finally {
-    btn.disabled = false; btn.textContent = "Gán làm phụ huynh + liên kết";
-  }
-});
 
 // ============================================================
 // Bài học ngữ pháp (1 bài / ngôn ngữ / trình độ)

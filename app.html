@@ -446,6 +446,7 @@ async function boot(){
   if(session){
     if(await isAdminUser(session.user.id)){ window.location.href = "QuanLyTuVung.html"; return; }
     if(await isParentUser(session.user.id)){ window.location.href = "PhuHuynh.html"; return; }
+    if(await isTeacherUser(session.user.id)){ window.location.href = "GiaoVien.html"; return; }
     await enterApp(session.user);
   }
   else { showAuthScreen(); }
@@ -465,6 +466,11 @@ async function isAdminUser(userId){
 async function isParentUser(userId){
   const { data } = await sb.from("profiles").select("role").eq("id", userId).maybeSingle();
   return !!(data && data.role === "parent");
+}
+
+async function isTeacherUser(userId){
+  const { data } = await sb.from("profiles").select("role").eq("id", userId).maybeSingle();
+  return !!(data && data.role === "teacher");
 }
 
 function applyGlobalTheme(){
@@ -521,6 +527,7 @@ document.getElementById("login-form").addEventListener("submit", async (e)=>{
   if(error){ msg.className = "auth-msg err"; msg.textContent = error.message; return; }
   if(await isAdminUser(data.user.id)){ window.location.href = "QuanLyTuVung.html"; return; }
   if(await isParentUser(data.user.id)){ window.location.href = "PhuHuynh.html"; return; }
+  if(await isTeacherUser(data.user.id)){ window.location.href = "GiaoVien.html"; return; }
   await enterApp(data.user);
 });
 

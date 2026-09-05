@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iLapra — Giáo viên</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+:root{
+  --navy:#0a2472; --navy2:#c8102e; --teal:#0a2472; --teal-light:#e7ecfa;
+  --red:#d64545; --red-light:#fdeaea; --green:#2f9e44; --green-light:#eaf7ec;
+  --bg-page:#f2f4f7; --bg-card:#ffffff; --border:#e1e5eb;
+  --text-1:#1a2332; --text-2:#5b6472; --text-3:#8a92a0;
+  --radius:14px; --gap:16px; --shadow:0 1px 3px rgba(20,42,77,0.08);
+}
+*{box-sizing:border-box;}
+.hidden{display:none;}
+body{margin:0;font-family:Arial,"Segoe UI",sans-serif;background:var(--bg-page);color:var(--text-1);font-size:14px;}
+.wrap{max-width:820px;margin:0 auto;padding:20px;}
+header.top{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#fff;border-radius:var(--radius);padding:18px 24px;margin-bottom:var(--gap);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
+header.top h1{font-size:18px;margin:0;font-weight:700;}
+.btn{padding:8px 16px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;}
+.btn-outline{background:transparent;border:1px solid rgba(255,255,255,0.5);color:#fff;}
+.btn-primary{background:var(--navy2);color:#fff;width:100%;margin-top:20px;padding:11px;}
+.card{background:var(--bg-card);border-radius:var(--radius);padding:22px 24px;box-shadow:var(--shadow);margin-bottom:var(--gap);}
+.card h2{font-size:16px;margin:0 0 4px;color:var(--navy2);}
+.card .sub{font-size:12.5px;color:var(--text-2);margin-bottom:14px;}
+.loading-msg,.empty-msg{text-align:center;padding:40px 20px;color:var(--text-3);}
+
+.login-screen{min-height:70vh;display:flex;align-items:center;justify-content:center;}
+.login-card{background:var(--bg-card);border-radius:14px;box-shadow:0 8px 30px rgba(20,42,77,0.12);padding:36px 32px;width:100%;max-width:380px;}
+.login-card h1{font-size:19px;margin:0 0 4px;color:var(--navy2);}
+.login-card label{display:block;font-size:12px;font-weight:600;color:var(--text-2);margin:14px 0 6px;}
+.login-card input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;}
+.login-error{background:var(--red-light);color:var(--red);font-size:12.5px;padding:9px 12px;border-radius:8px;margin-top:14px;display:none;}
+.login-ok{background:var(--green-light);color:#2f7d3a;font-size:12.5px;padding:9px 12px;border-radius:8px;margin-top:14px;display:none;}
+.auth-tabs{display:flex;gap:8px;margin:16px 0 2px;}
+.auth-tabs button{flex:1;padding:9px;border-radius:8px;border:2px solid var(--border);background:#fff;font-size:13px;font-weight:700;color:var(--text-2);cursor:pointer;}
+.auth-tabs button.active{border-color:var(--navy2);color:var(--navy2);background:var(--teal-light);}
+.denied-box{max-width:460px;margin:60px auto;text-align:center;background:var(--bg-card);border-radius:var(--radius);padding:36px 28px;box-shadow:var(--shadow);}
+
+.stats-summary{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
+.stats-summary-item{flex:1;min-width:110px;background:var(--teal-light);border-radius:12px;padding:14px;text-align:center;}
+.stats-summary-item b{display:block;font-size:22px;color:var(--navy2);}
+.stats-row{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:9px 4px;border-bottom:1px solid var(--border);font-size:13px;}
+.stats-row-score{font-weight:700;color:var(--navy2);}
+.activity-row{padding:7px 4px;border-bottom:1px solid var(--border);font-size:12.5px;color:var(--text-2);}
+.activity-row.quiz{padding:10px 4px;}
+.activity-quiz-head{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--text-1);}
+.activity-quiz-score{font-weight:700;color:var(--navy2);}
+.activity-quiz-breakdown{margin:6px 0 0 14px;font-size:12px;color:var(--text-2);}
+.activity-quiz-breakdown div{padding:2px 0;}
+.date-filter-bar{display:flex;align-items:center;gap:10px;margin-bottom:var(--gap);flex-wrap:wrap;}
+.date-filter-bar label{font-size:12.5px;color:var(--text-2);font-weight:600;}
+.date-filter-bar input[type=date]{padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;}
+.day-total-strip{background:var(--teal-light);border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:12px;text-align:center;}
+.day-total-strip b{color:var(--navy2);}
+</style>
+</head>
+<body>
+
+<div class="wrap hidden" id="login-screen" style="display:none;">
+  <div class="login-screen">
+    <div class="login-card">
+      <h1>Giáo viên</h1>
+      <div style="font-size:12.5px;color:var(--text-2);">Đăng ký tài khoản riêng, sau đó nhờ quản trị viên phân công học sinh phụ trách.</div>
+      <div class="auth-tabs">
+        <button type="button" id="tab-login" class="active">Đăng nhập</button>
+        <button type="button" id="tab-register">Đăng ký</button>
+      </div>
+      <form id="login-form">
+        <label>Email</label>
+        <input type="email" id="login-email" required>
+        <label>Mật khẩu</label>
+        <input type="password" id="login-password" required>
+        <button class="btn btn-primary" type="submit" id="login-btn">Đăng nhập</button>
+        <div class="login-error" id="login-error"></div>
+      </form>
+      <form id="register-form" class="hidden">
+        <label>Email</label>
+        <input type="email" id="reg-email" required autocomplete="email">
+        <label>Mật khẩu (tối thiểu 6 ký tự)</label>
+        <input type="password" id="reg-password" required minlength="6" autocomplete="new-password">
+        <label>Nhập lại mật khẩu</label>
+        <input type="password" id="reg-password2" required autocomplete="new-password">
+        <button class="btn btn-primary" type="submit" id="register-btn">Đăng ký</button>
+        <div class="login-error" id="register-error"></div>
+        <div class="login-ok" id="register-ok"></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="wrap" id="denied-screen" style="display:none;">
+  <div class="denied-box">
+    <h2>Không có quyền truy cập</h2>
+    <p style="color:var(--text-2);font-size:13.5px;">Tài khoản này không phải tài khoản giáo viên, hoặc chưa được phân công học sinh nào. Liên hệ Mr.Thanh để được hỗ trợ.</p>
+    <button class="btn" style="background:var(--navy2);color:#fff;" id="btn-logout-denied">Đăng xuất</button>
+  </div>
+</div>
+
+<div class="wrap" id="main-wrap" style="display:none;">
+  <header class="top">
+    <h1>👨‍🏫 Bảng theo dõi lớp phụ trách</h1>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <span id="teacher-email-label" style="font-size:13px;opacity:.85;"></span>
+      <button class="btn btn-outline" id="btn-logout">Đăng xuất</button>
+    </div>
+  </header>
+  <div class="date-filter-bar">
+    <label for="activity-date-filter">Xem hoạt động ngày:</label>
+    <input type="date" id="activity-date-filter">
+    <label style="margin-left:16px;display:inline-flex;align-items:center;gap:6px;">
+      <input type="checkbox" id="only-quiz-filter" checked>
+      Chỉ xem kết quả làm bài tập
+    </label>
+  </div>
+  <div id="dashboard-area"><div class="loading-msg">Đang tải…</div></div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://vuykuqmebmainyhiotfx.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_8Ro-jEFQqFh7EfbXPfzWaw_V1xrkoyU";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Tên/cờ hiển thị cho từng ngôn ngữ khi liệt kê điểm — nạp từ languages.json
+// (giống app.html) để tự nhận ngôn ngữ mới nếu sau này được thêm vào đó.
+let LANGS = {};
+async function loadLangsConfig(){
+  const res = await fetch("languages.json");
+  const cfg = await res.json();
+  LANGS = cfg.languages || {};
+}
+function langLabel(code){
+  return (LANGS[code] && LANGS[code].switchLabel) || code;
+}
+const langsConfigPromise = loadLangsConfig(); // bắt đầu tải ngay, await trước khi render để tránh race
+
+function showScreen(name){
+  document.getElementById("login-screen").style.display = name==="login" ? "block" : "none";
+  document.getElementById("denied-screen").style.display = name==="denied" ? "block" : "none";
+  document.getElementById("main-wrap").style.display = name==="main" ? "block" : "none";
+}
+
+document.getElementById("login-form").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value;
+  const err = document.getElementById("login-error");
+  err.style.display = "none";
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){ err.textContent = error.message; err.style.display = "block"; return; }
+  await afterLogin();
+});
+
+document.getElementById("tab-login").addEventListener("click", ()=>{
+  document.getElementById("tab-login").classList.add("active");
+  document.getElementById("tab-register").classList.remove("active");
+  document.getElementById("login-form").classList.remove("hidden");
+  document.getElementById("register-form").classList.add("hidden");
+});
+document.getElementById("tab-register").addEventListener("click", ()=>{
+  document.getElementById("tab-register").classList.add("active");
+  document.getElementById("tab-login").classList.remove("active");
+  document.getElementById("register-form").classList.remove("hidden");
+  document.getElementById("login-form").classList.add("hidden");
+});
+
+// Đăng ký tài khoản giáo viên: dùng đúng signUp() công khai giống học sinh/phụ
+// huynh (xem 13.13 tài liệu bàn giao), rồi tự gán role='teacher' cho CHÍNH tài
+// khoản vừa tạo — được phép vì policy "Users update own profile" cho tự sửa
+// hàng của chính mình. Sau khi đăng ký vẫn cần admin phân công học sinh mới
+// xem được dữ liệu (loadDashboard() đã tự báo "Chưa có học sinh nào được phân
+// công" nếu chưa có ai gán, qua modal Sửa học sinh trong QuanLyTuVung.html).
+document.getElementById("register-form").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const email = document.getElementById("reg-email").value.trim();
+  const password = document.getElementById("reg-password").value;
+  const password2 = document.getElementById("reg-password2").value;
+  const err = document.getElementById("register-error");
+  const ok = document.getElementById("register-ok");
+  err.style.display = "none"; ok.style.display = "none";
+
+  if(password !== password2){ err.textContent = "Mật khẩu nhập lại không khớp."; err.style.display = "block"; return; }
+
+  const btn = document.getElementById("register-btn");
+  btn.disabled = true; btn.textContent = "Đang đăng ký...";
+  const { data, error } = await sb.auth.signUp({ email, password });
+  if(error){
+    btn.disabled = false; btn.textContent = "Đăng ký";
+    err.textContent = error.message; err.style.display = "block";
+    return;
+  }
+
+  if(data.session){
+    // Email confirmation đang TẮT ở Supabase -> có phiên đăng nhập ngay,
+    // gán role='teacher' rồi vào thẳng dashboard.
+    await sb.from("profiles").update({ role: "teacher" }).eq("id", data.user.id);
+    btn.disabled = false; btn.textContent = "Đăng ký";
+    await afterLogin();
+  } else {
+    // Email confirmation đang BẬT (khác cấu hình hiện tại của project) -> chưa
+    // có phiên nên chưa gán được role='teacher' ngay. Nếu sau này bật tính năng
+    // xác nhận email, cần bổ sung thêm bước gán role ở lần đăng nhập đầu tiên.
+    btn.disabled = false; btn.textContent = "Đăng ký";
+    ok.textContent = "Đăng ký thành công! Kiểm tra email để xác nhận tài khoản trước khi đăng nhập.";
+    ok.style.display = "block";
+    document.getElementById("register-form").reset();
+  }
+});
+
+document.getElementById("btn-logout").addEventListener("click", doLogout);
+document.getElementById("btn-logout-denied").addEventListener("click", doLogout);
+async function doLogout(){ await sb.auth.signOut(); showScreen("login"); }
+
+let CURRENT_TEACHER_ID = null;
+
+function todayLocalDateStr(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+async function afterLogin(){
+  const { data: { user } } = await sb.auth.getUser();
+  if(!user){ showScreen("login"); return; }
+  const { data: profile } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  if(!profile || profile.role !== "teacher"){ showScreen("denied"); return; }
+  showScreen("main");
+  CURRENT_TEACHER_ID = user.id;
+  document.getElementById("teacher-email-label").textContent = user.email || "";
+  const dateInput = document.getElementById("activity-date-filter");
+  dateInput.value = todayLocalDateStr();
+  dateInput.addEventListener("change", ()=> loadDashboard(CURRENT_TEACHER_ID));
+  document.getElementById("only-quiz-filter").addEventListener("change", ()=> loadDashboard(CURRENT_TEACHER_ID));
+  loadDashboard(user.id);
+}
+
+(async function(){
+  const { data: { session } } = await sb.auth.getSession();
+  if(session) await afterLogin(); else showScreen("login");
+})();
+
+// ============================================================
+// Dashboard: với mỗi học sinh đã được phân công (teacher_links), hiện điểm
+// kiểm tra (quiz_results) + hoạt động gần đây (activity_log). RLS phía
+// Supabase đã tự giới hạn chỉ đọc được đúng (các) học sinh đã phân công cho
+// tài khoản giáo viên này (migration 36).
+// ============================================================
+async function loadDashboard(teacherId){
+  const area = document.getElementById("dashboard-area");
+  area.innerHTML = `<div class="loading-msg">Đang tải…</div>`;
+  await langsConfigPromise;
+
+  const { data: links, error: linkError } = await sb.from("teacher_links").select("student_id").eq("teacher_id", teacherId);
+  if(linkError){ area.innerHTML = `<div class="empty-msg">Lỗi tải dữ liệu: ${linkError.message}</div>`; return; }
+  if(!links || !links.length){ area.innerHTML = `<div class="empty-msg">Chưa có học sinh nào được phân công cho tài khoản này.</div>`; return; }
+
+  const dateStr = document.getElementById("activity-date-filter").value || todayLocalDateStr();
+  const onlyQuiz = document.getElementById("only-quiz-filter").checked;
+  const studentIds = links.map(l => l.student_id);
+  const { data: profiles } = await sb.from("profiles").select("id,email").in("id", studentIds);
+  const emailOf = Object.fromEntries((profiles||[]).map(p=>[p.id, p.email]));
+
+  const blocks = await Promise.all(studentIds.map(id => buildStudentBlock(id, emailOf[id] || id, dateStr, onlyQuiz)));
+  area.innerHTML = blocks.join("");
+}
+
+function escHtml(s){
+  return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+const ACTIVITY_LABELS = { login:"Đăng nhập", logout:"Đăng xuất", language_change:"Đổi ngôn ngữ học", app_hidden:"Rời khỏi app", app_visible:"Quay lại app" };
+const KIND_LABELS = { writing:"✍️ Viết", reading:"📖 Đọc", listening:"🎧 Nghe", math:"🔢 Toán" };
+const EX_TYPE_LABELS = {
+  multiple_choice: "Trắc nghiệm", fill_blank: "Điền từ", sentence_ordering: "Sắp xếp câu",
+  listening_choice: "Nghe & chọn", synonym_antonym: "Đồng/Trái nghĩa", odd_one_out: "Từ khác nhóm", word_form: "Biến đổi từ"
+};
+
+async function buildStudentBlock(studentId, studentEmail, dateStr, onlyQuiz){
+  const dayStart = new Date(`${dateStr}T00:00:00`).toISOString();
+  const dayEnd = new Date(`${dateStr}T23:59:59.999`).toISOString();
+
+  // Khi "Chỉ xem kết quả làm bài tập" được tick, khỏi truy vấn activity_log
+  // luôn — vừa nhẹ hơn (đỡ 1 query/học sinh) vừa đúng ý chỉ muốn xem điểm.
+  const [{ data: quizzes }, { data: dayQuizzes }, { data: dayActivity }] = await Promise.all([
+    sb.from("quiz_results").select("*").eq("user_id", studentId).order("created_at", { ascending: false }).limit(20),
+    sb.from("quiz_results").select("*").eq("user_id", studentId).gte("created_at", dayStart).lte("created_at", dayEnd),
+    onlyQuiz
+      ? Promise.resolve({ data: [] })
+      : sb.from("activity_log").select("*").eq("user_id", studentId).gte("created_at", dayStart).lte("created_at", dayEnd).order("created_at", { ascending: false }).limit(200) // chặn trần phòng khi 1 ngày có quá nhiều sự kiện
+  ]);
+
+  const studentLabel = escHtml(studentEmail);
+  const results = quizzes || [];
+  const totalCorrect = results.reduce((s,r)=>s+r.correct_count, 0);
+  const totalQuestions = results.reduce((s,r)=>s+r.total_count, 0);
+  const avgPercent = totalQuestions ? Math.round((totalCorrect/totalQuestions)*100) : 0;
+  const weekAgoMs = Date.now() - 7*24*60*60*1000;
+  const thisWeekCount = results.filter(r => new Date(r.created_at).getTime() >= weekAgoMs).length;
+
+  const quizRowsHtml = results.length
+    ? results.slice(0, 15).map(r=>{
+        const kindLabel = KIND_LABELS[r.practice_kind] || r.practice_kind;
+        const percent = r.total_count ? Math.round((r.correct_count/r.total_count)*100) : 0;
+        return `<div class="stats-row">
+          <span>${new Date(r.created_at).toLocaleString()}</span>
+          <span>${kindLabel} · ${escHtml(r.level)} · ${escHtml(langLabel(r.language))}</span>
+          <span class="stats-row-score">${r.correct_count}/${r.total_count} (${percent}%)</span>
+        </div>`;
+      }).join("")
+    : `<div class="empty-msg">Học sinh chưa làm bài kiểm tra nào.</div>`;
+
+  // Gộp hoạt động (đăng nhập/đăng xuất/đổi ngôn ngữ/ẩn-hiện) + kết quả bài kiểm tra
+  // của đúng ngày đang xem thành 1 dòng thời gian duy nhất, sắp theo thời gian thực.
+  const timelineItems = [
+    ...(dayActivity||[]).map(a=>({ t: a.created_at, kind: "activity", data: a })),
+    ...(dayQuizzes||[]).map(q=>({ t: q.created_at, kind: "quiz", data: q }))
+  ].sort((a,b)=> new Date(b.t) - new Date(a.t)); // mới nhất trước, khớp thứ tự với "Kết quả học tập" ở trên
+
+  const dayTotalCorrect = (dayQuizzes||[]).reduce((s,r)=>s+r.correct_count, 0);
+  const dayTotalQuestions = (dayQuizzes||[]).reduce((s,r)=>s+r.total_count, 0);
+  const dayTotalHtml = (dayQuizzes && dayQuizzes.length)
+    ? `<div class="day-total-strip">Tổng ngày: <b>${dayTotalCorrect}/${dayTotalQuestions}</b>${dayTotalQuestions ? ` (${Math.round(dayTotalCorrect/dayTotalQuestions*100)}%)` : ""} · ${dayQuizzes.length} bài đã làm</div>`
+    : "";
+
+  const timelineHtml = timelineItems.length
+    ? timelineItems.map(item=>{
+        const timeStr = new Date(item.t).toLocaleTimeString("vi-VN", { hour:"2-digit", minute:"2-digit" });
+        if(item.kind === "activity"){
+          const a = item.data;
+          return `<div class="activity-row">${timeStr} — ${ACTIVITY_LABELS[a.event_type] || a.event_type}${a.language ? " (" + escHtml(a.language) + ")" : ""}</div>`;
+        }
+        const q = item.data;
+        const kindLabel = KIND_LABELS[q.practice_kind] || q.practice_kind;
+        const percent = q.total_count ? Math.round((q.correct_count/q.total_count)*100) : 0;
+        const breakdown = q.type_breakdown && typeof q.type_breakdown === "object" ? q.type_breakdown : null;
+        const breakdownHtml = breakdown
+          ? `<div class="activity-quiz-breakdown">${Object.entries(breakdown).map(([type,v])=>
+              `<div>• ${escHtml(EX_TYPE_LABELS[type] || type)}: ${v.correct}/${v.total}</div>`).join("")}</div>`
+          : "";
+        return `<div class="activity-row quiz">
+          <div class="activity-quiz-head">
+            <span>${timeStr} — Làm bài ${kindLabel} · ${escHtml(q.level)} · ${escHtml(langLabel(q.language))}</span>
+            <span class="activity-quiz-score">${q.correct_count}/${q.total_count} (${percent}%)</span>
+          </div>
+          ${breakdownHtml}
+        </div>`;
+      }).join("")
+    : `<div class="empty-msg">${onlyQuiz ? "Không có bài kiểm tra nào trong ngày này." : "Không có hoạt động nào trong ngày này."}</div>`;
+
+  return `
+    <div class="card">
+      <h2>${studentLabel}</h2>
+      <div class="sub">Kết quả học tập (20 lần gần nhất)</div>
+      <div class="stats-summary">
+        <div class="stats-summary-item"><b>${results.length}</b>bài đã làm</div>
+        <div class="stats-summary-item"><b>${avgPercent}%</b>điểm trung bình</div>
+        <div class="stats-summary-item"><b>${thisWeekCount}</b>bài tuần này</div>
+      </div>
+      <div class="stats-list">${quizRowsHtml}</div>
+    </div>
+    <div class="card">
+      <h2 style="font-size:14px;">${onlyQuiz ? "Kết quả làm bài trong ngày" : "Hoạt động gần đây"} — ${studentLabel}</h2>
+      <div class="sub">Ngày ${dateStr.split("-").reverse().join("/")}</div>
+      ${dayTotalHtml}
+      <div class="activity-list">${timelineHtml}</div>
+    </div>
+  `;
+}
+</script>
+</body>
+</html>
