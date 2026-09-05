@@ -1240,6 +1240,9 @@ document.getElementById("btn-import-lesson").addEventListener("click", async ()=
 
     const rows = [];
     const errors = [];
+    const seenInBatch = new Set(); // grammar_lessons unique theo (language,level) — 2 dòng cùng cặp này
+                                    // trong 1 lần dán sẽ khiến Postgres báo lỗi "ON CONFLICT DO UPDATE
+                                    // command cannot affect row a second time" nếu gửi chung 1 lệnh upsert.
     for(let i=1;i<allRows.length;i++){
       const cols = allRows[i];
       const obj = {};
@@ -1256,6 +1259,12 @@ document.getElementById("btn-import-lesson").addEventListener("click", async ()=
         errors.push(`Dòng dữ liệu #${i}: trình độ "${obj.level}" không hợp lệ cho ngôn ngữ "${obj.language}", đã bỏ qua.`);
         continue;
       }
+      const key = obj.language + "|" + obj.level;
+      if(seenInBatch.has(key)){
+        errors.push(`Dòng dữ liệu #${i}: trùng ngôn ngữ/trình độ (${obj.language}/${obj.level}) với 1 dòng khác ngay trong đoạn CSV vừa dán — chỉ dòng đầu tiên được nhập, đã bỏ qua dòng này.`);
+        continue;
+      }
+      seenInBatch.add(key);
       rows.push({ language: obj.language, level: obj.level, title: obj.title, content: obj.content });
     }
 
