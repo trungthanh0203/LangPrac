@@ -1110,11 +1110,18 @@ function formatGrammarContent(text){
     else if(h2){ current = { title: h2[1].trim(), lines: [] }; sections.push(current); }
     else { if(!current){ current = { title: '', lines: [] }; sections.push(current); } current.lines.push(line); }
   });
-  return sections.map((sec, idx)=>{
+  // Đánh số theo đúng thứ tự các mục CÓ TIÊU ĐỀ — nội dung đứng trước dòng "## "
+  // đầu tiên (vd 1 đoạn mục lục/giới thiệu) vẫn được coi là 1 "mục" nội bộ (không
+  // tiêu đề, không hiện số) để giữ nguyên nội dung, nhưng KHÔNG được tính vào số
+  // thứ tự — nếu không, mục "## " thật đầu tiên sẽ bị đánh nhầm thành số 2.
+  let titledCount = 0;
+  return sections.map((sec)=>{
     const bodyHtml = formatBlockLines(sec.lines);
-    const head = sec.title
-      ? `<div class="grammar-section-head"><span class="grammar-section-num">${idx+1}</span><span class="grammar-section-title">${formatInlineStyles(escHtml(sec.title))}</span></div>`
-      : '';
+    let head = '';
+    if(sec.title){
+      titledCount++;
+      head = `<div class="grammar-section-head"><span class="grammar-section-num">${titledCount}</span><span class="grammar-section-title">${formatInlineStyles(escHtml(sec.title))}</span></div>`;
+    }
     return `<div class="grammar-section">${head}<div class="grammar-section-body">${bodyHtml}</div></div>`;
   }).join('');
 }
