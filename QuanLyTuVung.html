@@ -80,12 +80,14 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
 .dash-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:var(--gap);}
 .dash-card{background:var(--bg-card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px;}
 .dash-card .num{display:block;font-size:24px;font-weight:800;color:var(--navy2);}
-.dash-card .label{font-size:11.5px;color:var(--text-2);}
+.dash-card .label{display:block;font-size:11.5px;color:var(--text-2);margin-bottom:4px;}
 .dash-card.warn .num{color:var(--red);}
 tr.dash-idle{background:var(--red-light);}
 td.content-cell-zero{background:var(--red-light);color:var(--red);font-weight:700;text-align:center;}
 td.content-cell{text-align:center;}
 .content-lang-badge{font-weight:700;}
+.link-count{cursor:pointer;color:var(--teal);font-weight:700;text-decoration:underline;}
+.link-count:hover{color:var(--navy2);}
 /* Dashboard "📊 Nội dung" — lưới 4 biểu đồ kiểu drill-down (mục 13.28) */
 .content-dash-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--gap);}
 @media (max-width:900px){.content-dash-grid{grid-template-columns:1fr;}}
@@ -572,6 +574,16 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
           </table>
         </div>
       </div>
+
+      <div class="card" id="linked-students-card" style="display:none;">
+        <h3 id="linked-students-title">Học sinh liên kết</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Email</th><th>Ngôn ngữ</th><th>Ngày đăng ký</th><th>Hoạt động gần nhất</th><th>Số bài đã làm</th><th>Điểm TB</th></tr></thead>
+            <tbody id="linked-students-body"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <div id="dashboard-section">
@@ -587,7 +599,7 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
         </div>
         <div class="card">
           <h3>Xu hướng hoạt động (7 ngày gần nhất)</h3>
-          <div class="chart-hint">Đếm học sinh CÓ HOẠT ĐỘNG học trong ngày (mở bài/làm bài).</div>
+          <div class="chart-hint">Đếm học sinh CÓ HOẠT ĐỘNG học trong ngày (mở bài/làm bài). Bấm 1 cột để lọc bảng chi tiết bên dưới.</div>
           <div id="dash-chart"></div>
         </div>
       </div>
@@ -1188,7 +1200,7 @@ let dashSort = { key: "last_activity_at", dir: "asc" }; // mặc định: im ắ
 // Bộ lọc từ 4 biểu đồ thống kê (bấm cột/lát cắt để lọc bảng bên dưới, giống cơ
 // chế bên Dashboard Nội dung mục 13.28) — độc lập với ô tìm kiếm/cảnh báo im ắng
 // đã có sẵn, kết hợp AND với nhau khi lọc bảng.
-let DASH_FILTER = { day: null, scoreBucket: null, intensityBucket: null, language: null, recency: null };
+let DASH_FILTER = { day: null, activityDay: null, scoreBucket: null, intensityBucket: null, language: null, recency: null };
 
 function daysSince(dateStr){
   if(!dateStr) return Infinity;
@@ -1199,6 +1211,9 @@ function daysSince(dateStr){
 // bảng chi tiết (renderDashTable) — đảm bảo bấm vào 1 phần biểu đồ luôn lọc ra
 // đúng những học sinh đã được đếm vào phần đó.
 function signupDayKeyOf(s){ return s.created_at ? new Date(s.created_at).toISOString().slice(0,10) : null; }
+// Ngày hoạt động GẦN NHẤT của học sinh (không phải toàn bộ lịch sử hoạt động —
+// dữ liệu có sẵn chỉ lưu mốc gần nhất, xem renderActivityTrendChart()).
+function activityDayKeyOf(s){ return s.last_activity_at ? new Date(s.last_activity_at).toISOString().slice(0,10) : null; }
 function scoreBucketKeyOf(s){
   if(s.avg_score_pct == null) return "none";
   const v = Number(s.avg_score_pct);
@@ -1226,16 +1241,18 @@ function recencyBucketKeyOf(s){
 }
 
 function setStudSignupDayFilter(day){ DASH_FILTER.day = (DASH_FILTER.day===day) ? null : day; refreshStudentStats(); }
+function setStudActivityDayFilter(day){ DASH_FILTER.activityDay = (DASH_FILTER.activityDay===day) ? null : day; refreshStudentStats(); }
 function setStudScoreFilter(key){ DASH_FILTER.scoreBucket = (DASH_FILTER.scoreBucket===key) ? null : key; refreshStudentStats(); }
 function setStudIntensityFilter(key){ DASH_FILTER.intensityBucket = (DASH_FILTER.intensityBucket===key) ? null : key; refreshStudentStats(); }
 function setStudLangFilter(key){ DASH_FILTER.language = (DASH_FILTER.language===key) ? null : key; refreshStudentStats(); }
 function setStudRecencyFilter(key){ DASH_FILTER.recency = (DASH_FILTER.recency===key) ? null : key; refreshStudentStats(); }
-function clearStudFilters(){ DASH_FILTER = { day:null, scoreBucket:null, intensityBucket:null, language:null, recency:null }; refreshStudentStats(); }
+function clearStudFilters(){ DASH_FILTER = { day:null, activityDay:null, scoreBucket:null, intensityBucket:null, language:null, recency:null }; refreshStudentStats(); }
 
 function renderStudFilterBar(){
   const bar = document.getElementById("dash-filter-bar");
   const parts = [];
   if(DASH_FILTER.day) parts.push(`Ngày đăng ký: <b>${new Date(DASH_FILTER.day+"T00:00:00").toLocaleDateString("vi-VN")}</b>`);
+  if(DASH_FILTER.activityDay) parts.push(`Ngày hoạt động gần nhất: <b>${new Date(DASH_FILTER.activityDay+"T00:00:00").toLocaleDateString("vi-VN")}</b>`);
   if(DASH_FILTER.scoreBucket){
     const def = computeScoreBuckets(DASH_STUDENTS).find(b=>b.key===DASH_FILTER.scoreBucket);
     parts.push(`Điểm TB: <b>${escHtmlAdmin(def ? def.label : DASH_FILTER.scoreBucket)}</b>`);
@@ -1262,6 +1279,7 @@ function renderStudFilterBar(){
 // không được chọn) + bảng chi tiết (áp dụng bộ lọc) + thanh trạng thái lọc.
 function refreshStudentStats(){
   renderSignupTrendChart(DASH_STUDENTS);
+  renderActivityTrendChart(DASH_STUDENTS);
   renderDonutChart(document.getElementById("dash-score-donut"), document.getElementById("dash-score-legend"), computeScoreBuckets(DASH_STUDENTS), { selectedKey: DASH_FILTER.scoreBucket, onSelect: setStudScoreFilter });
   renderIntensityChart(DASH_STUDENTS);
   renderDonutChart(document.getElementById("dash-lang-donut"), document.getElementById("dash-lang-legend"), computeLanguageBuckets(DASH_STUDENTS), { selectedKey: DASH_FILTER.language, onSelect: setStudLangFilter });
@@ -1274,10 +1292,7 @@ async function loadDashboard(){
   const cardsEl = document.getElementById("dash-cards");
   cardsEl.innerHTML = `<div class="dash-card"><span class="label">Đang tải...</span></div>`;
 
-  const [{ data: students, error: studErr }, { data: trend, error: trendErr }] = await Promise.all([
-    sb.rpc("admin_student_dashboard"),
-    sb.rpc("admin_activity_trend", { days: 7 })
-  ]);
+  const { data: students, error: studErr } = await sb.rpc("admin_student_dashboard");
 
   if(studErr){
     cardsEl.innerHTML = `<div class="dash-card warn"><span class="label">Lỗi tải dashboard: ${escHtmlAdmin(studErr.message)} — đã chạy migration 35 trên Supabase chưa?</span></div>`;
@@ -1285,9 +1300,8 @@ async function loadDashboard(){
   }
 
   DASH_STUDENTS = students || [];
-  DASH_FILTER = { day:null, scoreBucket:null, intensityBucket:null, language:null, recency:null };
+  DASH_FILTER = { day:null, activityDay:null, scoreBucket:null, intensityBucket:null, language:null, recency:null };
   renderDashCards(DASH_STUDENTS);
-  renderDashChart(trendErr ? [] : (trend || []));
   refreshStudentStats();
 }
 
@@ -1295,34 +1309,45 @@ function renderDashCards(students){
   const total = students.length;
   const today = new Date().toDateString();
   const activeToday = students.filter(s => s.last_activity_at && new Date(s.last_activity_at).toDateString() === today).length;
-  const active7d = students.filter(s => daysSince(s.last_activity_at) <= 7).length;
+  const notActiveToday = total - activeToday;
   const withScores = students.filter(s => s.avg_score_pct != null);
   const avgScore = withScores.length ? Math.round(withScores.reduce((sum,s)=>sum+Number(s.avg_score_pct),0) / withScores.length) : null;
   const noParent = students.filter(s => !s.parent_emails).length;
+  const noTeacher = students.filter(s => !s.teacher_emails).length;
 
   document.getElementById("dash-cards").innerHTML = `
-    <div class="dash-card"><span class="num">${total}</span><span class="label">Tổng học sinh</span></div>
-    <div class="dash-card"><span class="num">${activeToday}</span><span class="label">Hoạt động hôm nay</span></div>
-    <div class="dash-card"><span class="num">${active7d}</span><span class="label">Hoạt động 7 ngày qua</span></div>
-    <div class="dash-card"><span class="num">${avgScore==null?'—':avgScore+'%'}</span><span class="label">Điểm TB toàn hệ thống</span></div>
-    <div class="dash-card${noParent>0?' warn':''}"><span class="num">${noParent}</span><span class="label">Học sinh chưa có phụ huynh liên kết</span></div>
+    <div class="dash-card"><span class="label">Tổng học sinh</span><span class="num">${total}</span></div>
+    <div class="dash-card"><span class="label">Điểm trung bình tổng</span><span class="num">${avgScore==null?'—':avgScore+'%'}</span></div>
+    <div class="dash-card${noParent>0?' warn':''}"><span class="label">Học sinh chưa có phụ huynh</span><span class="num">${noParent}</span></div>
+    <div class="dash-card${noTeacher>0?' warn':''}"><span class="label">Học sinh chưa có giáo viên</span><span class="num">${noTeacher}</span></div>
+    <div class="dash-card${notActiveToday>0?' warn':''}"><span class="label">Học sinh chưa làm bài trong ngày</span><span class="num">${notActiveToday}</span></div>
   `;
 }
 
-// Biểu đồ cột SVG tự vẽ (không dùng thư viện ngoài) — số học sinh hoạt động mỗi
-// ngày trong 7 ngày gần nhất. Cùng kỹ thuật đã dùng cho hình minh hoạ Toán
-// (figure_svg, xem 26_seed_math_figures.sql) — vẽ tay <rect>/<text>.
-function renderDashChart(trend){
+// Biểu đồ cột SVG tự vẽ — số học sinh có HOẠT ĐỘNG GẦN NHẤT rơi vào từng ngày
+// trong 7 ngày gần nhất, tính từ `last_activity_at` (cùng nguồn dữ liệu + kỹ
+// thuật với renderSignupTrendChart() — trước đây chart này lấy số liệu từ RPC
+// admin_activity_trend() riêng, đổi sang tính từ DASH_STUDENTS đã có sẵn để: (1)
+// khớp đúng con số với thẻ "Học sinh chưa làm bài trong ngày" ở trên (cùng 1
+// nguồn `last_activity_at`, tránh 2 cách đếm cho ra 2 con số lệch nhau), (2) bấm
+// cột lọc được bảng chi tiết, giống mọi biểu đồ khác trong dashboard này. RPC
+// admin_activity_trend() vẫn còn trong DB, không còn được gọi từ trang admin.
+// LƯU Ý: chỉ phản ánh mốc hoạt động GẦN NHẤT của mỗi học sinh, không phải toàn
+// bộ lịch sử — 1 học sinh học nhiều ngày liên tiếp chỉ được tính vào đúng 1 cột
+// (ngày gần nhất), không lặp lại ở các ngày trước đó.
+function renderActivityTrendChart(students){
   const el = document.getElementById("dash-chart");
-  if(!trend.length){ el.innerHTML = `<p style="color:var(--text-2);font-size:12.5px;">Chưa có dữ liệu hoạt động.</p>`; return; }
-
-  const byDate = Object.fromEntries(trend.map(t => [t.activity_date, t.active_students]));
   const days = [];
   for(let i=6;i>=0;i--){
     const d = new Date(); d.setDate(d.getDate()-i);
     days.push(d.toISOString().slice(0,10));
   }
-  const values = days.map(d => byDate[d] || 0);
+  const counts = Object.fromEntries(days.map(d=>[d,0]));
+  students.forEach(s=>{
+    const d = activityDayKeyOf(s);
+    if(d && d in counts) counts[d]++;
+  });
+  const values = days.map(d=>counts[d]);
   const maxVal = Math.max(1, ...values);
   const barW = 34, gap = 14, chartH = 90, leftPad = 8;
   const svgW = days.length * (barW+gap) + leftPad;
@@ -1332,13 +1357,17 @@ function renderDashChart(trend){
     const x = leftPad + i*(barW+gap);
     const y = chartH - h;
     const label = new Date(d+"T00:00:00").toLocaleDateString("vi-VN", { weekday: "short" });
+    const isDim = DASH_FILTER.activityDay && DASH_FILTER.activityDay !== d;
     return `
-      <text x="${x+barW/2}" y="${chartH-h-6}" font-size="11" fill="var(--navy2)" text-anchor="middle" font-weight="700">${v}</text>
-      <rect x="${x}" y="${y}" width="${barW}" height="${Math.max(h,2)}" fill="var(--navy2)" rx="3"></rect>
-      <text x="${x+barW/2}" y="${chartH+16}" font-size="10.5" fill="var(--text-2)" text-anchor="middle">${escHtmlAdmin(label)}</text>
+      <g data-day="${d}" style="cursor:pointer;opacity:${isDim?0.35:1};transition:opacity .15s;">
+        <text x="${x+barW/2}" y="${chartH-h-6}" font-size="11" fill="var(--navy2)" text-anchor="middle" font-weight="700">${v}</text>
+        <rect x="${x}" y="${y}" width="${barW}" height="${Math.max(h,2)}" fill="var(--navy2)" rx="3"><title>${new Date(d+"T00:00:00").toLocaleDateString("vi-VN")}: ${v} học sinh</title></rect>
+        <text x="${x+barW/2}" y="${chartH+16}" font-size="10.5" fill="var(--text-2)" text-anchor="middle">${escHtmlAdmin(label)}</text>
+      </g>
     `;
   }).join("");
   el.innerHTML = `<svg viewBox="0 0 ${svgW} ${chartH+24}" width="100%" style="max-width:${svgW}px;">${bars}</svg>`;
+  el.querySelectorAll("[data-day]").forEach(node => node.addEventListener("click", ()=> setStudActivityDayFilter(node.dataset.day)));
 }
 
 // Biểu đồ cột SVG — học sinh ĐĂNG KÝ MỚI mỗi ngày trong 30 ngày gần nhất, đếm
@@ -1571,6 +1600,7 @@ function renderDashTable(){
   let rows = DASH_STUDENTS.filter(s=>{
     if(search && !(s.email||"").toLowerCase().includes(search)) return false;
     if(DASH_FILTER.day && signupDayKeyOf(s) !== DASH_FILTER.day) return false;
+    if(DASH_FILTER.activityDay && activityDayKeyOf(s) !== DASH_FILTER.activityDay) return false;
     if(DASH_FILTER.scoreBucket && scoreBucketKeyOf(s) !== DASH_FILTER.scoreBucket) return false;
     if(DASH_FILTER.intensityBucket && intensityBucketKeyOf(s) !== DASH_FILTER.intensityBucket) return false;
     if(DASH_FILTER.language && languageKeyOf(s) !== DASH_FILTER.language) return false;
@@ -1703,6 +1733,7 @@ async function loadParents(){
     document.getElementById("parent-list-body").innerHTML = `<tr><td colspan="3">Lỗi tải dữ liệu: ${escHtmlAdmin(error.message)}</td></tr>`;
     return;
   }
+  document.getElementById("linked-students-card").style.display = "none";
   const [{ data: parentLinks }, { data: teacherLinks }] = await Promise.all([
     sb.from("parent_links").select("parent_id"),
     sb.from("teacher_links").select("teacher_id")
@@ -1718,7 +1749,7 @@ async function loadParents(){
   const renderList = (role, counts) => (allProfiles||[]).filter(p => p.role === role).map(p => `
     <tr>
       <td>${escHtmlAdmin(p.email||p.id)}</td>
-      <td>${counts[p.id] || 0}</td>
+      <td><span class="link-count" data-show-linked="${role}" data-id="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">${counts[p.id] || 0}</span></td>
       <td><button class="btn-sm" data-reset-pw="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">Đổi mật khẩu</button></td>
     </tr>`).join("");
 
@@ -1732,6 +1763,54 @@ async function loadParents(){
   document.querySelectorAll("[data-reset-pw]").forEach(btn=>{
     btn.addEventListener("click", ()=> openResetUserPassword(btn.dataset.resetPw, btn.dataset.email));
   });
+  document.querySelectorAll("[data-show-linked]").forEach(el=>{
+    el.addEventListener("click", ()=> showLinkedStudents(el.dataset.showLinked, el.dataset.id, el.dataset.email));
+  });
+}
+
+// Hiện danh sách học sinh liên kết/phụ trách khi bấm vào số ở cột "Số học sinh
+// liên kết"/"Số học sinh phụ trách" — tái dùng đúng các trường đã tính sẵn
+// trong admin_student_dashboard() (mục 13.25/13.30: quiz_count, avg_score_pct,
+// last_activity_at...) thay vì viết thêm truy vấn tính điểm TB riêng. Nếu
+// DASH_STUDENTS chưa tải (vào thẳng tab Phụ huynh & Giáo viên, chưa qua tab Học
+// sinh lần nào) thì tải 1 lần rồi dùng lại, chấp nhận có thể hơi cũ nếu vừa có
+// thay đổi ở nơi khác — không cần thiết phải luôn tải mới cho 1 danh sách xem
+// nhanh như thế này.
+async function showLinkedStudents(role, personId, personEmail){
+  const card = document.getElementById("linked-students-card");
+  const body = document.getElementById("linked-students-body");
+  document.getElementById("linked-students-title").textContent =
+    role === "parent" ? `Học sinh liên kết với phụ huynh ${personEmail}` : `Học sinh do giáo viên ${personEmail} phụ trách`;
+  card.style.display = "block";
+  body.innerHTML = `<tr><td colspan="6">Đang tải...</td></tr>`;
+  card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+  const table = role === "parent" ? "parent_links" : "teacher_links";
+  const idCol = role === "parent" ? "parent_id" : "teacher_id";
+  const { data: links, error } = await sb.from(table).select("student_id").eq(idCol, personId);
+  if(error){ body.innerHTML = `<tr><td colspan="6">Lỗi tải dữ liệu: ${escHtmlAdmin(error.message)}</td></tr>`; return; }
+
+  if(!DASH_STUDENTS.length){
+    const { data } = await sb.rpc("admin_student_dashboard");
+    DASH_STUDENTS = data || [];
+  }
+  const studentIds = new Set((links||[]).map(l=>l.student_id));
+  const linked = DASH_STUDENTS.filter(s=> studentIds.has(s.id));
+
+  body.innerHTML = linked.length ? linked.map(s=>{
+    const langLabel = (LANGS_CFG[s.selected_language] && LANGS_CFG[s.selected_language].adminLabel) || s.selected_language || "—";
+    const lastActive = s.last_activity_at
+      ? `${new Date(s.last_activity_at).toLocaleDateString("vi-VN")} (${daysSince(s.last_activity_at)} ngày trước)`
+      : "Chưa từng hoạt động";
+    return `<tr>
+      <td>${escHtmlAdmin(s.email)}</td>
+      <td>${escHtmlAdmin(langLabel)}</td>
+      <td>${new Date(s.created_at).toLocaleDateString("vi-VN")}</td>
+      <td>${lastActive}</td>
+      <td>${s.quiz_count}</td>
+      <td>${s.avg_score_pct==null ? "—" : s.avg_score_pct+"%"}</td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="6">Chưa có học sinh nào.</td></tr>`;
 }
 
 // Đổi mật khẩu phụ huynh/giáo viên — gọi RPC dùng chung admin_reset_user_password()
