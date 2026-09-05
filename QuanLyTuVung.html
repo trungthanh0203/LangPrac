@@ -73,6 +73,9 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
 .dash-card .label{font-size:11.5px;color:var(--text-2);}
 .dash-card.warn .num{color:var(--red);}
 tr.dash-idle{background:var(--red-light);}
+td.content-cell-zero{background:var(--red-light);color:var(--red);font-weight:700;text-align:center;}
+td.content-cell{text-align:center;}
+.content-lang-badge{font-weight:700;}
 </style>
 </head>
 <body>
@@ -112,10 +115,6 @@ tr.dash-idle{background:var(--red-light);}
       <h1>Quản trị nội dung</h1>
     </div>
     <div class="filters">
-      <select id="f-language"><option value="all">Tất cả ngôn ngữ</option></select>
-      <select id="f-level"><option value="all">Tất cả trình độ</option></select>
-      <select id="f-type"><option value="all">Tất cả loại</option><option value="word">Từ</option><option value="sentence">Câu</option></select>
-      <input type="text" id="f-search" placeholder="Tìm kiếm...">
       <button class="btn btn-outline" id="btn-logout">Đăng xuất</button>
     </div>
   </header>
@@ -130,12 +129,50 @@ tr.dash-idle{background:var(--red-light);}
     <div class="section-tabs">
       <button id="sec-dashboard" data-group="users" class="active">🎓 Học sinh</button>
       <button id="sec-parents" data-group="users">👪 Phụ huynh &amp; Giáo viên</button>
+      <button id="sec-content-dash" data-group="content" style="display:none;">📊 Nội dung</button>
       <button id="sec-vocab" data-group="content" style="display:none;">📚 Từ vựng</button>
       <button id="sec-grammar" data-group="content" style="display:none;">📘 Ngữ pháp</button>
       <button id="sec-reading" data-group="content" style="display:none;">📖 Đọc</button>
       <button id="sec-listening" data-group="content" style="display:none;">🎧 Nghe</button>
       <button id="sec-dialogue" data-group="content" style="display:none;">🗣️ Hội thoại</button>
       <button id="sec-math" data-group="content" style="display:none;">🔢 Toán</button>
+    </div>
+
+    <div id="content-dash-section" style="display:none;">
+      <div class="dash-cards" id="content-dash-cards"></div>
+      <div class="card">
+        <h3>Tổng nội dung theo ngôn ngữ</h3>
+        <div id="content-dash-chart"></div>
+      </div>
+      <div class="card">
+        <h3>Chi tiết theo ngôn ngữ &amp; trình độ</h3>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:10px;">
+          Ô nào tô đỏ nhạt = trình độ đó CHƯA có nội dung cho kỹ năng tương ứng —
+          quét nhanh để biết chỗ nào cần bổ sung.
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th rowspan="2">Ngôn ngữ / Trình độ</th>
+                <th rowspan="2">Từ vựng</th>
+                <th colspan="2">Ngữ pháp</th>
+                <th colspan="2">Đọc</th>
+                <th colspan="2">Nghe</th>
+                <th colspan="2">Nói</th>
+                <th rowspan="2">Toán</th>
+              </tr>
+              <tr>
+                <th>Lý thuyết</th><th>Bài tập</th>
+                <th>Đoạn văn</th><th>Câu hỏi</th>
+                <th>Đoạn văn</th><th>Câu hỏi</th>
+                <th>Hội thoại</th><th>Câu thoại</th>
+              </tr>
+            </thead>
+            <tbody id="content-dash-table-body"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <div id="vocab-section" style="display:none;">
@@ -160,9 +197,15 @@ tr.dash-idle{background:var(--red-light);}
     </div>
 
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:10px;">
         <h3 style="margin:0;">Danh sách từ vựng / câu mẫu (<span id="result-count">0</span>)</h3>
         <button class="btn btn-primary" id="btn-add">+ Thêm 1 mục</button>
+      </div>
+      <div class="filters" style="margin-bottom:14px;">
+        <select id="f-language" style="background:#fff;color:var(--text-1);border:1px solid var(--border);"><option value="all">Tất cả ngôn ngữ</option></select>
+        <select id="f-level" style="background:#fff;color:var(--text-1);border:1px solid var(--border);"><option value="all">Tất cả trình độ</option></select>
+        <select id="f-type" style="background:#fff;color:var(--text-1);border:1px solid var(--border);"><option value="all">Tất cả loại</option><option value="word">Từ</option><option value="sentence">Câu</option></select>
+        <input type="text" id="f-search" placeholder="Tìm kiếm..." style="background:#fff;color:var(--text-1);border:1px solid var(--border);">
       </div>
       <div class="table-wrap">
         <table>
@@ -982,11 +1025,11 @@ document.getElementById("btn-import").addEventListener("click", async ()=>{
 // ============================================================
 // Chuyển đổi giữa 4 khu vực quản trị: Từ vựng / Ngữ pháp / Đọc / Hội thoại
 // ============================================================
-const ALL_SECTIONS = ["dashboard", "vocab", "grammar", "reading", "listening", "dialogue", "math", "parents"];
+const ALL_SECTIONS = ["dashboard", "vocab", "grammar", "reading", "listening", "dialogue", "math", "parents", "content-dash"];
 // Nhóm dashboard lớn (2 cấp điều hướng): "users" = Quản trị người dùng (Học sinh,
-// Phụ huynh & Giáo viên), "content" = Quản trị nội dung (6 tab soạn bài cũ, giữ
-// nguyên logic bên trong, chỉ gom lại 1 nhóm cho gọn).
-const SECTION_GROUP = { dashboard: "users", parents: "users", vocab: "content", grammar: "content", reading: "content", listening: "content", dialogue: "content", math: "content" };
+// Phụ huynh & Giáo viên), "content" = Quản trị nội dung (dashboard tổng quan +
+// 6 tab soạn bài cũ, giữ nguyên logic bên trong, chỉ gom lại 1 nhóm cho gọn).
+const SECTION_GROUP = { dashboard: "users", parents: "users", "content-dash": "content", vocab: "content", grammar: "content", reading: "content", listening: "content", dialogue: "content", math: "content" };
 function switchGroup(group){
   document.getElementById("grp-users").classList.toggle("active", group === "users");
   document.getElementById("grp-content").classList.toggle("active", group === "content");
@@ -1005,6 +1048,7 @@ function switchSection(active){
     document.getElementById(`${name}-section`).style.display = (name===active) ? "block" : "none";
   });
   if(active === "dashboard") loadDashboard();
+  else if(active === "content-dash") loadContentDashboard();
   else if(active === "grammar") loadLesson();
   else if(active === "reading") loadPassages();
   else if(active === "listening") loadLiPassages();
@@ -1020,6 +1064,7 @@ document.getElementById("sec-listening").addEventListener("click", ()=> switchSe
 document.getElementById("sec-dialogue").addEventListener("click", ()=> switchSection("dialogue"));
 document.getElementById("sec-math").addEventListener("click", ()=> switchSection("math"));
 document.getElementById("sec-parents").addEventListener("click", ()=> switchSection("parents"));
+document.getElementById("sec-content-dash").addEventListener("click", ()=> switchSection("content-dash"));
 
 // ============================================================
 // Dashboard — theo dõi/phân tích/quản lý học sinh + phụ huynh. Số liệu gộp sẵn
@@ -1293,6 +1338,102 @@ function openResetUserPassword(userId, email){
     if(error){ resultEl.textContent = "Lỗi: " + error.message; return; }
     closeModal();
   };
+}
+
+// ============================================================
+// Dashboard "📊 Nội dung" — tổng quan số liệu nội dung mọi ngôn ngữ/kỹ năng,
+// từ tổng quan lớn (thẻ số liệu + biểu đồ theo ngôn ngữ) đến chi tiết nhỏ
+// (bảng ma trận ngôn ngữ x trình độ x kỹ năng) — gọi RPC admin_content_stats()
+// (37_migration_add_content_dashboard.sql).
+// ============================================================
+const CONTENT_METRICS = [
+  "vocab_count", "grammar_lesson_count", "grammar_exercise_count",
+  "reading_passage_count", "reading_question_count",
+  "listening_passage_count", "listening_question_count",
+  "dialogue_count", "dialogue_line_count", "math_count"
+];
+let CONTENT_DASH_STATS = [];
+
+async function loadContentDashboard(){
+  const cardsEl = document.getElementById("content-dash-cards");
+  cardsEl.innerHTML = `<div class="dash-card"><span class="label">Đang tải...</span></div>`;
+
+  const { data, error } = await sb.rpc("admin_content_stats");
+  if(error){
+    cardsEl.innerHTML = `<div class="dash-card warn"><span class="label">Lỗi tải dashboard: ${escHtmlAdmin(error.message)} — đã chạy migration 37 trên Supabase chưa?</span></div>`;
+    return;
+  }
+  CONTENT_DASH_STATS = data || [];
+  renderContentDashCards(CONTENT_DASH_STATS);
+  renderContentDashChart(CONTENT_DASH_STATS);
+  renderContentDashTable(CONTENT_DASH_STATS);
+}
+
+function renderContentDashCards(stats){
+  const languages = new Set(stats.map(r=>r.language));
+  const totalItems = stats.reduce((sum,r)=> sum + CONTENT_METRICS.reduce((s,m)=> s + Number(r[m]||0), 0), 0);
+  let zeroCells = 0;
+  stats.forEach(r=> CONTENT_METRICS.forEach(m=>{ if(Number(r[m]||0) === 0) zeroCells++; }));
+
+  document.getElementById("content-dash-cards").innerHTML = `
+    <div class="dash-card"><span class="num">${languages.size}</span><span class="label">Ngôn ngữ đang có nội dung</span></div>
+    <div class="dash-card"><span class="num">${stats.length}</span><span class="label">Cặp ngôn ngữ + trình độ</span></div>
+    <div class="dash-card"><span class="num">${totalItems}</span><span class="label">Tổng số mục nội dung</span></div>
+    <div class="dash-card${zeroCells>0?' warn':''}"><span class="num">${zeroCells}</span><span class="label">Ô kỹ năng còn thiếu nội dung</span></div>
+  `;
+}
+
+// Biểu đồ cột SVG tự vẽ — tổng số mục nội dung (cộng dồn mọi kỹ năng) theo từng
+// ngôn ngữ, cùng kỹ thuật đã dùng ở renderDashChart().
+function renderContentDashChart(stats){
+  const el = document.getElementById("content-dash-chart");
+  if(!stats.length){ el.innerHTML = `<p style="color:var(--text-2);font-size:12.5px;">Chưa có dữ liệu nội dung.</p>`; return; }
+
+  const totalsByLang = {};
+  stats.forEach(r=>{
+    const t = CONTENT_METRICS.reduce((s,m)=> s + Number(r[m]||0), 0);
+    totalsByLang[r.language] = (totalsByLang[r.language]||0) + t;
+  });
+  const langs = Object.keys(totalsByLang).sort((a,b)=> (LANGS_ORDER.indexOf(a)) - (LANGS_ORDER.indexOf(b)));
+  const values = langs.map(l=> totalsByLang[l]);
+  const maxVal = Math.max(1, ...values);
+  const barW = 60, gap = 30, chartH = 110, leftPad = 10;
+  const svgW = langs.length * (barW+gap) + leftPad;
+  const bars = langs.map((l,i)=>{
+    const v = values[i];
+    const h = Math.round((v / maxVal) * (chartH - 24));
+    const x = leftPad + i*(barW+gap);
+    const y = chartH - h;
+    const label = (LANGS_CFG[l] && LANGS_CFG[l].adminLabel) || l;
+    return `
+      <text x="${x+barW/2}" y="${chartH-h-8}" font-size="13" fill="var(--navy2)" text-anchor="middle" font-weight="700">${v}</text>
+      <rect x="${x}" y="${y}" width="${barW}" height="${Math.max(h,2)}" fill="var(--navy2)" rx="4"></rect>
+      <text x="${x+barW/2}" y="${chartH+20}" font-size="12" fill="var(--text-2)" text-anchor="middle">${escHtmlAdmin(label)}</text>
+    `;
+  }).join("");
+  el.innerHTML = `<svg viewBox="0 0 ${svgW} ${chartH+28}" width="100%" style="max-width:${svgW}px;">${bars}</svg>`;
+}
+
+function renderContentDashTable(stats){
+  document.getElementById("content-dash-table-body").innerHTML = stats.map(r=>{
+    const langCfg = LANGS_CFG[r.language];
+    const langLabel = (langCfg && langCfg.adminLabel) || r.language;
+    const levelLabel = langCfg?.levels.find(lv=>lv.code===r.level)?.label || r.level;
+    const cell = (m)=>{
+      const v = Number(r[m]||0);
+      return `<td class="${v===0?'content-cell-zero':'content-cell'}">${v}</td>`;
+    };
+    return `
+      <tr>
+        <td><span class="content-lang-badge">${escHtmlAdmin(langLabel)}</span> — ${escHtmlAdmin(levelLabel)}</td>
+        ${cell("vocab_count")}
+        ${cell("grammar_lesson_count")}${cell("grammar_exercise_count")}
+        ${cell("reading_passage_count")}${cell("reading_question_count")}
+        ${cell("listening_passage_count")}${cell("listening_question_count")}
+        ${cell("dialogue_count")}${cell("dialogue_line_count")}
+        ${cell("math_count")}
+      </tr>`;
+  }).join("") || `<tr><td colspan="11">Chưa có dữ liệu nội dung.</td></tr>`;
 }
 
 // ============================================================
