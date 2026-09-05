@@ -557,7 +557,37 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
 
       <div class="card">
         <h3>Xu hướng hoạt động (7 ngày gần nhất)</h3>
+        <div class="chart-hint">Đếm học sinh CÓ HOẠT ĐỘNG học trong ngày (mở bài/làm bài) — khác với biểu đồ "Học sinh đăng ký mới" bên dưới (đếm tài khoản mới tạo).</div>
         <div id="dash-chart"></div>
+      </div>
+
+      <div class="content-dash-grid">
+        <div class="card">
+          <h3>Học sinh đăng ký mới (30 ngày gần nhất)</h3>
+          <div class="chart-hint">Đếm theo ngày TẠO tài khoản — đây mới là thống kê "đăng ký mới", không phải biểu đồ "Xu hướng hoạt động" ở trên.</div>
+          <div id="dash-signup-chart" style="overflow-x:auto;"></div>
+        </div>
+        <div class="card">
+          <h3>Tỉ lệ học sinh theo mức điểm trung bình</h3>
+          <div class="chart-hint">Điểm trung bình mọi bài đã làm của từng học sinh, chia theo 4 mức.</div>
+          <div class="content-donut-wrap">
+            <div id="dash-score-donut"></div>
+            <div id="dash-score-legend" class="content-donut-legend"></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Cường độ luyện tập (số bài làm / ngày)</h3>
+          <div class="chart-hint">Tổng số bài đã làm chia cho số ngày kể từ lúc đăng ký — càng cao càng luyện tập đều.</div>
+          <div id="dash-intensity-chart"></div>
+        </div>
+        <div class="card">
+          <h3>Tỉ lệ học sinh theo Ngôn ngữ đang học</h3>
+          <div class="chart-hint">Theo ngôn ngữ đang chọn học hiện tại của từng học sinh.</div>
+          <div class="content-donut-wrap">
+            <div id="dash-lang-donut"></div>
+            <div id="dash-lang-legend" class="content-donut-legend"></div>
+          </div>
+        </div>
       </div>
 
       <div class="card">
@@ -1146,6 +1176,10 @@ async function loadDashboard(){
   DASH_STUDENTS = students || [];
   renderDashCards(DASH_STUDENTS);
   renderDashChart(trendErr ? [] : (trend || []));
+  renderSignupTrendChart(DASH_STUDENTS);
+  renderDonutChart(document.getElementById("dash-score-donut"), document.getElementById("dash-score-legend"), computeScoreBuckets(DASH_STUDENTS));
+  renderIntensityChart(DASH_STUDENTS);
+  renderDonutChart(document.getElementById("dash-lang-donut"), document.getElementById("dash-lang-legend"), computeLanguageBuckets(DASH_STUDENTS));
   renderDashTable();
 }
 
@@ -1197,6 +1231,161 @@ function renderDashChart(trend){
     `;
   }).join("");
   el.innerHTML = `<svg viewBox="0 0 ${svgW} ${chartH+24}" width="100%" style="max-width:${svgW}px;">${bars}</svg>`;
+}
+
+// Biểu đồ cột SVG — học sinh ĐĂNG KÝ MỚI mỗi ngày trong 30 ngày gần nhất, đếm
+// theo `created_at` của `profiles` (KHÁC với renderDashChart() ở trên — hàm đó
+// đếm học sinh có hoạt động học trong ngày dựa vào activity_log, không phải
+// đăng ký mới). 30 cột nên chỉ hiện nhãn ngày mỗi 5 cột (tránh rối), số liệu
+// chính xác từng ngày xem qua tooltip <title> khi rê chuột.
+function renderSignupTrendChart(students){
+  const el = document.getElementById("dash-signup-chart");
+  const days = [];
+  for(let i=29;i>=0;i--){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    days.push(d.toISOString().slice(0,10));
+  }
+  const counts = Object.fromEntries(days.map(d=>[d,0]));
+  students.forEach(s=>{
+    if(!s.created_at) return;
+    const d = new Date(s.created_at).toISOString().slice(0,10);
+    if(d in counts) counts[d]++;
+  });
+  const values = days.map(d=>counts[d]);
+  const maxVal = Math.max(1, ...values);
+  const barW = 16, gap = 6, chartH = 90, leftPad = 6;
+  const svgW = days.length * (barW+gap) + leftPad;
+  const bars = days.map((d,i)=>{
+    const v = values[i];
+    const h = Math.round((v/maxVal) * (chartH-20));
+    const x = leftPad + i*(barW+gap);
+    const y = chartH - h;
+    const dateObj = new Date(d+"T00:00:00");
+    const showDateLabel = (i % 5 === 0) || i === days.length-1;
+    const dateLabel = showDateLabel ? dateObj.toLocaleDateString("vi-VN", {day:"2-digit", month:"2-digit"}) : "";
+    return `
+      <g>
+        ${v>0 ? `<text x="${x+barW/2}" y="${chartH-h-4}" font-size="8.5" fill="var(--navy2)" text-anchor="middle" font-weight="700">${v}</text>` : ""}
+        <rect x="${x}" y="${y}" width="${barW}" height="${Math.max(h,1)}" fill="var(--navy2)" rx="2"><title>${dateObj.toLocaleDateString("vi-VN")}: ${v} học sinh mới</title></rect>
+        ${dateLabel ? `<text x="${x+barW/2}" y="${chartH+16}" font-size="9" fill="var(--text-2)" text-anchor="middle">${dateLabel}</text>` : ""}
+      </g>`;
+  }).join("");
+  el.innerHTML = `<svg viewBox="0 0 ${svgW} ${chartH+24}" width="100%" style="max-width:${svgW}px;min-width:${svgW}px;">${bars}</svg>`;
+}
+
+// Vẽ 1 donut chart SVG tự vẽ + chú thích — dùng chung cho các thống kê tỉ lệ
+// TĨNH (không bấm lọc) ở Dashboard Học sinh, cùng kỹ thuật donut Ngôn ngữ đã có
+// ở Dashboard Nội dung (mục 13.28) nhưng tách thành hàm dùng chung vì không cần
+// giữ trạng thái lọc riêng như bên đó.
+function renderDonutChart(containerEl, legendEl, segments){
+  const total = segments.reduce((s,seg)=> s + seg.value, 0);
+  if(!total){
+    containerEl.innerHTML = `<p style="color:var(--text-2);font-size:12.5px;">Chưa có dữ liệu.</p>`;
+    legendEl.innerHTML = "";
+    return;
+  }
+  const R = 70, C = 2*Math.PI*R, cx = 100, cy = 100, strokeW = 30;
+  let offset = 0;
+  const arcs = segments.filter(seg=>seg.value>0).map(seg=>{
+    const len = (seg.value/total) * C;
+    const html = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${seg.color}" stroke-width="${strokeW}" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-offset}"></circle>`;
+    offset += len;
+    return html;
+  }).join("");
+  containerEl.innerHTML = `<div style="position:relative;width:200px;height:200px;">
+    <svg viewBox="0 0 200 200" width="200" height="200" style="transform:rotate(-90deg);">${arcs}</svg>
+    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
+      <div style="font-size:22px;font-weight:800;color:var(--navy2);">${total}</div>
+      <div style="font-size:11px;color:var(--text-2);">học sinh</div>
+    </div>
+  </div>`;
+  legendEl.innerHTML = segments.map(seg=>{
+    const pct = Math.round(seg.value/total*100);
+    return `<div class="content-legend-item" style="cursor:default;">
+      <span class="content-legend-dot" style="background:${seg.color};"></span>
+      <span style="flex:1;">${escHtmlAdmin(seg.label)}</span>
+      <b>${seg.value}</b>&nbsp;<span style="color:var(--text-2);">(${pct}%)</span>
+    </div>`;
+  }).join("");
+}
+
+// 4 mức điểm trung bình theo đúng yêu cầu + 1 mức "Chưa làm bài" (avg_score_pct
+// null) để không lặng lẽ bỏ sót học sinh chưa có bài làm nào khỏi biểu đồ.
+function computeScoreBuckets(students){
+  const buckets = [
+    { key:"0-25", label:"0–25% (Cần cải thiện)", color:"var(--red)", value:0 },
+    { key:"26-50", label:"26–50% (Trung bình)", color:"var(--amber)", value:0 },
+    { key:"51-75", label:"51–75% (Khá)", color:"var(--teal)", value:0 },
+    { key:"76-100", label:"76–100% (Tốt)", color:"var(--green)", value:0 },
+    { key:"none", label:"Chưa làm bài", color:"var(--text-3)", value:0 }
+  ];
+  students.forEach(s=>{
+    if(s.avg_score_pct == null){ buckets[4].value++; return; }
+    const v = Number(s.avg_score_pct);
+    if(v <= 25) buckets[0].value++;
+    else if(v <= 50) buckets[1].value++;
+    else if(v <= 75) buckets[2].value++;
+    else buckets[3].value++;
+  });
+  return buckets;
+}
+
+// Cường độ luyện tập = tổng số bài đã làm (quiz_count) / số ngày kể từ lúc đăng
+// ký (created_at) — tối thiểu 1 ngày để tránh chia 0 với tài khoản mới tạo hôm nay.
+function computeIntensityBuckets(students){
+  const buckets = [
+    { key:"0-1", label:"0–1 bài/ngày", color:"var(--red)", value:0 },
+    { key:"1-2", label:"1–2 bài/ngày", color:"var(--amber)", value:0 },
+    { key:"2-3", label:"2–3 bài/ngày", color:"var(--teal)", value:0 },
+    { key:"3+", label:"Trên 3 bài/ngày", color:"var(--green)", value:0 }
+  ];
+  students.forEach(s=>{
+    const days = Math.max(1, daysSince(s.created_at));
+    const rate = Number(s.quiz_count||0) / days;
+    if(rate <= 1) buckets[0].value++;
+    else if(rate <= 2) buckets[1].value++;
+    else if(rate <= 3) buckets[2].value++;
+    else buckets[3].value++;
+  });
+  return buckets;
+}
+
+function renderIntensityChart(students){
+  const el = document.getElementById("dash-intensity-chart");
+  const buckets = computeIntensityBuckets(students);
+  const total = buckets.reduce((s,b)=> s+b.value, 0);
+  if(!total){ el.innerHTML = `<p style="color:var(--text-2);font-size:12.5px;">Chưa có dữ liệu.</p>`; return; }
+  const maxVal = Math.max(1, ...buckets.map(b=>b.value));
+  const barW = 64, gap = 26, chartH = 110, leftPad = 10;
+  const svgW = buckets.length * (barW+gap) + leftPad;
+  const bars = buckets.map((b,i)=>{
+    const h = Math.round((b.value/maxVal) * (chartH-30));
+    const x = leftPad + i*(barW+gap);
+    const y = chartH - h;
+    const pct = Math.round(b.value/total*100);
+    return `
+      <text x="${x+barW/2}" y="${chartH-h-20}" font-size="13" fill="var(--navy2)" text-anchor="middle" font-weight="700">${b.value}</text>
+      <text x="${x+barW/2}" y="${chartH-h-6}" font-size="10.5" fill="var(--text-2)" text-anchor="middle">(${pct}%)</text>
+      <rect x="${x}" y="${y}" width="${barW}" height="${Math.max(h,2)}" fill="${b.color}" rx="4"></rect>
+      <text x="${x+barW/2}" y="${chartH+20}" font-size="11.5" fill="var(--text-2)" text-anchor="middle">${escHtmlAdmin(b.label)}</text>
+    `;
+  }).join("");
+  el.innerHTML = `<svg viewBox="0 0 ${svgW} ${chartH+28}" width="100%" style="max-width:${svgW}px;">${bars}</svg>`;
+}
+
+// Ngôn ngữ đang chọn học hiện tại (profiles.selected_language) — dùng chung màu
+// với langColor() (định nghĩa ở Dashboard Nội dung, mục 13.28) để cùng 1 ngôn
+// ngữ luôn cùng 1 màu xuyên suốt các trang quản trị.
+function computeLanguageBuckets(students){
+  const counts = {};
+  students.forEach(s=>{
+    const lang = s.selected_language || "none";
+    counts[lang] = (counts[lang]||0) + 1;
+  });
+  const langs = Object.keys(counts).filter(l=> l!=="none").sort((a,b)=> LANGS_ORDER.indexOf(a) - LANGS_ORDER.indexOf(b));
+  const segs = langs.map(l=> ({ key:l, label:(LANGS_CFG[l] && LANGS_CFG[l].adminLabel) || l, color: langColor(l), value: counts[l] }));
+  if(counts["none"]) segs.push({ key:"none", label:"Chưa chọn ngôn ngữ", color:"var(--text-3)", value: counts["none"] });
+  return segs;
 }
 
 function renderDashTable(){
