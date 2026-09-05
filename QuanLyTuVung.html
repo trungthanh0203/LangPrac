@@ -792,6 +792,21 @@ function parseCsvRows(text){
 // ============================================================
 function normalizeText(s){ return String(s||"").trim().toLowerCase().replace(/\s+/g," "); }
 
+// Phòng vệ trước khi upsert hàng loạt: nếu 2 dòng khác khoá dedupe trong CÙNG 1
+// đoạn CSV vừa dán (vd 2 dòng nội dung khác nhau nhưng do trùng tiêu đề/câu hỏi ở
+// 1 khía cạnh nào đó) lại cùng khớp về ĐÚNG 1 dòng `id` đã có sẵn trong CSDL, thì
+// gửi cả 2 lên trong 1 lệnh upsert sẽ bị Postgres báo lỗi "ON CONFLICT DO UPDATE
+// command cannot affect row a second time" (không cho phép 1 câu lệnh UPDATE cùng
+// 1 dòng 2 lần). Hàm này đảm bảo mỗi `id` chỉ xuất hiện tối đa 1 lần trong mảng
+// gửi lên — dòng nào trùng id thì giữ dòng ĐỨNG SAU (nội dung mới nhất trong CSV
+// thắng); các dòng chưa có `id` (dòng mới hoàn toàn) luôn được giữ nguyên hết.
+function dedupeRowsById(rows){
+  const withoutId = rows.filter(r => r.id === undefined);
+  const byId = new Map();
+  rows.forEach(r => { if(r.id !== undefined) byId.set(r.id, r); });
+  return withoutId.concat(Array.from(byId.values()));
+}
+
 // Tra các từ/câu đã tồn tại cho từng cặp (language, level, type) xuất hiện trong dữ liệu sắp nhập
 async function fetchExistingVocabKeys(rows){
   const triples = Array.from(new Set(rows.map(r => r.language+"|"+r.level+"|"+r.type)));
@@ -886,7 +901,7 @@ document.getElementById("btn-import").addEventListener("click", async ()=>{
       finalRows.push(r);
     });
 
-    const { error } = await sb.from("vocab_items").upsert(finalRows);
+    const { error } = await sb.from("vocab_items").upsert(dedupeRowsById(finalRows));
     if(error){
       resultEl.className = "result-msg err";
       resultEl.textContent = "Lỗi khi nhập: " + error.message;
@@ -1375,7 +1390,7 @@ document.getElementById("btn-import-ex").addEventListener("click", async ()=>{
       finalRows.push(r);
     });
 
-    const { error } = await sb.from("grammar_exercises").upsert(finalRows);
+    const { error } = await sb.from("grammar_exercises").upsert(dedupeRowsById(finalRows));
     if(error){
       resultEl.className = "result-msg err";
       resultEl.textContent = "Lỗi khi nhập: " + error.message;
@@ -1642,7 +1657,7 @@ document.getElementById("btn-import-passage").addEventListener("click", async ()
       finalRows.push(r);
     });
 
-    const { error } = await sb.from("reading_passages").upsert(finalRows);
+    const { error } = await sb.from("reading_passages").upsert(dedupeRowsById(finalRows));
     if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
     resultEl.className = "result-msg ok";
     resultEl.textContent = `Đã nhập ${insertCount} đoạn văn mới` + (updateCount ? `, cập nhật ${updateCount} đoạn đã có sẵn (trùng tiêu đề)` : "") + "."
@@ -1731,7 +1746,7 @@ document.getElementById("btn-import-rq").addEventListener("click", async ()=>{
       finalRows.push(r);
     });
 
-    const { error } = await sb.from("reading_questions").upsert(finalRows);
+    const { error } = await sb.from("reading_questions").upsert(dedupeRowsById(finalRows));
     if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
     resultEl.className = "result-msg ok";
     resultEl.textContent = `Đã nhập ${insertCount} câu hỏi mới` + (updateCount ? `, cập nhật ${updateCount} câu đã có sẵn` : "") + "."
@@ -1993,7 +2008,7 @@ document.getElementById("btn-import-lipassage").addEventListener("click", async 
       finalRows.push(r);
     });
 
-    const { error } = await sb.from("listening_passages").upsert(finalRows);
+    const { error } = await sb.from("listening_passages").upsert(dedupeRowsById(finalRows));
     if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
     resultEl.className = "result-msg ok";
     resultEl.textContent = `Đã nhập ${insertCount} đoạn văn mới` + (updateCount ? `, cập nhật ${updateCount} đoạn đã có sẵn (trùng tiêu đề)` : "") + "."
@@ -2082,7 +2097,7 @@ document.getElementById("btn-import-lq").addEventListener("click", async ()=>{
       finalRows.push(r);
     });
 
-    const { error } = await sb.from("listening_questions").upsert(finalRows);
+    const { error } = await sb.from("listening_questions").upsert(dedupeRowsById(finalRows));
     if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
     resultEl.className = "result-msg ok";
     resultEl.textContent = `Đã nhập ${insertCount} câu hỏi mới` + (updateCount ? `, cập nhật ${updateCount} câu đã có sẵn` : "") + "."
@@ -2265,7 +2280,7 @@ document.getElementById("btn-import-math").addEventListener("click", async ()=>{
       finalRows.push(r);
     });
 
-    const { error } = await sb.from("math_problems").upsert(finalRows);
+    const { error } = await sb.from("math_problems").upsert(dedupeRowsById(finalRows));
     if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
     resultEl.className = "result-msg ok";
     resultEl.textContent = `Đã nhập ${insertCount} câu Toán mới` + (updateCount ? `, cập nhật ${updateCount} câu đã có sẵn` : "") + "."
@@ -2529,7 +2544,7 @@ document.getElementById("btn-import-dialogue").addEventListener("click", async (
       finalRows.push(r);
     });
 
-    const { error } = await sb.from("dialogues").upsert(finalRows);
+    const { error } = await sb.from("dialogues").upsert(dedupeRowsById(finalRows));
     if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
     resultEl.className = "result-msg ok";
     resultEl.textContent = `Đã nhập ${insertCount} hội thoại mới` + (updateCount ? `, cập nhật ${updateCount} hội thoại đã có sẵn (trùng tiêu đề)` : "") + "."
@@ -2619,7 +2634,7 @@ document.getElementById("btn-import-line").addEventListener("click", async ()=>{
       finalRows.push(r);
     });
 
-    const { error } = await sb.from("dialogue_lines").upsert(finalRows);
+    const { error } = await sb.from("dialogue_lines").upsert(dedupeRowsById(finalRows));
     if(error){ resultEl.className = "result-msg err"; resultEl.textContent = "Lỗi khi nhập: " + error.message; return; }
     resultEl.className = "result-msg ok";
     resultEl.textContent = `Đã nhập ${insertCount} câu thoại mới` + (updateCount ? `, cập nhật ${updateCount} câu đã có sẵn` : "") + "."
