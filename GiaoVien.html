@@ -55,6 +55,34 @@ header.top h1{font-size:18px;margin:0;font-weight:700;}
 .date-filter-bar input[type=date]{padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;}
 .day-total-strip{background:var(--teal-light);border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:12px;text-align:center;}
 .day-total-strip b{color:var(--navy2);}
+.btn-sm{padding:4px 10px;font-size:11.5px;border-radius:5px;border:1px solid var(--border);background:#fff;cursor:pointer;}
+.dash-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:var(--gap);}
+.dash-card{background:var(--bg-card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px;}
+.dash-card .label{display:block;font-size:11.5px;color:var(--text-2);margin-bottom:4px;}
+.dash-card .num{display:block;font-size:24px;font-weight:800;color:var(--navy2);}
+.dash-card.warn .num{color:var(--red);}
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:8px;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead th{position:sticky;top:0;background:var(--navy2);color:#fff;text-align:left;padding:9px 12px;font-weight:600;white-space:nowrap;}
+tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
+.level-path-lang{margin-bottom:18px;}
+.level-path-lang:last-child{margin-bottom:0;}
+.level-path-lang-title{font-weight:700;font-size:13.5px;margin-bottom:8px;}
+.level-path{display:flex;align-items:center;overflow-x:auto;padding-bottom:4px;}
+.level-node{flex:none;width:76px;text-align:center;padding:10px 6px;border-radius:10px;background:var(--bg-page);}
+.level-node-code{font-weight:800;font-size:13px;}
+.level-node-score{font-size:15px;font-weight:800;margin:4px 0 2px;color:var(--text-3);}
+.level-node-count{font-size:10.5px;color:var(--text-2);}
+.level-node.good{background:var(--green-light);}
+.level-node.good .level-node-score{color:var(--green);}
+.level-node.warn{background:#fdf1e6;}
+.level-node.warn .level-node-score{color:#b8722a;}
+.level-node.bad{background:var(--red-light);}
+.level-node.bad .level-node-score{color:var(--red);}
+.level-path-line{flex:none;width:18px;height:2px;background:var(--border);}
+.level-node[data-clickable]:hover{outline:2px solid var(--navy2);outline-offset:1px;}
+.level-detail-panel{background:var(--teal-light);}
+.level-detail-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-weight:700;font-size:13.5px;margin-bottom:10px;}
 </style>
 </head>
 <body>
@@ -108,15 +136,35 @@ header.top h1{font-size:18px;margin:0;font-weight:700;}
       <button class="btn btn-outline" id="btn-logout">Đăng xuất</button>
     </div>
   </header>
-  <div class="date-filter-bar">
-    <label for="activity-date-filter">Xem hoạt động ngày:</label>
-    <input type="date" id="activity-date-filter">
-    <label style="margin-left:16px;display:inline-flex;align-items:center;gap:6px;">
-      <input type="checkbox" id="only-quiz-filter" checked>
-      Chỉ xem kết quả làm bài tập
-    </label>
+  <div id="overview-section">
+    <div class="dash-cards" id="teacher-cards"></div>
+    <div class="card">
+      <h2 style="font-size:14px;">Học sinh theo mức điểm trung bình</h2>
+      <div id="teacher-score-chart"></div>
+    </div>
+    <div class="card">
+      <h2 style="font-size:14px;">Danh sách học sinh phụ trách</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Email</th><th>Ngôn ngữ</th><th>Số bài đã làm</th><th>Điểm TB</th><th>Hoạt động gần nhất</th><th></th></tr></thead>
+          <tbody id="teacher-student-list-body"><tr><td colspan="6">Đang tải…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
   </div>
-  <div id="dashboard-area"><div class="loading-msg">Đang tải…</div></div>
+
+  <div id="detail-section" style="display:none;">
+    <button type="button" class="btn btn-outline" style="background:var(--bg-card);color:var(--navy2);border:1px solid var(--border);margin-bottom:var(--gap);" id="btn-back-to-list">← Quay lại danh sách</button>
+    <div class="date-filter-bar">
+      <label for="activity-date-filter">Xem hoạt động ngày:</label>
+      <input type="date" id="activity-date-filter">
+      <label style="margin-left:16px;display:inline-flex;align-items:center;gap:6px;">
+        <input type="checkbox" id="only-quiz-filter" checked>
+        Chỉ xem kết quả làm bài tập
+      </label>
+    </div>
+    <div id="dashboard-area"><div class="loading-msg">Đang tải…</div></div>
+  </div>
 </div>
 
 <script>
@@ -251,11 +299,9 @@ async function afterLogin(){
   showScreen("main");
   CURRENT_TEACHER_ID = user.id;
   document.getElementById("teacher-email-label").textContent = user.email || "";
-  const dateInput = document.getElementById("activity-date-filter");
-  dateInput.value = todayLocalDateStr();
-  dateInput.addEventListener("change", ()=> loadDashboard(CURRENT_TEACHER_ID));
-  document.getElementById("only-quiz-filter").addEventListener("change", ()=> loadDashboard(CURRENT_TEACHER_ID));
-  loadDashboard(user.id);
+  document.getElementById("activity-date-filter").addEventListener("change", loadStudentDetail);
+  document.getElementById("only-quiz-filter").addEventListener("change", loadStudentDetail);
+  loadOverview(user.id);
 }
 
 (async function(){
@@ -269,31 +315,174 @@ async function afterLogin(){
 // Supabase đã tự giới hạn chỉ đọc được đúng (các) học sinh đã phân công cho
 // tài khoản giáo viên này (migration 36).
 // ============================================================
-async function loadDashboard(teacherId){
-  const area = document.getElementById("dashboard-area");
-  area.innerHTML = `<div class="loading-msg">Đang tải…</div>`;
+// ============================================================
+// Mục 13.40 — thiết kế lại: TRƯỚC ĐÂY hiện đầy đủ chi tiết mọi học sinh liền 1
+// lúc (dài, khó theo dõi nếu phụ trách nhiều học sinh). GIỜ tách 2 màn: tổng
+// quan (thẻ số liệu + biểu đồ điểm + bảng danh sách gọn) và chi tiết 1 học
+// sinh (giống hệt cấu trúc PhuHuynh.html — mở khi bấm "Xem", đóng lại quay về
+// danh sách). Dữ liệu tổng quan tính nhẹ (chỉ đếm/tính trung bình), không tải
+// toàn bộ chi tiết (level path, timeline...) cho tới khi thật sự xem 1 học sinh.
+// ============================================================
+let TEACHER_STUDENTS = [];
+let CURRENT_DETAIL_STUDENT = null;
+
+async function loadOverview(teacherId){
+  const cardsEl = document.getElementById("teacher-cards");
+  cardsEl.innerHTML = `<div class="dash-card"><span class="label">Đang tải...</span></div>`;
+  document.getElementById("teacher-student-list-body").innerHTML = `<tr><td colspan="6">Đang tải…</td></tr>`;
   await langsConfigPromise;
 
   const { data: links, error: linkError } = await sb.from("teacher_links").select("student_id").eq("teacher_id", teacherId);
-  if(linkError){ area.innerHTML = `<div class="empty-msg">Lỗi tải dữ liệu: ${linkError.message}</div>`; return; }
-  if(!links || !links.length){ area.innerHTML = `<div class="empty-msg">Chưa có học sinh nào được phân công cho tài khoản này.</div>`; return; }
+  if(linkError){
+    cardsEl.innerHTML = `<div class="dash-card warn"><span class="label">Lỗi tải dữ liệu: ${escHtml(linkError.message)}</span></div>`;
+    return;
+  }
+  if(!links || !links.length){
+    cardsEl.innerHTML = "";
+    document.getElementById("teacher-score-chart").innerHTML = "";
+    document.getElementById("teacher-student-list-body").innerHTML = `<tr><td colspan="6">Chưa có học sinh nào được phân công cho tài khoản này.</td></tr>`;
+    return;
+  }
 
+  const studentIds = links.map(l => l.student_id);
+  const { data: profiles } = await sb.from("profiles").select("id,email,selected_language").in("id", studentIds);
+
+  // Tính nhẹ cho từng học sinh: tổng số bài + điểm TB (từ quiz_results) + hoạt
+  // động gần nhất (từ activity_log) — KHÔNG tải level path/timeline ở bước này.
+  TEACHER_STUDENTS = await Promise.all((profiles||[]).map(async p=>{
+    const [{ data: quizzes }, { data: lastActivityRows }] = await Promise.all([
+      sb.from("quiz_results").select("correct_count,total_count").eq("user_id", p.id),
+      sb.from("activity_log").select("created_at").eq("user_id", p.id).order("created_at", { ascending: false }).limit(1)
+    ]);
+    const totalCorrect = (quizzes||[]).reduce((s,r)=>s+r.correct_count, 0);
+    const totalQuestions = (quizzes||[]).reduce((s,r)=>s+r.total_count, 0);
+    const avgPercent = totalQuestions ? Math.round((totalCorrect/totalQuestions)*100) : null;
+    return {
+      id: p.id,
+      email: p.email,
+      selectedLanguage: p.selected_language,
+      quizCount: (quizzes||[]).length,
+      avgPercent,
+      lastActivityAt: (lastActivityRows && lastActivityRows[0]) ? lastActivityRows[0].created_at : null
+    };
+  }));
+
+  renderTeacherCards(TEACHER_STUDENTS);
+  renderTeacherScoreChart(TEACHER_STUDENTS);
+  renderTeacherStudentList(TEACHER_STUDENTS);
+}
+
+function renderTeacherCards(students){
+  const total = students.length;
+  const withScores = students.filter(s => s.avgPercent != null);
+  const avgAll = withScores.length ? Math.round(withScores.reduce((s,x)=>s+x.avgPercent,0) / withScores.length) : null;
+  const today = new Date().toDateString();
+  const activeToday = students.filter(s => s.lastActivityAt && new Date(s.lastActivityAt).toDateString() === today).length;
+  document.getElementById("teacher-cards").innerHTML = `
+    <div class="dash-card"><span class="label">Tổng học sinh phụ trách</span><span class="num">${total}</span></div>
+    <div class="dash-card"><span class="label">Điểm trung bình chung</span><span class="num">${avgAll==null?'—':avgAll+'%'}</span></div>
+    <div class="dash-card"><span class="label">Hoạt động hôm nay</span><span class="num">${activeToday}</span></div>
+  `;
+}
+
+// Donut SVG tự vẽ (không dùng thư viện ngoài) — cùng kỹ thuật đã dùng ở
+// QuanLyTuVung.html (renderDonutChart()), viết riêng 1 bản gọn cho trang này vì
+// mỗi trang trong dự án tự chứa 1 <script> độc lập (không import chung được).
+function renderTeacherScoreChart(students){
+  const buckets = [
+    { label: "0–25% (Cần cải thiện)", color: "var(--red)", value: 0 },
+    { label: "26–50% (Trung bình)", color: "#f2994a", value: 0 },
+    { label: "51–75% (Khá)", color: "var(--teal)", value: 0 },
+    { label: "76–100% (Tốt)", color: "var(--green)", value: 0 },
+    { label: "Chưa làm bài", color: "var(--text-3)", value: 0 }
+  ];
+  students.forEach(s=>{
+    if(s.avgPercent == null) buckets[4].value++;
+    else if(s.avgPercent <= 25) buckets[0].value++;
+    else if(s.avgPercent <= 50) buckets[1].value++;
+    else if(s.avgPercent <= 75) buckets[2].value++;
+    else buckets[3].value++;
+  });
+  const total = buckets.reduce((s,b)=>s+b.value, 0);
+  const el = document.getElementById("teacher-score-chart");
+  if(!total){ el.innerHTML = `<p class="empty-msg">Chưa có dữ liệu.</p>`; return; }
+
+  const R = 70, C = 2*Math.PI*R, cx = 100, cy = 100, strokeW = 30;
+  let offset = 0;
+  const arcs = buckets.filter(b=>b.value>0).map(b=>{
+    const len = (b.value/total) * C;
+    const html = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${b.color}" stroke-width="${strokeW}" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-offset}"></circle>`;
+    offset += len;
+    return html;
+  }).join("");
+  const legendHtml = buckets.map(b=>{
+    const pct = Math.round(b.value/total*100);
+    return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;font-size:12.5px;">
+      <span style="width:11px;height:11px;border-radius:3px;background:${b.color};flex:none;"></span>
+      <span style="flex:1;">${b.label}</span><b>${b.value}</b>&nbsp;<span style="color:var(--text-2);">(${pct}%)</span>
+    </div>`;
+  }).join("");
+  el.innerHTML = `<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
+    <div style="position:relative;width:200px;height:200px;flex:none;">
+      <svg viewBox="0 0 200 200" width="200" height="200" style="transform:rotate(-90deg);">${arcs}</svg>
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
+        <div style="font-size:22px;font-weight:800;color:var(--navy2);">${total}</div>
+        <div style="font-size:11px;color:var(--text-2);">học sinh</div>
+      </div>
+    </div>
+    <div style="flex:1;min-width:180px;">${legendHtml}</div>
+  </div>`;
+}
+
+function renderTeacherStudentList(students){
+  document.getElementById("teacher-student-list-body").innerHTML = students.length ? students.map(s=>{
+    const langLbl = s.selectedLanguage ? langLabel(s.selectedLanguage) : "—";
+    const lastActive = s.lastActivityAt ? new Date(s.lastActivityAt).toLocaleDateString("vi-VN") : "Chưa từng hoạt động";
+    return `<tr>
+      <td>${escHtml(s.email)}</td>
+      <td>${escHtml(langLbl)}</td>
+      <td>${s.quizCount}</td>
+      <td>${s.avgPercent==null ? "—" : s.avgPercent+"%"}</td>
+      <td>${lastActive}</td>
+      <td><button class="btn-sm" data-view-student="${s.id}" data-email="${escHtml(s.email).replace(/"/g,'&quot;')}">Xem</button></td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="6">Chưa có học sinh nào được phân công cho tài khoản này.</td></tr>`;
+
+  document.querySelectorAll("[data-view-student]").forEach(btn=>{
+    btn.addEventListener("click", ()=> showStudentDetail(btn.dataset.viewStudent, btn.dataset.email));
+  });
+}
+
+async function showStudentDetail(studentId, email){
+  CURRENT_DETAIL_STUDENT = { id: studentId, email };
+  document.getElementById("overview-section").style.display = "none";
+  document.getElementById("detail-section").style.display = "block";
+  const dateInput = document.getElementById("activity-date-filter");
+  if(!dateInput.value) dateInput.value = todayLocalDateStr();
+  await loadStudentDetail();
+}
+
+async function loadStudentDetail(){
+  if(!CURRENT_DETAIL_STUDENT) return;
+  const area = document.getElementById("dashboard-area");
+  area.innerHTML = `<div class="loading-msg">Đang tải…</div>`;
   const dateStr = document.getElementById("activity-date-filter").value || todayLocalDateStr();
   const onlyQuiz = document.getElementById("only-quiz-filter").checked;
-  const studentIds = links.map(l => l.student_id);
-  const { data: profiles } = await sb.from("profiles").select("id,email").in("id", studentIds);
-  const emailOf = Object.fromEntries((profiles||[]).map(p=>[p.id, p.email]));
-
-  const blocks = await Promise.all(studentIds.map(id => buildStudentBlock(id, emailOf[id] || id, dateStr, onlyQuiz)));
-  area.innerHTML = blocks.join("");
+  area.innerHTML = await buildStudentBlock(CURRENT_DETAIL_STUDENT.id, CURRENT_DETAIL_STUDENT.email, dateStr, onlyQuiz);
 }
+
+document.getElementById("btn-back-to-list").addEventListener("click", ()=>{
+  CURRENT_DETAIL_STUDENT = null;
+  document.getElementById("detail-section").style.display = "none";
+  document.getElementById("overview-section").style.display = "block";
+});
 
 function escHtml(s){
   return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
 const ACTIVITY_LABELS = { login:"Đăng nhập", logout:"Đăng xuất", language_change:"Đổi ngôn ngữ học", app_hidden:"Rời khỏi app", app_visible:"Quay lại app" };
-const KIND_LABELS = { writing:"✍️ Viết", reading:"📖 Đọc", listening:"🎧 Nghe", math:"🔢 Toán" };
+const KIND_LABELS = { writing:"✍️ Viết", reading:"📖 Đọc", listening:"🎧 Nghe", math:"🔢 Toán", speaking_dialogue:"🗣️ Hội thoại" };
 const EX_TYPE_LABELS = {
   multiple_choice: "Trắc nghiệm", fill_blank: "Điền từ", sentence_ordering: "Sắp xếp câu",
   listening_choice: "Nghe & chọn", synonym_antonym: "Đồng/Trái nghĩa", odd_one_out: "Từ khác nhóm", word_form: "Biến đổi từ"
@@ -305,12 +494,13 @@ async function buildStudentBlock(studentId, studentEmail, dateStr, onlyQuiz){
 
   // Khi "Chỉ xem kết quả làm bài tập" được tick, khỏi truy vấn activity_log
   // luôn — vừa nhẹ hơn (đỡ 1 query/học sinh) vừa đúng ý chỉ muốn xem điểm.
-  const [{ data: quizzes }, { data: dayQuizzes }, { data: dayActivity }] = await Promise.all([
+  const [{ data: quizzes }, { data: dayQuizzes }, { data: dayActivity }, { data: levelStats, error: levelStatsError }] = await Promise.all([
     sb.from("quiz_results").select("*").eq("user_id", studentId).order("created_at", { ascending: false }).limit(20),
     sb.from("quiz_results").select("*").eq("user_id", studentId).gte("created_at", dayStart).lte("created_at", dayEnd),
     onlyQuiz
       ? Promise.resolve({ data: [] })
-      : sb.from("activity_log").select("*").eq("user_id", studentId).gte("created_at", dayStart).lte("created_at", dayEnd).order("created_at", { ascending: false }).limit(200) // chặn trần phòng khi 1 ngày có quá nhiều sự kiện
+      : sb.from("activity_log").select("*").eq("user_id", studentId).gte("created_at", dayStart).lte("created_at", dayEnd).order("created_at", { ascending: false }).limit(200), // chặn trần phòng khi 1 ngày có quá nhiều sự kiện
+    sb.rpc("student_level_stats", { p_student_id: studentId }) // mục 13.33/13.40 — gộp sẵn theo (ngôn ngữ, trình độ), giống hệt PhuHuynh.html
   ]);
 
   const studentLabel = escHtml(studentEmail);
@@ -371,7 +561,17 @@ async function buildStudentBlock(studentId, studentEmail, dateStr, onlyQuiz){
       }).join("")
     : `<div class="empty-msg">${onlyQuiz ? "Không có bài kiểm tra nào trong ngày này." : "Không có hoạt động nào trong ngày này."}</div>`;
 
+  const levelPathBodyHtml = levelStatsError
+    ? `<div class="empty-msg">Không tải được dữ liệu tiến trình: ${escHtml(levelStatsError.message)} — đã chạy migration 39 trên Supabase chưa?</div>`
+    : buildLevelPathHtml(studentId, levelStats);
+
   return `
+    <div class="card">
+      <h2 style="font-size:14px;">Tiến trình học theo trình độ — ${studentLabel}</h2>
+      <div class="sub">Điểm trung bình và số bài đã làm ở mỗi trình độ (toàn bộ lịch sử). Bấm vào 1 trình độ để xem chi tiết từng kỹ năng/bài đã làm.</div>
+      ${levelPathBodyHtml}
+    </div>
+    <div class="card level-detail-panel" id="level-detail-${studentId}" style="display:none;"></div>
     <div class="card">
       <h2>${studentLabel}</h2>
       <div class="sub">Kết quả học tập (20 lần gần nhất)</div>
@@ -390,6 +590,106 @@ async function buildStudentBlock(studentId, studentEmail, dateStr, onlyQuiz){
     </div>
   `;
 }
+
+// "Tiến trình học theo trình độ" + chi tiết theo kỹ năng khi bấm 1 trình độ —
+// SAO CHÉP nguyên logic từ PhuHuynh.html (mục 13.33/13.40), chỉ khác không có
+// gì khác (cùng bảng dữ liệu, cùng RPC, cùng quyền RLS cho giáo viên qua
+// teacher_links, migration 36).
+function buildLevelPathHtml(studentId, levelStats){
+  const byLang = {};
+  (levelStats||[]).forEach(r=>{
+    if(!byLang[r.language]) byLang[r.language] = {};
+    byLang[r.language][r.level] = { count: r.quiz_count, avg: r.avg_score_pct };
+  });
+  const langCodesInOrder = Object.keys(LANGS);
+  const langsWithData = Object.keys(byLang).sort((a,b)=> langCodesInOrder.indexOf(a) - langCodesInOrder.indexOf(b));
+  if(!langsWithData.length) return `<div class="empty-msg">Học sinh chưa làm bài kiểm tra nào.</div>`;
+
+  return langsWithData.map(lang=>{
+    const cfg = LANGS[lang];
+    const levels = (cfg && cfg.levels) || Object.keys(byLang[lang]).map(l=>({ code: l, label: l }));
+    const nodesHtml = levels.map((lv, i)=>{
+      const stat = byLang[lang][lv.code];
+      const avg = stat ? Number(stat.avg) : null;
+      const count = stat ? stat.count : 0;
+      const cls = avg == null ? "" : (avg >= 75 ? "good" : (avg >= 50 ? "warn" : "bad"));
+      const scoreText = avg == null ? "—" : `${avg}%`;
+      const countText = count ? `${count} bài` : "Chưa học";
+      const lineHtml = i < levels.length - 1 ? `<div class="level-path-line"></div>` : "";
+      const clickableAttrs = count ? `data-clickable="1" data-student="${studentId}" data-lang="${lang}" data-level="${escHtml(lv.code)}" style="cursor:pointer;"` : "";
+      return `<div class="level-node ${cls}" ${clickableAttrs}>
+        <div class="level-node-code">${escHtml(lv.code)}</div>
+        <div class="level-node-score">${scoreText}</div>
+        <div class="level-node-count">${escHtml(countText)}</div>
+      </div>${lineHtml}`;
+    }).join("");
+    return `<div class="level-path-lang">
+      <div class="level-path-lang-title">${escHtml(langLabel(lang))}</div>
+      <div class="level-path">${nodesHtml}</div>
+    </div>`;
+  }).join("");
+}
+
+async function showLevelDetail(studentId, lang, level){
+  const container = document.getElementById(`level-detail-${studentId}`);
+  if(!container) return;
+  const key = `${lang}|${level}`;
+  if(container.dataset.openKey === key){
+    container.style.display = "none";
+    container.dataset.openKey = "";
+    return;
+  }
+  container.style.display = "block";
+  container.dataset.openKey = key;
+  container.innerHTML = `<div class="loading-msg">Đang tải…</div>`;
+
+  const { data: rows, error } = await sb.from("quiz_results").select("*")
+    .eq("user_id", studentId).eq("language", lang).eq("level", level)
+    .order("created_at", { ascending: false });
+  if(error){ container.innerHTML = `<div class="empty-msg">Lỗi tải dữ liệu: ${escHtml(error.message)}</div>`; return; }
+  if(!rows || !rows.length){ container.innerHTML = `<div class="empty-msg">Chưa có bài làm nào ở trình độ này.</div>`; return; }
+
+  const byKind = {};
+  rows.forEach(r=>{
+    if(!byKind[r.practice_kind]) byKind[r.practice_kind] = { count: 0, correct: 0, total: 0 };
+    byKind[r.practice_kind].count++;
+    byKind[r.practice_kind].correct += r.correct_count;
+    byKind[r.practice_kind].total += r.total_count;
+  });
+  const kindSummaryHtml = Object.entries(byKind).map(([kind, v])=>{
+    const pct = v.total ? Math.round(v.correct/v.total*100) : 0;
+    return `<div class="stats-summary-item"><b>${pct}%</b>${escHtml(KIND_LABELS[kind] || kind)} (${v.count})</div>`;
+  }).join("");
+
+  const rowsHtml = rows.map(r=>{
+    const percent = r.total_count ? Math.round((r.correct_count/r.total_count)*100) : 0;
+    return `<div class="stats-row">
+      <span>${new Date(r.created_at).toLocaleString()}</span>
+      <span>${escHtml(KIND_LABELS[r.practice_kind] || r.practice_kind)}</span>
+      <span class="stats-row-score">${r.correct_count}/${r.total_count} (${percent}%)</span>
+    </div>`;
+  }).join("");
+
+  container.innerHTML = `
+    <div class="level-detail-head">
+      <span>Chi tiết trình độ ${escHtml(level)} — ${escHtml(langLabel(lang))} (${rows.length} bài)</span>
+      <button type="button" class="btn-sm" data-close-detail="${studentId}">Đóng ✕</button>
+    </div>
+    <div class="stats-summary">${kindSummaryHtml}</div>
+    <div class="stats-list">${rowsHtml}</div>
+  `;
+}
+
+document.getElementById("dashboard-area").addEventListener("click", (e)=>{
+  const closeBtn = e.target.closest("[data-close-detail]");
+  if(closeBtn){
+    const c = document.getElementById(`level-detail-${closeBtn.dataset.closeDetail}`);
+    if(c){ c.style.display = "none"; c.dataset.openKey = ""; }
+    return;
+  }
+  const node = e.target.closest(".level-node[data-clickable]");
+  if(node) showLevelDetail(node.dataset.student, node.dataset.lang, node.dataset.level);
+});
 </script>
 </body>
 </html>

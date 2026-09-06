@@ -166,6 +166,10 @@ header.top{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#ff
 .level-node.bad{background:var(--red-light);}
 .level-node.bad .level-node-score{color:var(--red);}
 .level-path-line{flex:none;width:18px;height:2px;background:var(--border);}
+.level-path-hint{font-size:11.5px;color:var(--text-2);margin:-6px 0 10px;}
+.level-node[data-clickable]:hover{outline:2px solid var(--navy2);outline-offset:1px;}
+.level-detail-panel{background:var(--bg-page);border-radius:10px;padding:14px 16px;margin-top:12px;}
+.level-detail-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-weight:700;font-size:13.5px;margin-bottom:10px;}
 .empty-msg{text-align:center;color:var(--text-3);padding:50px 20px;}
 footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 0 4px;}
 .reminder-setting{text-align:center;margin-top:14px;}
@@ -1684,6 +1688,10 @@ async function checkPracticeAnswers(){
 // chỉ đổi nguồn nhãn ngôn ngữ (LANGS[..].switchLabel, không phải langLabel())
 // và bỏ escHtml() để khớp quy ước sẵn có của file này (loadStats() ở trên cũng
 // không escape level/switchLabel — đều là giá trị do hệ thống kiểm soát).
+function kindLabelOf(kind, u){
+  return { writing: u.kindWriting, reading: u.kindReading, listening: u.kindListening, math: u.kindMath, speaking_dialogue: u.kindSpeakingDialogue }[kind] || kind;
+}
+
 function buildLevelPathHtml(levelStats, u){
   const byLang = {};
   (levelStats||[]).forEach(r=>{
@@ -1705,7 +1713,10 @@ function buildLevelPathHtml(levelStats, u){
       const scoreText = avg == null ? "—" : `${avg}%`;
       const countText = count ? `${count} ${u.statsCountLabel}` : u.levelPathNotStarted;
       const lineHtml = i < levels.length - 1 ? `<div class="level-path-line"></div>` : "";
-      return `<div class="level-node ${cls}">
+      // Mục 13.40 — chỉ trình độ ĐÃ CÓ bài làm mới bấm được, xem chi tiết theo
+      // kỹ năng qua showLevelDetail() (event delegation trên #content-area).
+      const clickableAttrs = count ? `data-clickable="1" data-lang="${lang}" data-level="${lv.code}" style="cursor:pointer;"` : "";
+      return `<div class="level-node ${cls}" ${clickableAttrs}>
         <div class="level-node-code">${lv.code}</div>
         <div class="level-node-score">${scoreText}</div>
         <div class="level-node-count">${countText}</div>
@@ -1717,8 +1728,77 @@ function buildLevelPathHtml(levelStats, u){
       <div class="level-path">${nodesHtml}</div>
     </div>`;
   }).join("");
-  return `<h3 style="margin:0 0 10px;">${u.levelPathTitle}</h3><div class="level-path-section">${sections}</div>`;
+  return `<h3 style="margin:0 0 10px;">${u.levelPathTitle}</h3>
+    <div class="level-path-hint">${u.levelPathHint}</div>
+    <div class="level-path-section">${sections}</div>
+    <div class="level-detail-panel" id="level-detail-panel" style="display:none;"></div>`;
 }
+
+// Chi tiết trình độ (mục 13.40) — bấm vào 1 trình độ thì hiện breakdown theo kỹ
+// năng (practice_kind) + danh sách từng bài đã làm ở ĐÚNG trình độ đó, tải MỚI
+// theo (language, level) khi bấm (không dùng lại 20 bài gần nhất — có thể
+// thiếu bài cũ ở trình độ đang xem).
+async function showLevelDetail(lang, level){
+  const u = L().ui;
+  const container = document.getElementById("level-detail-panel");
+  if(!container) return;
+  const key = `${lang}|${level}`;
+  if(container.dataset.openKey === key){
+    container.style.display = "none";
+    container.dataset.openKey = "";
+    return;
+  }
+  container.style.display = "block";
+  container.dataset.openKey = key;
+  container.innerHTML = `<div class="loading-msg">${u.loading}</div>`;
+
+  const { data: rows, error } = await sb.from("quiz_results").select("*")
+    .eq("user_id", CURRENT_USER.id).eq("language", lang).eq("level", level)
+    .order("created_at", { ascending: false });
+  if(error){ container.innerHTML = `<div class="empty-msg">${u.errorPrefix}${error.message}</div>`; return; }
+  if(!rows || !rows.length){ container.innerHTML = `<div class="empty-msg">${u.levelDetailEmpty}</div>`; return; }
+
+  const byKind = {};
+  rows.forEach(r=>{
+    if(!byKind[r.practice_kind]) byKind[r.practice_kind] = { count: 0, correct: 0, total: 0 };
+    byKind[r.practice_kind].count++;
+    byKind[r.practice_kind].correct += r.correct_count;
+    byKind[r.practice_kind].total += r.total_count;
+  });
+  const kindSummaryHtml = Object.entries(byKind).map(([kind, v])=>{
+    const pct = v.total ? Math.round(v.correct/v.total*100) : 0;
+    return `<div class="stats-summary-item"><b>${pct}%</b>${kindLabelOf(kind, u)} (${v.count})</div>`;
+  }).join("");
+
+  const rowsHtml = rows.map(r=>{
+    const percent = r.total_count ? Math.round((r.correct_count/r.total_count)*100) : 0;
+    return `<div class="stats-row">
+      <span>${new Date(r.created_at).toLocaleString()}</span>
+      <span>${kindLabelOf(r.practice_kind, u)}</span>
+      <span class="stats-row-score">${r.correct_count}/${r.total_count} (${percent}%)</span>
+    </div>`;
+  }).join("");
+
+  container.innerHTML = `
+    <div class="level-detail-head">
+      <span>${level} · ${(LANGS[lang]&&LANGS[lang].switchLabel)||lang} (${rows.length} ${u.statsCountLabel})</span>
+      <button type="button" class="btn" id="btn-close-level-detail" style="padding:4px 12px;font-size:12px;">${u.levelDetailClose}</button>
+    </div>
+    <div class="stats-summary">${kindSummaryHtml}</div>
+    <div class="stats-list">${rowsHtml}</div>
+  `;
+  document.getElementById("btn-close-level-detail").addEventListener("click", ()=>{
+    container.style.display = "none";
+    container.dataset.openKey = "";
+  });
+}
+
+// Event delegation trên #content-area — nội dung được render lại toàn bộ mỗi
+// lần loadStats() chạy nên gắn 1 lần duy nhất ở đây là đủ.
+document.getElementById("content-area").addEventListener("click", (e)=>{
+  const node = e.target.closest(".level-node[data-clickable]");
+  if(node) showLevelDetail(node.dataset.lang, node.dataset.level);
+});
 
 async function loadStats(){
   const u = L().ui;
