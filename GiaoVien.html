@@ -368,7 +368,7 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
             <div class="field-row"><label>Vai</label><select data-f="speaker" id="dialogue-line-speaker"><option value="A">A</option><option value="B">B</option></select></div>
             <div class="field-row"><label>Lời thoại</label><input data-f="line_text" required></div>
             <div class="field-row"><label>Thứ tự</label><input data-f="order_index" type="number" value="1"></div>
-            <button class="btn btn-primary" type="submit" style="width:auto;padding:8px 18px;margin-top:0;">Lưu câu thoại</button>
+            <button class="btn btn-primary" type="submit" id="dialogue-line-form-submit" style="width:auto;padding:8px 18px;margin-top:0;">Lưu câu thoại</button>
             <button type="button" class="btn-sm" id="btn-cancel-dialogue-line">Huỷ</button>
           </form>
         </div>
@@ -1295,6 +1295,7 @@ function openLinesPanel(dialogueId){
   document.getElementById("dialogue-lines-panel").style.display = "block";
   document.getElementById("dialogue-lines-title").textContent = dlg ? dlg.title : "";
   document.getElementById("dialogue-line-form-wrap").style.display = "none";
+  resetDialogueLineForm();
   document.getElementById("btn-add-dialogue-line").style.display = currentDialogueCanEdit ? "inline-block" : "none";
   const speakerSel = document.getElementById("dialogue-line-speaker");
   if(dlg) speakerSel.innerHTML = `<option value="A">A — ${escHtml(dlg.role_a_name)}</option><option value="B">B — ${escHtml(dlg.role_b_name)}</option>`;
@@ -1313,7 +1314,9 @@ async function loadLines(){
       <td>${idx+1}</td>
       <td>${escHtml(l.speaker)} — ${escHtml(dlg ? (l.speaker==='A'?dlg.role_a_name:dlg.role_b_name) : '')}</td>
       <td>${escHtml(l.line_text)}</td>
-      <td>${currentDialogueCanEdit ? `<button class="btn-sm danger" data-delete-line="${l.id}">Xoá</button>` : ""}</td>
+      <td style="white-space:nowrap;">${currentDialogueCanEdit
+        ? `<button class="btn-sm" data-edit-line="${l.id}">Sửa</button> <button class="btn-sm danger" data-delete-line="${l.id}">Xoá</button>`
+        : ""}</td>
     </tr>`).join("") : `<tr><td colspan="4">Chưa có câu thoại nào.</td></tr>`;
   body.querySelectorAll("[data-delete-line]").forEach(btn=>{
     btn.addEventListener("click", async ()=>{
@@ -1323,13 +1326,34 @@ async function loadLines(){
       loadLines();
     });
   });
+  body.querySelectorAll("[data-edit-line]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const line = rows.find(r=>String(r.id)===btn.dataset.editLine);
+      if(!line) return;
+      currentEditingLineId = line.id;
+      const form = document.getElementById("dialogue-line-form");
+      form.querySelector('[data-f="speaker"]').value = line.speaker;
+      form.querySelector('[data-f="line_text"]').value = line.line_text;
+      form.querySelector('[data-f="order_index"]').value = line.order_index;
+      document.getElementById("dialogue-line-form-submit").textContent = "Cập nhật câu thoại";
+      document.getElementById("dialogue-line-form-wrap").style.display = "block";
+    });
+  });
 }
 
+let currentEditingLineId = null;
+function resetDialogueLineForm(){
+  currentEditingLineId = null;
+  document.getElementById("dialogue-line-form").reset();
+  document.getElementById("dialogue-line-form-submit").textContent = "Lưu câu thoại";
+}
 document.getElementById("btn-add-dialogue-line").addEventListener("click", ()=>{
+  resetDialogueLineForm();
   document.getElementById("dialogue-line-form-wrap").style.display = "block";
 });
 document.getElementById("btn-cancel-dialogue-line").addEventListener("click", ()=>{
   document.getElementById("dialogue-line-form-wrap").style.display = "none";
+  resetDialogueLineForm();
 });
 document.getElementById("btn-close-dialogue-lines").addEventListener("click", ()=>{
   document.getElementById("dialogue-lines-panel").style.display = "none";
@@ -1339,22 +1363,32 @@ document.getElementById("dialogue-line-form").addEventListener("submit", async (
   e.preventDefault();
   if(!currentDialogueId) return;
   const form = e.target;
-  const payload = { dialogue_id: currentDialogueId };
+  const payload = {};
   form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
 
   // Kiểm tra trùng câu thoại (mục 13.43) — cùng vai + cùng nội dung trong CÙNG
   // hội thoại này (khác vai vẫn cho trùng chữ, vì đối đáp lặp lại giữa 2 vai là
-  // bình thường, vd "Vâng." / "Vâng.").
-  const { data: existingLines } = await sb.from("dialogue_lines").select("speaker, line_text").eq("dialogue_id", currentDialogueId);
-  if((existingLines||[]).some(r=>r.speaker === payload.speaker && normalizeText(r.line_text) === normalizeText(payload.line_text))){
+  // bình thường, vd "Vâng." / "Vâng."). Khi đang SỬA, loại chính dòng đang sửa
+  // ra khỏi so khớp — không thì sửa xong y hệt nội dung cũ sẽ tự báo trùng.
+  const { data: existingLines } = await sb.from("dialogue_lines").select("id, speaker, line_text").eq("dialogue_id", currentDialogueId);
+  const isDup = (existingLines||[]).some(r=>
+    r.id !== currentEditingLineId && r.speaker === payload.speaker && normalizeText(r.line_text) === normalizeText(payload.line_text)
+  );
+  if(isDup){
     alert("Câu thoại này (cùng vai, cùng nội dung) đã tồn tại trong hội thoại này — vui lòng kiểm tra lại.");
     return;
   }
 
-  const { error } = await sb.from("dialogue_lines").insert(payload);
+  let error;
+  if(currentEditingLineId){
+    ({ error } = await sb.from("dialogue_lines").update(payload).eq("id", currentEditingLineId));
+  } else {
+    payload.dialogue_id = currentDialogueId;
+    ({ error } = await sb.from("dialogue_lines").insert(payload));
+  }
   if(error){ alert("Lỗi: " + error.message); return; }
-  form.reset();
   document.getElementById("dialogue-line-form-wrap").style.display = "none";
+  resetDialogueLineForm();
   loadLines();
   loadMyDialogues();
 });

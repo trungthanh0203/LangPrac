@@ -367,6 +367,15 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
     </div>
 
     <div id="reading-section" style="display:none;">
+      <div class="card" id="reading-pending-card" style="display:none;">
+        <h3 style="margin:0 0 10px;">🕒 Đoạn văn Đọc đang chờ duyệt (<span id="reading-pending-count">0</span>) — mọi ngôn ngữ/trình độ</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ngôn ngữ</th><th>Trình độ</th><th>Tiêu đề</th><th>Người gửi</th><th></th></tr></thead>
+            <tbody id="reading-pending-body"></tbody>
+          </table>
+        </div>
+      </div>
       <div class="card">
         <h3>Đoạn văn Đọc (nhiều đoạn / trình độ)</h3>
         <div class="filters" style="margin-bottom:14px;">
@@ -418,6 +427,15 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
     </div>
 
     <div id="listening-section" style="display:none;">
+      <div class="card" id="listening-pending-card" style="display:none;">
+        <h3 style="margin:0 0 10px;">🕒 Đoạn văn Nghe đang chờ duyệt (<span id="listening-pending-count">0</span>) — mọi ngôn ngữ/trình độ</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ngôn ngữ</th><th>Trình độ</th><th>Tiêu đề</th><th>Người gửi</th><th></th></tr></thead>
+            <tbody id="listening-pending-body"></tbody>
+          </table>
+        </div>
+      </div>
       <div class="card">
         <h3>Đoạn văn Nghe (nhiều đoạn / trình độ — kho riêng, không dùng chung với Đọc)</h3>
         <div style="font-size:12px;color:var(--text-2);margin-bottom:8px;">
@@ -472,6 +490,15 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
     </div>
 
     <div id="dialogue-section" style="display:none;">
+      <div class="card" id="dialogue-pending-card" style="display:none;">
+        <h3 style="margin:0 0 10px;">🕒 Hội thoại đang chờ duyệt (<span id="dialogue-pending-count">0</span>) — mọi ngôn ngữ/trình độ</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ngôn ngữ</th><th>Trình độ</th><th>Tiêu đề</th><th>Người gửi</th><th></th></tr></thead>
+            <tbody id="dialogue-pending-body"></tbody>
+          </table>
+        </div>
+      </div>
       <div class="card">
         <h3>Hội thoại (nhiều bài / trình độ)</h3>
         <div class="filters" style="margin-bottom:14px;">
@@ -583,7 +610,7 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
         <h3>Giáo viên (<span id="teacher-count">0</span>)</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Email</th><th>Điện thoại</th><th>Địa chỉ</th><th>Ngày đăng ký</th><th>Số học sinh phụ trách</th><th></th></tr></thead>
+            <thead><tr><th>Email</th><th>Điện thoại</th><th>Địa chỉ</th><th>Ngày đăng ký</th><th>Số học sinh phụ trách</th><th>Tổng đề cần duyệt</th><th></th></tr></thead>
             <tbody id="teacher-list-body"></tbody>
           </table>
         </div>
@@ -595,6 +622,16 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
           <table>
             <thead><tr><th>Email</th><th>Ngôn ngữ</th><th>Ngày đăng ký</th><th>Hoạt động gần nhất</th><th>Số bài đã làm</th><th>Điểm TB</th></tr></thead>
             <tbody id="linked-students-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" id="pending-content-card" style="display:none;">
+        <h3 id="pending-content-title">Đề đang chờ duyệt</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Loại</th><th>Ngôn ngữ</th><th>Trình độ</th><th>Nội dung</th><th></th></tr></thead>
+            <tbody id="pending-content-body"></tbody>
           </table>
         </div>
       </div>
@@ -1087,6 +1124,45 @@ window.rejectContent = async function(table, id, reloadFn){
   if(error){ alert("Lỗi: " + error.message); return; }
   await reloadFn();
 };
+
+// ---------- Bảng "🕒 ... đang chờ duyệt" (mục 13.44) ----------
+// Trước đây muốn duyệt Đọc/Nghe/Hội thoại phải TỰ đoán đúng ngôn ngữ/trình độ
+// giáo viên đã gửi rồi mở đúng dropdown mới thấy — dễ bỏ sót. Bảng này liệt kê
+// TẤT CẢ đề đang "pending" của 1 loại nội dung, KHÔNG phụ thuộc dropdown ngôn
+// ngữ/trình độ đang chọn, đặt ngay đầu mỗi section để luôn thấy ngay khi vào.
+async function loadPendingSummary(table, cardId, bodyId, countId, reloadFn){
+  const { data, error } = await sb.from(table).select("id,language,level,title,created_by").eq("content_status", "pending").order("language").order("level");
+  if(error) return;
+  const rows = data || [];
+  document.getElementById(countId).textContent = rows.length;
+  document.getElementById(cardId).style.display = rows.length ? "block" : "none";
+  if(!rows.length) return;
+  await loadCreatorEmails(rows.map(r=>r.created_by));
+  const body = document.getElementById(bodyId);
+  body.innerHTML = rows.map(r=>{
+    const langCfg = LANGS_CFG[r.language];
+    const langBadge = langCfg ? `${langCfg.flagEmoji} ${r.language.toUpperCase()}` : r.language;
+    const creator = r.created_by ? (CONTENT_CREATORS[r.created_by] || "?") : "?";
+    return `<tr>
+      <td><span class="badge">${langBadge}</span></td>
+      <td><span class="badge">${escHtmlAdmin(r.level)}</span></td>
+      <td>${escHtmlAdmin(r.title)}</td>
+      <td>${escHtmlAdmin(creator)}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-sm" style="color:var(--green);border-color:var(--green-light);" data-approve-pending="${table}:${r.id}">Duyệt</button>
+        <button class="btn-sm danger" data-reject-pending="${table}:${r.id}">Từ chối</button>
+      </td>
+    </tr>`;
+  }).join("");
+  body.querySelectorAll("[data-approve-pending]").forEach(btn=>{
+    const [t, id] = btn.dataset.approvePending.split(":");
+    btn.addEventListener("click", ()=> approveContent(t, Number(id), reloadFn));
+  });
+  body.querySelectorAll("[data-reject-pending]").forEach(btn=>{
+    const [t, id] = btn.dataset.rejectPending.split(":");
+    btn.addEventListener("click", ()=> rejectContent(t, Number(id), reloadFn));
+  });
+}
 
 function wireItemForm(record){
   document.getElementById("overlay").classList.add("show");
@@ -2018,9 +2094,15 @@ async function loadParents(){
     return;
   }
   document.getElementById("linked-students-card").style.display = "none";
-  const [{ data: parentLinks }, { data: teacherLinks }] = await Promise.all([
+  document.getElementById("pending-content-card").style.display = "none";
+  const [{ data: parentLinks }, { data: teacherLinks },
+         { data: pendingVocab }, { data: pendingReading }, { data: pendingListening }, { data: pendingDialogues }] = await Promise.all([
     sb.from("parent_links").select("parent_id"),
-    sb.from("teacher_links").select("teacher_id")
+    sb.from("teacher_links").select("teacher_id"),
+    sb.from("vocab_items").select("created_by").eq("content_status", "pending"),
+    sb.from("reading_passages").select("created_by").eq("content_status", "pending"),
+    sb.from("listening_passages").select("created_by").eq("content_status", "pending"),
+    sb.from("dialogues").select("created_by").eq("content_status", "pending")
   ]);
   const countBy = (rows, key) => {
     const m = {};
@@ -2029,32 +2111,45 @@ async function loadParents(){
   };
   const parentCounts = countBy(parentLinks, "parent_id");
   const teacherCounts = countBy(teacherLinks, "teacher_id");
+  // Tổng đề đang chờ duyệt do giáo viên gửi, gộp cả 4 loại nội dung (mục
+  // 13.44) — dùng "created_by" chung, gom vào 1 map thay vì đếm riêng từng
+  // loại vì chỉ cần TỔNG hiện ở đây (bấm vào số mới xem chi tiết từng loại).
+  const pendingCounts = countBy([...(pendingVocab||[]), ...(pendingReading||[]), ...(pendingListening||[]), ...(pendingDialogues||[])], "created_by");
 
-  const renderList = (role, counts) => (allProfiles||[]).filter(p => p.role === role).map(p => `
+  const renderList = (role, counts) => (allProfiles||[]).filter(p => p.role === role).map(p => {
+    const pendingCell = role === "teacher"
+      ? `<td><span class="link-count" data-show-pending="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}" style="${pendingCounts[p.id] ? 'color:var(--red);' : ''}">${pendingCounts[p.id] || 0}</span></td>`
+      : "";
+    return `
     <tr>
       <td>${escHtmlAdmin(p.email||p.id)}${p.disabled ? ' <span style="color:var(--red);font-weight:700;">(Đã khoá)</span>' : ''}</td>
       <td>${escHtmlAdmin(p.phone || "—")}</td>
       <td>${escHtmlAdmin(p.address || "—")}</td>
       <td>${p.created_at ? new Date(p.created_at).toLocaleDateString("vi-VN") : "—"}</td>
       <td><span class="link-count" data-show-linked="${role}" data-id="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">${counts[p.id] || 0}</span></td>
+      ${pendingCell}
       <td>
         <button class="btn-sm" data-edit-person="${p.id}">Sửa</button>
         <button class="btn-sm" data-reset-pw="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">Đổi mật khẩu</button>
       </td>
-    </tr>`).join("");
+    </tr>`;
+  }).join("");
 
   const parents = (allProfiles||[]).filter(p => p.role === "parent");
   const teachers = (allProfiles||[]).filter(p => p.role === "teacher");
   document.getElementById("parent-count").textContent = parents.length;
   document.getElementById("teacher-count").textContent = teachers.length;
   document.getElementById("parent-list-body").innerHTML = parents.length ? renderList("parent", parentCounts) : `<tr><td colspan="6">Chưa có phụ huynh nào.</td></tr>`;
-  document.getElementById("teacher-list-body").innerHTML = teachers.length ? renderList("teacher", teacherCounts) : `<tr><td colspan="6">Chưa có giáo viên nào.</td></tr>`;
+  document.getElementById("teacher-list-body").innerHTML = teachers.length ? renderList("teacher", teacherCounts) : `<tr><td colspan="7">Chưa có giáo viên nào.</td></tr>`;
 
   document.querySelectorAll("[data-reset-pw]").forEach(btn=>{
     btn.addEventListener("click", ()=> openResetUserPassword(btn.dataset.resetPw, btn.dataset.email));
   });
   document.querySelectorAll("[data-show-linked]").forEach(el=>{
     el.addEventListener("click", ()=> showLinkedStudents(el.dataset.showLinked, el.dataset.id, el.dataset.email));
+  });
+  document.querySelectorAll("[data-show-pending]").forEach(el=>{
+    el.addEventListener("click", ()=> showPendingContent(el.dataset.showPending, el.dataset.email));
   });
   document.querySelectorAll("[data-edit-person]").forEach(btn=>{
     btn.addEventListener("click", ()=> openEditPerson(btn.dataset.editPerson));
@@ -2139,6 +2234,56 @@ async function showLinkedStudents(role, personId, personEmail){
       <td>${s.avg_score_pct==null ? "—" : s.avg_score_pct+"%"}</td>
     </tr>`;
   }).join("") : `<tr><td colspan="6">Chưa có học sinh nào.</td></tr>`;
+}
+
+// Hiện TẤT CẢ đề (từ vựng/đọc/nghe/hội thoại) đang "pending" của 1 giáo viên
+// khi bấm vào số ở cột "Tổng đề cần duyệt" (mục 13.44) — cách xem theo GIÁO
+// VIÊN, bổ sung cho cách xem theo LOẠI NỘI DUNG (loadPendingSummary() ở từng
+// section Đọc/Nghe/Hội thoại) — cùng dùng chung approveContent()/rejectContent().
+async function showPendingContent(teacherId, teacherEmail){
+  const card = document.getElementById("pending-content-card");
+  const body = document.getElementById("pending-content-body");
+  document.getElementById("pending-content-title").textContent = `Đề đang chờ duyệt của giáo viên ${teacherEmail}`;
+  card.style.display = "block";
+  body.innerHTML = `<tr><td colspan="5">Đang tải...</td></tr>`;
+  card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+  const [{ data: vocab }, { data: reading }, { data: listening }, { data: dialogues }] = await Promise.all([
+    sb.from("vocab_items").select("id,language,level,de_text").eq("created_by", teacherId).eq("content_status", "pending"),
+    sb.from("reading_passages").select("id,language,level,title").eq("created_by", teacherId).eq("content_status", "pending"),
+    sb.from("listening_passages").select("id,language,level,title").eq("created_by", teacherId).eq("content_status", "pending"),
+    sb.from("dialogues").select("id,language,level,title").eq("created_by", teacherId).eq("content_status", "pending")
+  ]);
+  const rows = [
+    ...(vocab||[]).map(r=>({ type:"Từ vựng", table:"vocab_items", id:r.id, language:r.language, level:r.level, label:r.de_text })),
+    ...(reading||[]).map(r=>({ type:"Đọc", table:"reading_passages", id:r.id, language:r.language, level:r.level, label:r.title })),
+    ...(listening||[]).map(r=>({ type:"Nghe", table:"listening_passages", id:r.id, language:r.language, level:r.level, label:r.title })),
+    ...(dialogues||[]).map(r=>({ type:"Hội thoại", table:"dialogues", id:r.id, language:r.language, level:r.level, label:r.title }))
+  ];
+
+  const reload = ()=>{ showPendingContent(teacherId, teacherEmail); loadParents(); };
+  body.innerHTML = rows.length ? rows.map(r=>{
+    const langCfg = LANGS_CFG[r.language];
+    const langBadge = langCfg ? `${langCfg.flagEmoji} ${r.language.toUpperCase()}` : r.language;
+    return `<tr>
+      <td><span class="badge">${r.type}</span></td>
+      <td>${langBadge}</td>
+      <td><span class="badge">${escHtmlAdmin(r.level)}</span></td>
+      <td>${escHtmlAdmin(r.label)}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-sm" style="color:var(--green);border-color:var(--green-light);" data-approve-pending="${r.table}:${r.id}">Duyệt</button>
+        <button class="btn-sm danger" data-reject-pending="${r.table}:${r.id}">Từ chối</button>
+      </td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="5">Không có đề nào đang chờ duyệt.</td></tr>`;
+  body.querySelectorAll("[data-approve-pending]").forEach(btn=>{
+    const [t, id] = btn.dataset.approvePending.split(":");
+    btn.addEventListener("click", ()=> approveContent(t, Number(id), reload));
+  });
+  body.querySelectorAll("[data-reject-pending]").forEach(btn=>{
+    const [t, id] = btn.dataset.rejectPending.split(":");
+    btn.addEventListener("click", ()=> rejectContent(t, Number(id), reload));
+  });
 }
 
 // ============================================================
@@ -2966,6 +3111,7 @@ async function loadPassages(){
   CURRENT_PASSAGES = data || [];
   await loadCreatorEmails(CURRENT_PASSAGES.map(p=>p.created_by));
   renderPassages();
+  loadPendingSummary("reading_passages", "reading-pending-card", "reading-pending-body", "reading-pending-count", loadPassages);
 }
 
 function renderPassages(){
@@ -3328,6 +3474,7 @@ async function loadLiPassages(){
   CURRENT_LI_PASSAGES = data || [];
   await loadCreatorEmails(CURRENT_LI_PASSAGES.map(p=>p.created_by));
   renderLiPassages();
+  loadPendingSummary("listening_passages", "listening-pending-card", "listening-pending-body", "listening-pending-count", loadLiPassages);
 }
 
 function renderLiPassages(){
@@ -3885,6 +4032,7 @@ async function loadDialogues(){
   CURRENT_DIALOGUES = data || [];
   await loadCreatorEmails(CURRENT_DIALOGUES.map(d=>d.created_by));
   renderDialoguesTable();
+  loadPendingSummary("dialogues", "dialogue-pending-card", "dialogue-pending-body", "dialogue-pending-count", loadDialogues);
 }
 function renderDialoguesTable(){
   document.getElementById("dialogue-table-body").innerHTML = CURRENT_DIALOGUES.map(d=>{
