@@ -552,9 +552,35 @@ document.getElementById("login-form").addEventListener("submit", async (e)=>{
   btn.disabled = true; btn.textContent = "Đang đăng nhập...";
   const email = document.getElementById("login-email").value.trim();
   const password = document.getElementById("login-password").value;
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  let { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+  if(error){
+    // Tự động đăng ký nếu tài khoản chưa tồn tại (bỏ qua điện thoại/địa chỉ).
+    // Supabase CỐ Ý trả cùng 1 thông báo lỗi cho cả "sai mật khẩu" lẫn "chưa có
+    // tài khoản" (chống dò email tồn tại) nên không phân biệt được ở bước
+    // signInWithPassword — thử signUp() thẳng bằng đúng email/mật khẩu vừa
+    // nhập: nếu email THẬT SỰ chưa tồn tại thì tạo tài khoản mới và vào luôn;
+    // nếu email đã tồn tại (tức người dùng chỉ gõ sai mật khẩu), signUp() sẽ
+    // báo lỗi "đã đăng ký" — lúc đó mới báo đúng bản chất "sai email/mật khẩu".
+    const signUpResult = await sb.auth.signUp({ email, password });
+    if(signUpResult.error){
+      btn.disabled = false; btn.textContent = "Đăng nhập";
+      const alreadyExists = /already registered|already exists/i.test(signUpResult.error.message);
+      msg.className = "auth-msg err";
+      msg.textContent = alreadyExists ? "Email hoặc mật khẩu không đúng." : signUpResult.error.message;
+      return;
+    }
+    if(!signUpResult.data.session){
+      // Email confirmation đang BẬT -> chưa có phiên ngay, không tự vào app được
+      btn.disabled = false; btn.textContent = "Đăng nhập";
+      msg.className = "auth-msg ok";
+      msg.textContent = "Đã tạo tài khoản mới! Vui lòng kiểm tra email để xác nhận tài khoản trước khi đăng nhập.";
+      return;
+    }
+    data = signUpResult.data;
+  }
+
   btn.disabled = false; btn.textContent = "Đăng nhập";
-  if(error){ msg.className = "auth-msg err"; msg.textContent = error.message; return; }
   if(await isAdminUser(data.user.id)){ window.location.href = "QuanLyTuVung.html"; return; }
   if(sessionStorage.getItem("viewAsStudent") !== "1"){
     if(await isParentUser(data.user.id)){ window.location.href = "PhuHuynh.html"; return; }
