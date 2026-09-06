@@ -144,7 +144,7 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
   </header>
   <div class="teacher-nav">
     <button type="button" class="teacher-nav-btn active" data-nav="students">📊 Học sinh phụ trách</button>
-    <button type="button" class="teacher-nav-btn" data-nav="content">📝 Đóng góp từ vựng</button>
+    <button type="button" class="teacher-nav-btn" data-nav="content">📝 Đóng góp nội dung</button>
   </div>
 
   <div id="students-tab">
@@ -183,6 +183,14 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
   </div>
 
   <div id="content-tab" style="display:none;">
+    <div class="teacher-nav">
+      <button type="button" class="teacher-nav-btn active" data-content-nav="vocab">Từ vựng</button>
+      <button type="button" class="teacher-nav-btn" data-content-nav="reading">Đọc</button>
+      <button type="button" class="teacher-nav-btn" data-content-nav="listening">Nghe</button>
+      <button type="button" class="teacher-nav-btn" data-content-nav="dialogue">Hội thoại</button>
+    </div>
+
+    <div id="content-vocab-pane">
     <div class="card">
       <h2 style="font-size:14px;">Thêm từ vựng / câu mẫu mới</h2>
       <div class="sub">Nội dung gửi lên sẽ ở trạng thái "Chờ duyệt" — chỉ hiện cho học sinh sau khi quản trị viên duyệt.</div>
@@ -196,7 +204,8 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
         <div class="field-row"><label>Phiên âm (IPA/Pinyin..., tuỳ chọn)</label><input data-f="phonetic"></div>
         <div class="field-row"><label>Nghĩa tiếng Việt</label><input data-f="vi_meaning" required></div>
         <div class="field-row"><label>Nghĩa tiếng Anh (tuỳ chọn)</label><input data-f="en_meaning"></div>
-        <div class="field-row"><label>Chủ đề (tuỳ chọn)</label><input data-f="category"></div>
+        <div class="field-row"><label>Chủ đề (tuỳ chọn — chọn có sẵn hoặc gõ chủ đề mới)</label><input data-f="category" list="vocab-category-list"></div>
+        <datalist id="vocab-category-list"></datalist>
         <button class="btn btn-primary" type="submit" style="width:auto;padding:10px 22px;margin-top:0;">Gửi duyệt</button>
         <div class="login-ok" id="vocab-submit-ok" style="display:none;margin-top:12px;"></div>
         <div class="login-error" id="vocab-submit-error" style="display:none;margin-top:12px;"></div>
@@ -209,6 +218,166 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
           <thead><tr><th>Ngôn ngữ</th><th>Trình độ</th><th>Từ / Câu</th><th>Nghĩa VI</th><th>Trạng thái</th><th></th></tr></thead>
           <tbody id="my-vocab-body"><tr><td colspan="6">Đang tải…</td></tr></tbody>
         </table>
+      </div>
+    </div>
+    </div>
+
+    <div id="content-reading-pane" style="display:none;">
+      <div class="card">
+        <h2 style="font-size:14px;">Thêm đoạn văn Đọc mới</h2>
+        <div class="sub">Sau khi lưu đoạn văn (trạng thái "Chờ duyệt"), bấm "Câu hỏi" trong danh sách bên dưới để thêm câu hỏi đọc hiểu.</div>
+        <form id="reading-passage-form">
+          <div class="field-row"><label>Ngôn ngữ</label><select data-f="language" id="reading-passage-language"></select></div>
+          <div class="field-row"><label>Trình độ</label><select data-f="level" id="reading-passage-level"></select></div>
+          <div class="field-row"><label>Tiêu đề</label><input data-f="title" required></div>
+          <div class="field-row"><label>Nội dung đoạn văn</label><textarea data-f="passage_text" style="min-height:140px;" required></textarea></div>
+          <button class="btn btn-primary" type="submit" style="width:auto;padding:10px 22px;margin-top:0;">Gửi duyệt</button>
+          <div class="login-ok" id="reading-passage-ok" style="display:none;margin-top:12px;"></div>
+          <div class="login-error" id="reading-passage-error" style="display:none;margin-top:12px;"></div>
+        </form>
+      </div>
+      <div class="card">
+        <h2 style="font-size:14px;">Đoạn văn Đọc tôi đã gửi</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ngôn ngữ</th><th>Trình độ</th><th>Tiêu đề</th><th>Số câu hỏi</th><th>Trạng thái</th><th></th></tr></thead>
+            <tbody id="reading-my-passages-body"><tr><td colspan="6">Đang tải…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card" id="reading-questions-panel" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+          <h2 style="margin:0;font-size:14px;">Câu hỏi cho: <span id="reading-questions-title"></span></h2>
+          <div style="display:flex;gap:8px;">
+            <button type="button" class="btn-sm" id="btn-add-reading-question">+ Thêm câu hỏi</button>
+            <button type="button" class="btn-sm" id="btn-close-reading-questions">Đóng</button>
+          </div>
+        </div>
+        <div id="reading-question-form-wrap" style="display:none;margin-bottom:14px;">
+          <form id="reading-question-form">
+            <div class="field-row"><label>Loại câu hỏi</label>
+              <select data-f="type"><option value="multiple_choice">Trắc nghiệm</option><option value="fill_blank">Điền vào chỗ trống</option></select>
+            </div>
+            <div class="field-row"><label>Câu hỏi</label><input data-f="question" required></div>
+            <div class="field-row"><label>Các lựa chọn (cách nhau bởi dấu phẩy — chỉ cần cho trắc nghiệm)</label><input data-f="options"></div>
+            <div class="field-row"><label>Đáp án đúng</label><input data-f="correct_answer" required></div>
+            <div class="field-row"><label>Giải thích (không bắt buộc)</label><input data-f="explanation"></div>
+            <div class="field-row"><label>Thứ tự</label><input data-f="order_index" type="number" value="1"></div>
+            <button class="btn btn-primary" type="submit" style="width:auto;padding:8px 18px;margin-top:0;">Lưu câu hỏi</button>
+            <button type="button" class="btn-sm" id="btn-cancel-reading-question">Huỷ</button>
+          </form>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Loại</th><th>Câu hỏi</th><th>Đáp án đúng</th><th></th></tr></thead>
+            <tbody id="reading-questions-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="content-listening-pane" style="display:none;">
+      <div class="card">
+        <h2 style="font-size:14px;">Thêm đoạn văn Nghe mới</h2>
+        <div class="sub">Nội dung đoạn văn CHỈ dùng để đọc lên (TTS), không hiện chữ cho học sinh. Sau khi lưu (trạng thái "Chờ duyệt"), bấm "Câu hỏi" để thêm câu hỏi nghe hiểu.</div>
+        <form id="listening-passage-form">
+          <div class="field-row"><label>Ngôn ngữ</label><select data-f="language" id="listening-passage-language"></select></div>
+          <div class="field-row"><label>Trình độ</label><select data-f="level" id="listening-passage-level"></select></div>
+          <div class="field-row"><label>Tiêu đề</label><input data-f="title" required></div>
+          <div class="field-row"><label>Nội dung đoạn văn</label><textarea data-f="passage_text" style="min-height:140px;" required></textarea></div>
+          <button class="btn btn-primary" type="submit" style="width:auto;padding:10px 22px;margin-top:0;">Gửi duyệt</button>
+          <div class="login-ok" id="listening-passage-ok" style="display:none;margin-top:12px;"></div>
+          <div class="login-error" id="listening-passage-error" style="display:none;margin-top:12px;"></div>
+        </form>
+      </div>
+      <div class="card">
+        <h2 style="font-size:14px;">Đoạn văn Nghe tôi đã gửi</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ngôn ngữ</th><th>Trình độ</th><th>Tiêu đề</th><th>Số câu hỏi</th><th>Trạng thái</th><th></th></tr></thead>
+            <tbody id="listening-my-passages-body"><tr><td colspan="6">Đang tải…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card" id="listening-questions-panel" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+          <h2 style="margin:0;font-size:14px;">Câu hỏi cho: <span id="listening-questions-title"></span></h2>
+          <div style="display:flex;gap:8px;">
+            <button type="button" class="btn-sm" id="btn-add-listening-question">+ Thêm câu hỏi</button>
+            <button type="button" class="btn-sm" id="btn-close-listening-questions">Đóng</button>
+          </div>
+        </div>
+        <div id="listening-question-form-wrap" style="display:none;margin-bottom:14px;">
+          <form id="listening-question-form">
+            <div class="field-row"><label>Loại câu hỏi</label>
+              <select data-f="type"><option value="multiple_choice">Trắc nghiệm</option><option value="fill_blank">Điền vào chỗ trống</option></select>
+            </div>
+            <div class="field-row"><label>Câu hỏi</label><input data-f="question" required></div>
+            <div class="field-row"><label>Các lựa chọn (cách nhau bởi dấu phẩy — chỉ cần cho trắc nghiệm)</label><input data-f="options"></div>
+            <div class="field-row"><label>Đáp án đúng</label><input data-f="correct_answer" required></div>
+            <div class="field-row"><label>Giải thích (không bắt buộc)</label><input data-f="explanation"></div>
+            <div class="field-row"><label>Thứ tự</label><input data-f="order_index" type="number" value="1"></div>
+            <button class="btn btn-primary" type="submit" style="width:auto;padding:8px 18px;margin-top:0;">Lưu câu hỏi</button>
+            <button type="button" class="btn-sm" id="btn-cancel-listening-question">Huỷ</button>
+          </form>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Loại</th><th>Câu hỏi</th><th>Đáp án đúng</th><th></th></tr></thead>
+            <tbody id="listening-questions-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="content-dialogue-pane" style="display:none;">
+      <div class="card">
+        <h2 style="font-size:14px;">Thêm hội thoại mới</h2>
+        <div class="sub">Sau khi lưu (trạng thái "Chờ duyệt"), bấm "Câu thoại" trong danh sách bên dưới để thêm từng câu thoại.</div>
+        <form id="dialogue-form">
+          <div class="field-row"><label>Ngôn ngữ</label><select data-f="language" id="dialogue-language"></select></div>
+          <div class="field-row"><label>Trình độ</label><select data-f="level" id="dialogue-level"></select></div>
+          <div class="field-row"><label>Tiêu đề</label><input data-f="title" required></div>
+          <div class="field-row"><label>Bối cảnh (tuỳ chọn)</label><input data-f="scenario"></div>
+          <div class="field-row"><label>Tên vai A</label><input data-f="role_a_name" value="A"></div>
+          <div class="field-row"><label>Tên vai B</label><input data-f="role_b_name" value="B"></div>
+          <button class="btn btn-primary" type="submit" style="width:auto;padding:10px 22px;margin-top:0;">Gửi duyệt</button>
+          <div class="login-ok" id="dialogue-ok" style="display:none;margin-top:12px;"></div>
+          <div class="login-error" id="dialogue-error" style="display:none;margin-top:12px;"></div>
+        </form>
+      </div>
+      <div class="card">
+        <h2 style="font-size:14px;">Hội thoại tôi đã gửi</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ngôn ngữ</th><th>Trình độ</th><th>Tiêu đề</th><th>Số câu thoại</th><th>Trạng thái</th><th></th></tr></thead>
+            <tbody id="dialogue-my-list-body"><tr><td colspan="6">Đang tải…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card" id="dialogue-lines-panel" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+          <h2 style="margin:0;font-size:14px;">Câu thoại cho: <span id="dialogue-lines-title"></span></h2>
+          <div style="display:flex;gap:8px;">
+            <button type="button" class="btn-sm" id="btn-add-dialogue-line">+ Thêm câu thoại</button>
+            <button type="button" class="btn-sm" id="btn-close-dialogue-lines">Đóng</button>
+          </div>
+        </div>
+        <div id="dialogue-line-form-wrap" style="display:none;margin-bottom:14px;">
+          <form id="dialogue-line-form">
+            <div class="field-row"><label>Vai</label><select data-f="speaker" id="dialogue-line-speaker"><option value="A">A</option><option value="B">B</option></select></div>
+            <div class="field-row"><label>Lời thoại</label><input data-f="line_text" required></div>
+            <div class="field-row"><label>Thứ tự</label><input data-f="order_index" type="number" value="1"></div>
+            <button class="btn btn-primary" type="submit" style="width:auto;padding:8px 18px;margin-top:0;">Lưu câu thoại</button>
+            <button type="button" class="btn-sm" id="btn-cancel-dialogue-line">Huỷ</button>
+          </form>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Vai</th><th>Lời thoại</th><th></th></tr></thead>
+            <tbody id="dialogue-lines-body"></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -350,6 +519,9 @@ async function afterLogin(){
   document.getElementById("only-quiz-filter").addEventListener("change", loadStudentDetail);
   loadOverview(user.id);
   initVocabForm();
+  readingManager.initForm();
+  listeningManager.initForm();
+  initDialogueForm();
 }
 
 (async function(){
@@ -746,14 +918,32 @@ document.getElementById("dashboard-area").addEventListener("click", (e)=>{
 // khu vực (danh sách học sinh / đóng góp từ vựng) bằng nav đơn giản, không
 // cần bộ máy tab như QuanLyTuVung.html vì trang này chỉ có 2 khu vực.
 // ============================================================
-document.querySelectorAll(".teacher-nav-btn").forEach(btn=>{
+document.querySelectorAll(".teacher-nav-btn[data-nav]").forEach(btn=>{
   btn.addEventListener("click", ()=>{
-    document.querySelectorAll(".teacher-nav-btn").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".teacher-nav-btn[data-nav]").forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
     const nav = btn.dataset.nav;
     document.getElementById("students-tab").style.display = nav === "students" ? "block" : "none";
     document.getElementById("content-tab").style.display = nav === "content" ? "block" : "none";
     if(nav === "content") loadMyVocab();
+  });
+});
+
+// Sub-nav bên trong "📝 Đóng góp nội dung" — 4 loại nội dung, mỗi loại 1 pane
+// riêng (ẩn/hiện, không phá huỷ DOM). Tải dữ liệu MỚI mỗi lần chuyển sang 1
+// loại (không cache) vì danh sách hiếm khi lớn tới mức cần tối ưu thêm.
+document.querySelectorAll(".teacher-nav-btn[data-content-nav]").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".teacher-nav-btn[data-content-nav]").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    const type = btn.dataset.contentNav;
+    ["vocab","reading","listening","dialogue"].forEach(t=>{
+      document.getElementById(`content-${t}-pane`).style.display = t === type ? "block" : "none";
+    });
+    if(type === "vocab") loadMyVocab();
+    if(type === "reading") readingManager.loadMyPassages();
+    if(type === "listening") listeningManager.loadMyPassages();
+    if(type === "dialogue") loadMyDialogues();
   });
 });
 
@@ -769,6 +959,13 @@ async function initVocabForm(){
   }
   langSel.addEventListener("change", refreshLevels);
   refreshLevels();
+
+  // Gợi ý chủ đề đã có sẵn (chỉ những gì RLS cho phép giáo viên thấy — nội
+  // dung đã duyệt + nội dung "pending" của chính mình) để khỏi gõ trùng/lệch
+  // chính tả với các chủ đề admin/giáo viên khác đã dùng.
+  const { data: catRows } = await sb.from("vocab_items").select("category").not("category", "is", null);
+  const categories = [...new Set((catRows||[]).map(r=>r.category).filter(Boolean))].sort();
+  document.getElementById("vocab-category-list").innerHTML = categories.map(c=>`<option value="${escHtml(c)}">`).join("");
 }
 
 document.getElementById("vocab-submit-form").addEventListener("submit", async (e)=>{
@@ -821,6 +1018,289 @@ async function loadMyVocab(){
     });
   });
 }
+
+// ============================================================
+// Mục 13.42 — mở rộng "giáo viên gửi, admin duyệt" (mục 13.41, vocab_items)
+// sang Đọc/Nghe (migration 46). Đoạn văn Đọc và Nghe CÙNG cấu trúc (ngôn ngữ/
+// trình độ/tiêu đề/nội dung + câu hỏi type/question/options/correct_answer/
+// explanation/order_index) nên gộp chung 1 factory, dùng lại 2 lần thay vì
+// chép JS gần như y hệt 2 lần trong CÙNG 1 file (khác với quy ước "mỗi trang 1
+// file độc lập" — đây là trùng lặp TRONG 1 file, không phải giữa các trang).
+// Hội thoại có cấu trúc câu con khác hẳn (vai A/B, không có "loại câu hỏi")
+// nên viết riêng, không ép vào chung factory này.
+// ============================================================
+function initPassageContentManager(cfg){
+  const { prefix, parentTable, childTable, parentLabel } = cfg;
+  let myPassages = [];
+  let currentPassageId = null;
+  let currentCanEdit = false;
+
+  async function initForm(){
+    await langsConfigPromise;
+    const langSel = document.getElementById(`${prefix}-passage-language`);
+    const levelSel = document.getElementById(`${prefix}-passage-level`);
+    const langCodes = Object.keys(LANGS);
+    langSel.innerHTML = langCodes.map(code=>`<option value="${code}">${escHtml(LANGS[code].adminLabel || langLabel(code))}</option>`).join("");
+    function refreshLevels(){
+      const levels = (LANGS[langSel.value] && LANGS[langSel.value].levels) || [];
+      levelSel.innerHTML = levels.map(lv=>`<option value="${lv.code}">${escHtml(lv.label)}</option>`).join("");
+    }
+    langSel.addEventListener("change", refreshLevels);
+    refreshLevels();
+  }
+
+  document.getElementById(`${prefix}-passage-form`).addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    const okEl = document.getElementById(`${prefix}-passage-ok`);
+    const errEl = document.getElementById(`${prefix}-passage-error`);
+    okEl.style.display = "none"; errEl.style.display = "none";
+    const form = e.target;
+    const payload = {};
+    form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+    const { error } = await sb.from(parentTable).insert(payload);
+    if(error){ errEl.textContent = "Lỗi: " + error.message; errEl.style.display = "block"; return; }
+    okEl.textContent = "Đã gửi! Nội dung sẽ hiện cho học sinh sau khi quản trị viên duyệt.";
+    okEl.style.display = "block";
+    form.reset();
+    document.getElementById(`${prefix}-passage-language`).dispatchEvent(new Event("change"));
+    loadMyPassages();
+  });
+
+  async function loadMyPassages(){
+    const body = document.getElementById(`${prefix}-my-passages-body`);
+    body.innerHTML = `<tr><td colspan="6">Đang tải…</td></tr>`;
+    const { data, error } = await sb.from(parentTable).select(`*, ${childTable}(count)`).eq("created_by", CURRENT_TEACHER_ID).order("id", { ascending: false });
+    if(error){ body.innerHTML = `<tr><td colspan="6">Lỗi: ${escHtml(error.message)}</td></tr>`; return; }
+    myPassages = data || [];
+    if(!myPassages.length){ body.innerHTML = `<tr><td colspan="6">Bạn chưa gửi ${parentLabel} nào.</td></tr>`; return; }
+    body.innerHTML = myPassages.map(p=>{
+      const qCount = (p[childTable] && p[childTable][0] && p[childTable][0].count) || 0;
+      const statusHtml = p.content_status === "pending"
+        ? `<span class="btn-sm" style="background:#fdf1e6;color:#b8722a;border:none;cursor:default;">🕒 Chờ duyệt</span>`
+        : `<span class="btn-sm" style="background:var(--green-light);color:var(--green);border:none;cursor:default;">✅ Đã duyệt</span>`;
+      const deleteBtnHtml = p.content_status === "pending"
+        ? `<button class="btn-sm" style="color:var(--red);border-color:var(--red-light);" data-delete-passage="${p.id}">Xoá</button>`
+        : "";
+      return `<tr>
+        <td>${escHtml(langLabel(p.language))}</td>
+        <td>${escHtml(p.level)}</td>
+        <td>${escHtml(p.title)}</td>
+        <td>${qCount}</td>
+        <td>${statusHtml}</td>
+        <td style="white-space:nowrap;"><button class="btn-sm" data-manage-questions="${p.id}">Câu hỏi</button> ${deleteBtnHtml}</td>
+      </tr>`;
+    }).join("");
+    body.querySelectorAll("[data-manage-questions]").forEach(btn=>{
+      btn.addEventListener("click", ()=> openQuestionsPanel(Number(btn.dataset.manageQuestions)));
+    });
+    body.querySelectorAll("[data-delete-passage]").forEach(btn=>{
+      btn.addEventListener("click", async ()=>{
+        if(!confirm(`Xoá ${parentLabel} này? (các câu hỏi gắn theo cũng bị xoá)`)) return;
+        const { error } = await sb.from(parentTable).delete().eq("id", btn.dataset.deletePassage);
+        if(error){ alert("Lỗi: " + error.message); return; }
+        loadMyPassages();
+      });
+    });
+  }
+
+  function openQuestionsPanel(passageId){
+    currentPassageId = passageId;
+    const passage = myPassages.find(p=>p.id===passageId);
+    currentCanEdit = !!(passage && passage.content_status === "pending");
+    document.getElementById(`${prefix}-questions-panel`).style.display = "block";
+    document.getElementById(`${prefix}-questions-title`).textContent = passage ? passage.title : "";
+    document.getElementById(`${prefix}-question-form-wrap`).style.display = "none";
+    document.getElementById(`btn-add-${prefix}-question`).style.display = currentCanEdit ? "inline-block" : "none";
+    loadQuestions();
+  }
+
+  async function loadQuestions(){
+    const body = document.getElementById(`${prefix}-questions-body`);
+    body.innerHTML = `<tr><td colspan="5">Đang tải…</td></tr>`;
+    const { data, error } = await sb.from(childTable).select("*").eq("passage_id", currentPassageId).order("order_index");
+    if(error){ body.innerHTML = `<tr><td colspan="5">Lỗi: ${escHtml(error.message)}</td></tr>`; return; }
+    const rows = data || [];
+    body.innerHTML = rows.length ? rows.map((q,idx)=>`
+      <tr>
+        <td>${idx+1}</td>
+        <td>${q.type==='multiple_choice'?'Trắc nghiệm':'Điền từ'}</td>
+        <td>${escHtml(q.question)}</td>
+        <td>${escHtml(q.correct_answer)}</td>
+        <td>${currentCanEdit ? `<button class="btn-sm danger" data-delete-question="${q.id}">Xoá</button>` : ""}</td>
+      </tr>`).join("") : `<tr><td colspan="5">Chưa có câu hỏi nào.</td></tr>`;
+    body.querySelectorAll("[data-delete-question]").forEach(btn=>{
+      btn.addEventListener("click", async ()=>{
+        if(!confirm("Xoá câu hỏi này?")) return;
+        const { error } = await sb.from(childTable).delete().eq("id", btn.dataset.deleteQuestion);
+        if(error){ alert("Lỗi: " + error.message); return; }
+        loadQuestions();
+      });
+    });
+  }
+
+  document.getElementById(`btn-add-${prefix}-question`).addEventListener("click", ()=>{
+    document.getElementById(`${prefix}-question-form-wrap`).style.display = "block";
+  });
+  document.getElementById(`btn-cancel-${prefix}-question`).addEventListener("click", ()=>{
+    document.getElementById(`${prefix}-question-form-wrap`).style.display = "none";
+  });
+  document.getElementById(`btn-close-${prefix}-questions`).addEventListener("click", ()=>{
+    document.getElementById(`${prefix}-questions-panel`).style.display = "none";
+    currentPassageId = null;
+  });
+  document.getElementById(`${prefix}-question-form`).addEventListener("submit", async (e)=>{
+    e.preventDefault();
+    if(!currentPassageId) return;
+    const form = e.target;
+    const payload = { passage_id: currentPassageId };
+    form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+    const { error } = await sb.from(childTable).insert(payload);
+    if(error){ alert("Lỗi: " + error.message); return; }
+    form.reset();
+    document.getElementById(`${prefix}-question-form-wrap`).style.display = "none";
+    loadQuestions();
+    loadMyPassages();
+  });
+
+  return { initForm, loadMyPassages };
+}
+
+const readingManager = initPassageContentManager({ prefix: "reading", parentTable: "reading_passages", childTable: "reading_questions", parentLabel: "đoạn văn" });
+const listeningManager = initPassageContentManager({ prefix: "listening", parentTable: "listening_passages", childTable: "listening_questions", parentLabel: "đoạn văn nghe" });
+
+// ---------- Hội thoại: cấu trúc câu con khác (vai A/B), viết riêng ----------
+let myDialogues = [];
+let currentDialogueId = null;
+let currentDialogueCanEdit = false;
+
+async function initDialogueForm(){
+  await langsConfigPromise;
+  const langSel = document.getElementById("dialogue-language");
+  const levelSel = document.getElementById("dialogue-level");
+  const langCodes = Object.keys(LANGS);
+  langSel.innerHTML = langCodes.map(code=>`<option value="${code}">${escHtml(LANGS[code].adminLabel || langLabel(code))}</option>`).join("");
+  function refreshLevels(){
+    const levels = (LANGS[langSel.value] && LANGS[langSel.value].levels) || [];
+    levelSel.innerHTML = levels.map(lv=>`<option value="${lv.code}">${escHtml(lv.label)}</option>`).join("");
+  }
+  langSel.addEventListener("change", refreshLevels);
+  refreshLevels();
+}
+
+document.getElementById("dialogue-form").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const okEl = document.getElementById("dialogue-ok");
+  const errEl = document.getElementById("dialogue-error");
+  okEl.style.display = "none"; errEl.style.display = "none";
+  const form = e.target;
+  const payload = {};
+  form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+  const { error } = await sb.from("dialogues").insert(payload);
+  if(error){ errEl.textContent = "Lỗi: " + error.message; errEl.style.display = "block"; return; }
+  okEl.textContent = "Đã gửi! Nội dung sẽ hiện cho học sinh sau khi quản trị viên duyệt.";
+  okEl.style.display = "block";
+  form.reset();
+  document.getElementById("dialogue-language").dispatchEvent(new Event("change"));
+  loadMyDialogues();
+});
+
+async function loadMyDialogues(){
+  const body = document.getElementById("dialogue-my-list-body");
+  body.innerHTML = `<tr><td colspan="6">Đang tải…</td></tr>`;
+  const { data, error } = await sb.from("dialogues").select("*, dialogue_lines(count)").eq("created_by", CURRENT_TEACHER_ID).order("id", { ascending: false });
+  if(error){ body.innerHTML = `<tr><td colspan="6">Lỗi: ${escHtml(error.message)}</td></tr>`; return; }
+  myDialogues = data || [];
+  if(!myDialogues.length){ body.innerHTML = `<tr><td colspan="6">Bạn chưa gửi hội thoại nào.</td></tr>`; return; }
+  body.innerHTML = myDialogues.map(d=>{
+    const lCount = (d.dialogue_lines && d.dialogue_lines[0] && d.dialogue_lines[0].count) || 0;
+    const statusHtml = d.content_status === "pending"
+      ? `<span class="btn-sm" style="background:#fdf1e6;color:#b8722a;border:none;cursor:default;">🕒 Chờ duyệt</span>`
+      : `<span class="btn-sm" style="background:var(--green-light);color:var(--green);border:none;cursor:default;">✅ Đã duyệt</span>`;
+    const deleteBtnHtml = d.content_status === "pending"
+      ? `<button class="btn-sm" style="color:var(--red);border-color:var(--red-light);" data-delete-dialogue="${d.id}">Xoá</button>`
+      : "";
+    return `<tr>
+      <td>${escHtml(langLabel(d.language))}</td>
+      <td>${escHtml(d.level)}</td>
+      <td>${escHtml(d.title)}</td>
+      <td>${lCount}</td>
+      <td>${statusHtml}</td>
+      <td style="white-space:nowrap;"><button class="btn-sm" data-manage-lines="${d.id}">Câu thoại</button> ${deleteBtnHtml}</td>
+    </tr>`;
+  }).join("");
+  body.querySelectorAll("[data-manage-lines]").forEach(btn=>{
+    btn.addEventListener("click", ()=> openLinesPanel(Number(btn.dataset.manageLines)));
+  });
+  body.querySelectorAll("[data-delete-dialogue]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      if(!confirm("Xoá hội thoại này? (các câu thoại gắn theo cũng bị xoá)")) return;
+      const { error } = await sb.from("dialogues").delete().eq("id", btn.dataset.deleteDialogue);
+      if(error){ alert("Lỗi: " + error.message); return; }
+      loadMyDialogues();
+    });
+  });
+}
+
+function openLinesPanel(dialogueId){
+  currentDialogueId = dialogueId;
+  const dlg = myDialogues.find(d=>d.id===dialogueId);
+  currentDialogueCanEdit = !!(dlg && dlg.content_status === "pending");
+  document.getElementById("dialogue-lines-panel").style.display = "block";
+  document.getElementById("dialogue-lines-title").textContent = dlg ? dlg.title : "";
+  document.getElementById("dialogue-line-form-wrap").style.display = "none";
+  document.getElementById("btn-add-dialogue-line").style.display = currentDialogueCanEdit ? "inline-block" : "none";
+  const speakerSel = document.getElementById("dialogue-line-speaker");
+  if(dlg) speakerSel.innerHTML = `<option value="A">A — ${escHtml(dlg.role_a_name)}</option><option value="B">B — ${escHtml(dlg.role_b_name)}</option>`;
+  loadLines();
+}
+
+async function loadLines(){
+  const body = document.getElementById("dialogue-lines-body");
+  body.innerHTML = `<tr><td colspan="4">Đang tải…</td></tr>`;
+  const { data, error } = await sb.from("dialogue_lines").select("*").eq("dialogue_id", currentDialogueId).order("order_index");
+  if(error){ body.innerHTML = `<tr><td colspan="4">Lỗi: ${escHtml(error.message)}</td></tr>`; return; }
+  const rows = data || [];
+  const dlg = myDialogues.find(d=>d.id===currentDialogueId);
+  body.innerHTML = rows.length ? rows.map((l,idx)=>`
+    <tr>
+      <td>${idx+1}</td>
+      <td>${escHtml(l.speaker)} — ${escHtml(dlg ? (l.speaker==='A'?dlg.role_a_name:dlg.role_b_name) : '')}</td>
+      <td>${escHtml(l.line_text)}</td>
+      <td>${currentDialogueCanEdit ? `<button class="btn-sm danger" data-delete-line="${l.id}">Xoá</button>` : ""}</td>
+    </tr>`).join("") : `<tr><td colspan="4">Chưa có câu thoại nào.</td></tr>`;
+  body.querySelectorAll("[data-delete-line]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      if(!confirm("Xoá câu thoại này?")) return;
+      const { error } = await sb.from("dialogue_lines").delete().eq("id", btn.dataset.deleteLine);
+      if(error){ alert("Lỗi: " + error.message); return; }
+      loadLines();
+    });
+  });
+}
+
+document.getElementById("btn-add-dialogue-line").addEventListener("click", ()=>{
+  document.getElementById("dialogue-line-form-wrap").style.display = "block";
+});
+document.getElementById("btn-cancel-dialogue-line").addEventListener("click", ()=>{
+  document.getElementById("dialogue-line-form-wrap").style.display = "none";
+});
+document.getElementById("btn-close-dialogue-lines").addEventListener("click", ()=>{
+  document.getElementById("dialogue-lines-panel").style.display = "none";
+  currentDialogueId = null;
+});
+document.getElementById("dialogue-line-form").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  if(!currentDialogueId) return;
+  const form = e.target;
+  const payload = { dialogue_id: currentDialogueId };
+  form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+  const { error } = await sb.from("dialogue_lines").insert(payload);
+  if(error){ alert("Lỗi: " + error.message); return; }
+  form.reset();
+  document.getElementById("dialogue-line-form-wrap").style.display = "none";
+  loadLines();
+  loadMyDialogues();
+});
 </script>
 </body>
 </html>

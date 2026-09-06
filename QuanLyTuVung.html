@@ -302,6 +302,7 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
           <tbody id="table-body"></tbody>
         </table>
       </div>
+      <datalist id="vocab-category-list"></datalist>
     </div>
     </div>
 
@@ -375,7 +376,7 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Tiêu đề</th><th>Số câu hỏi</th><th></th></tr></thead>
+            <thead><tr><th>Tiêu đề</th><th>Số câu hỏi</th><th>Trạng thái</th><th></th></tr></thead>
             <tbody id="passage-table-body"></tbody>
           </table>
         </div>
@@ -429,7 +430,7 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Tiêu đề</th><th>Số câu hỏi</th><th></th></tr></thead>
+            <thead><tr><th>Tiêu đề</th><th>Số câu hỏi</th><th>Trạng thái</th><th></th></tr></thead>
             <tbody id="lipassage-table-body"></tbody>
           </table>
         </div>
@@ -480,7 +481,7 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Tiêu đề</th><th>Vai A</th><th>Vai B</th><th>Số câu thoại</th><th></th></tr></thead>
+            <thead><tr><th>Tiêu đề</th><th>Vai A</th><th>Vai B</th><th>Số câu thoại</th><th>Trạng thái</th><th></th></tr></thead>
             <tbody id="dialogue-table-body"></tbody>
           </table>
         </div>
@@ -935,6 +936,8 @@ async function loadData(){
   }
   document.getElementById("loading").style.display = "none";
   document.getElementById("app").style.display = "block";
+  const categories = [...new Set(ITEMS.map(r=>r.category).filter(Boolean))].sort();
+  document.getElementById("vocab-category-list").innerHTML = categories.map(c=>`<option value="${c.replace(/"/g,'&quot;')}">`).join("");
   renderTable();
 }
 
@@ -1010,7 +1013,7 @@ function fieldForm(record){
     <div class="field-row"><label>Phiên âm (IPA/Pinyin...)</label><input data-f="phonetic" value="${r.phonetic||''}"></div>
     <div class="field-row"><label>Nghĩa tiếng Việt</label><input data-f="vi_meaning" value="${r.vi_meaning||''}"></div>
     <div class="field-row"><label>Nghĩa tiếng Anh (ghi chú thêm, không bắt buộc)</label><input data-f="en_meaning" value="${r.en_meaning||''}"></div>
-    <div class="field-row"><label>Chủ đề (tuỳ chọn)</label><input data-f="category" value="${r.category||''}"></div>
+    <div class="field-row"><label>Chủ đề (tuỳ chọn — chọn có sẵn hoặc gõ chủ đề mới)</label><input data-f="category" list="vocab-category-list" value="${r.category||''}"></div>
   `;
 }
 
@@ -1049,6 +1052,40 @@ window.rejectVocab = async function(id){
   const { error } = await sb.from("vocab_items").delete().eq("id", id);
   if(error){ alert("Lỗi: " + error.message); return; }
   await loadData();
+};
+
+// ---------- Duyệt/Từ chối dùng chung cho Đọc/Nghe/Hội thoại (mục 13.42) ----------
+// Cùng cơ chế "content_status" như vocab_items (migration 46) nhưng chỉ áp dụng ở
+// bảng CHA (reading_passages/listening_passages/dialogues) — bảng con (câu hỏi/câu
+// thoại) không có trạng thái riêng, được ẩn/hiện theo ĐÚNG trạng thái của bảng cha
+// qua RLS (join ngược lại passage_id/dialogue_id), nên chỉ cần Duyệt/Từ chối ở đây.
+let CONTENT_CREATORS = {}; // cache chung uuid giáo viên -> email, dùng lại giữa 3 loại nội dung
+async function loadCreatorEmails(ids){
+  const need = [...new Set(ids.filter(Boolean))].filter(id=>!(id in CONTENT_CREATORS));
+  if(!need.length) return;
+  const { data } = await sb.from("profiles").select("id,email").in("id", need);
+  (data||[]).forEach(c=>{ CONTENT_CREATORS[c.id] = c.email; });
+}
+function contentStatusHtml(record){
+  if(record.content_status !== "pending") return `<span class="badge" style="background:var(--green-light);color:var(--green);">✅ Đã duyệt</span>`;
+  const creator = record.created_by ? (CONTENT_CREATORS[record.created_by] || "?") : "?";
+  return `<span class="badge" style="background:var(--amber-light);color:#b8722a;">🕒 Chờ duyệt</span><div style="font-size:11px;color:var(--text-2);margin-top:3px;">bởi ${creator}</div>`;
+}
+function contentApproveButtonsHtml(record, table, reloadFnName){
+  if(record.content_status !== "pending") return "";
+  return `<button class="btn-sm" style="color:var(--green);border-color:var(--green-light);" onclick="approveContent('${table}', ${record.id}, ${reloadFnName})">Duyệt</button>
+    <button class="btn-sm danger" onclick="rejectContent('${table}', ${record.id}, ${reloadFnName})">Từ chối</button>`;
+}
+window.approveContent = async function(table, id, reloadFn){
+  const { error } = await sb.from(table).update({ content_status: "approved" }).eq("id", id);
+  if(error){ alert("Lỗi: " + error.message); return; }
+  await reloadFn();
+};
+window.rejectContent = async function(table, id, reloadFn){
+  if(!confirm("Từ chối và xoá nội dung này? (các câu hỏi/câu thoại gắn theo cũng sẽ bị xoá)")) return;
+  const { error } = await sb.from(table).delete().eq("id", id);
+  if(error){ alert("Lỗi: " + error.message); return; }
+  await reloadFn();
 };
 
 function wireItemForm(record){
@@ -2927,6 +2964,7 @@ async function loadPassages(){
     .order("order_index");
   if(error){ alert("Lỗi khi tải đoạn văn: " + error.message); return; }
   CURRENT_PASSAGES = data || [];
+  await loadCreatorEmails(CURRENT_PASSAGES.map(p=>p.created_by));
   renderPassages();
 }
 
@@ -2937,7 +2975,9 @@ function renderPassages(){
     <tr>
       <td>${escHtmlAdmin(p.title)}</td>
       <td>${qCount}</td>
+      <td>${contentStatusHtml(p)}</td>
       <td style="white-space:nowrap;">
+        ${contentApproveButtonsHtml(p, "reading_passages", "loadPassages")}
         <button class="btn-sm" onclick="selectPassage(${p.id})">Câu hỏi</button>
         <button class="btn-sm" onclick="openEditPassage(${p.id})">Sửa</button>
         <button class="btn-sm danger" onclick="deletePassage(${p.id})">Xoá</button>
@@ -3286,6 +3326,7 @@ async function loadLiPassages(){
     .order("order_index");
   if(error){ alert("Lỗi khi tải đoạn văn nghe: " + error.message); return; }
   CURRENT_LI_PASSAGES = data || [];
+  await loadCreatorEmails(CURRENT_LI_PASSAGES.map(p=>p.created_by));
   renderLiPassages();
 }
 
@@ -3296,7 +3337,9 @@ function renderLiPassages(){
     <tr>
       <td>${escHtmlAdmin(p.title)}</td>
       <td>${qCount}</td>
+      <td>${contentStatusHtml(p)}</td>
       <td style="white-space:nowrap;">
+        ${contentApproveButtonsHtml(p, "listening_passages", "loadLiPassages")}
         <button class="btn-sm" onclick="selectLiPassage(${p.id})">Câu hỏi</button>
         <button class="btn-sm" onclick="openEditLiPassage(${p.id})">Sửa</button>
         <button class="btn-sm danger" onclick="deleteLiPassage(${p.id})">Xoá</button>
@@ -3840,6 +3883,7 @@ async function loadDialogues(){
     .order("order_index");
   if(error){ alert("Lỗi khi tải hội thoại: " + error.message); return; }
   CURRENT_DIALOGUES = data || [];
+  await loadCreatorEmails(CURRENT_DIALOGUES.map(d=>d.created_by));
   renderDialoguesTable();
 }
 function renderDialoguesTable(){
@@ -3851,7 +3895,9 @@ function renderDialoguesTable(){
       <td>${escHtmlAdmin(d.role_a_name)}</td>
       <td>${escHtmlAdmin(d.role_b_name)}</td>
       <td>${lCount}</td>
+      <td>${contentStatusHtml(d)}</td>
       <td style="white-space:nowrap;">
+        ${contentApproveButtonsHtml(d, "dialogues", "loadDialogues")}
         <button class="btn-sm" onclick="selectDialogue(${d.id})">Câu thoại</button>
         <button class="btn-sm" onclick="openEditDialogue(${d.id})">Sửa</button>
         <button class="btn-sm danger" onclick="deleteDialogue(${d.id})">Xoá</button>
