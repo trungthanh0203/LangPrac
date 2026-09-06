@@ -700,6 +700,10 @@ document.getElementById("btn-close-detail").addEventListener("click", ()=>{
 function escHtml(s){
   return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
+// So khớp trùng lặp trước khi gửi nội dung mới (mục 13.43) — cùng cách chuẩn
+// hoá đã dùng ở QuanLyTuVung.html (normalizeText() trong dedupe CSV): bỏ
+// khoảng trắng thừa + không phân biệt hoa/thường, tránh trùng chỉ khác cách gõ.
+function normalizeText(s){ return String(s||"").trim().toLowerCase().replace(/\s+/g," "); }
 
 const ACTIVITY_LABELS = { login:"Đăng nhập", logout:"Đăng xuất", language_change:"Đổi ngôn ngữ học", app_hidden:"Rời khỏi app", app_visible:"Quay lại app" };
 const KIND_LABELS = { writing:"✍️ Viết", reading:"📖 Đọc", listening:"🎧 Nghe", math:"🔢 Toán", speaking_dialogue:"🗣️ Hội thoại" };
@@ -976,6 +980,20 @@ document.getElementById("vocab-submit-form").addEventListener("submit", async (e
   const form = e.target;
   const payload = {};
   form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+
+  // Kiểm tra trùng lặp (mục 13.43) — so cùng ngôn ngữ/trình độ/loại đã có từ/câu
+  // GIỐNG (chuẩn hoá khoảng trắng + không phân biệt hoa/thường) chưa, tránh gửi
+  // trùng nội dung đã có (chỉ thấy được nội dung RLS cho phép: đã duyệt + của
+  // chính mình — không phát hiện được bài "pending" của giáo viên KHÁC, chấp
+  // nhận được vì admin sẽ tự thấy trùng khi duyệt).
+  const { data: existingVocab } = await sb.from("vocab_items").select("de_text")
+    .eq("language", payload.language).eq("level", payload.level).eq("type", payload.type);
+  if((existingVocab||[]).some(r=>normalizeText(r.de_text) === normalizeText(payload.de_text))){
+    errEl.textContent = "Từ/câu này đã tồn tại (cùng ngôn ngữ, trình độ và loại) — vui lòng kiểm tra lại.";
+    errEl.style.display = "block";
+    return;
+  }
+
   // KHÔNG gửi content_status/created_by — trigger force_teacher_vocab_pending()
   // (migration 45) tự ép "pending" + đúng auth.uid() của giáo viên đang đăng nhập.
   const { error } = await sb.from("vocab_items").insert(payload);
@@ -1057,6 +1075,17 @@ function initPassageContentManager(cfg){
     const form = e.target;
     const payload = {};
     form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+
+    // Kiểm tra trùng tiêu đề (mục 13.43) — cùng ngôn ngữ/trình độ đã có
+    // ${parentLabel} nào TRÙNG tiêu đề chưa (chuẩn hoá khoảng trắng/hoa-thường).
+    const { data: existingTitles } = await sb.from(parentTable).select("title")
+      .eq("language", payload.language).eq("level", payload.level);
+    if((existingTitles||[]).some(r=>normalizeText(r.title) === normalizeText(payload.title))){
+      errEl.textContent = `Đã có ${parentLabel} cùng tiêu đề ở ngôn ngữ/trình độ này — vui lòng đổi tiêu đề hoặc kiểm tra lại.`;
+      errEl.style.display = "block";
+      return;
+    }
+
     const { error } = await sb.from(parentTable).insert(payload);
     if(error){ errEl.textContent = "Lỗi: " + error.message; errEl.style.display = "block"; return; }
     okEl.textContent = "Đã gửi! Nội dung sẽ hiện cho học sinh sau khi quản trị viên duyệt.";
@@ -1154,6 +1183,14 @@ function initPassageContentManager(cfg){
     const form = e.target;
     const payload = { passage_id: currentPassageId };
     form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+
+    // Kiểm tra trùng câu hỏi trong CÙNG đoạn văn này (mục 13.43).
+    const { data: existingQuestions } = await sb.from(childTable).select("question").eq("passage_id", currentPassageId);
+    if((existingQuestions||[]).some(r=>normalizeText(r.question) === normalizeText(payload.question))){
+      alert("Câu hỏi này đã tồn tại trong đoạn văn này — vui lòng kiểm tra lại.");
+      return;
+    }
+
     const { error } = await sb.from(childTable).insert(payload);
     if(error){ alert("Lỗi: " + error.message); return; }
     form.reset();
@@ -1195,6 +1232,16 @@ document.getElementById("dialogue-form").addEventListener("submit", async (e)=>{
   const form = e.target;
   const payload = {};
   form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+
+  // Kiểm tra trùng tiêu đề hội thoại (mục 13.43) — cùng ngôn ngữ/trình độ.
+  const { data: existingTitles } = await sb.from("dialogues").select("title")
+    .eq("language", payload.language).eq("level", payload.level);
+  if((existingTitles||[]).some(r=>normalizeText(r.title) === normalizeText(payload.title))){
+    errEl.textContent = "Đã có hội thoại cùng tiêu đề ở ngôn ngữ/trình độ này — vui lòng đổi tiêu đề hoặc kiểm tra lại.";
+    errEl.style.display = "block";
+    return;
+  }
+
   const { error } = await sb.from("dialogues").insert(payload);
   if(error){ errEl.textContent = "Lỗi: " + error.message; errEl.style.display = "block"; return; }
   okEl.textContent = "Đã gửi! Nội dung sẽ hiện cho học sinh sau khi quản trị viên duyệt.";
@@ -1294,6 +1341,16 @@ document.getElementById("dialogue-line-form").addEventListener("submit", async (
   const form = e.target;
   const payload = { dialogue_id: currentDialogueId };
   form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+
+  // Kiểm tra trùng câu thoại (mục 13.43) — cùng vai + cùng nội dung trong CÙNG
+  // hội thoại này (khác vai vẫn cho trùng chữ, vì đối đáp lặp lại giữa 2 vai là
+  // bình thường, vd "Vâng." / "Vâng.").
+  const { data: existingLines } = await sb.from("dialogue_lines").select("speaker, line_text").eq("dialogue_id", currentDialogueId);
+  if((existingLines||[]).some(r=>r.speaker === payload.speaker && normalizeText(r.line_text) === normalizeText(payload.line_text))){
+    alert("Câu thoại này (cùng vai, cùng nội dung) đã tồn tại trong hội thoại này — vui lòng kiểm tra lại.");
+    return;
+  }
+
   const { error } = await sb.from("dialogue_lines").insert(payload);
   if(error){ alert("Lỗi: " + error.message); return; }
   form.reset();
