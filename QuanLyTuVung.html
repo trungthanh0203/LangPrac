@@ -620,7 +620,7 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
         <h3>Giáo viên (<span id="teacher-count">0</span>)</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Email</th><th>Điện thoại</th><th>Địa chỉ</th><th>Ngày đăng ký</th><th>Số học sinh phụ trách</th><th>Tổng đề cần duyệt</th><th></th></tr></thead>
+            <thead><tr><th>Email</th><th>Điện thoại</th><th>Địa chỉ</th><th>Ngày đăng ký</th><th>HS phụ trách</th><th>Đề cần duyệt</th><th>Đề đã duyệt</th><th></th></tr></thead>
             <tbody id="teacher-list-body"></tbody>
           </table>
         </div>
@@ -1129,7 +1129,9 @@ window.approveContent = async function(table, id, reloadFn){
   await reloadFn();
 };
 window.rejectContent = async function(table, id, reloadFn){
-  if(!confirm("Từ chối và xoá nội dung này? (các câu hỏi/câu thoại gắn theo cũng sẽ bị xoá)")) return;
+  // Dùng chung cho cả "Từ chối" (đề đang chờ duyệt) LẪN "Xoá" (đề ĐÃ DUYỆT,
+  // mục 13.49) — cùng 1 thao tác xoá hẳn, chỉ khác ngữ cảnh gọi.
+  if(!confirm("Xoá hẳn nội dung này? (các câu hỏi/câu thoại gắn theo cũng sẽ bị xoá — không hoàn tác được)")) return;
   const { error } = await sb.from(table).delete().eq("id", id);
   if(error){ alert("Lỗi: " + error.message); return; }
   await reloadFn();
@@ -1334,6 +1336,16 @@ async function previewPendingItem(kind, id, reloadFn){
     `;
   }
 
+  // Nếu nội dung ĐÃ DUYỆT (mở từ cột "Đề đã duyệt", mục 13.49) thì ẩn nút
+  // "Duyệt" (vô nghĩa vì đã duyệt rồi) và đổi "Từ chối" thành "Xoá" — tránh
+  // admin tưởng nhầm "Từ chối" chỉ hoàn tác 1 bài "chờ duyệt" trong khi thực
+  // ra nó XOÁ HẲN nội dung đang sống (đang hiện cho học sinh).
+  const isApproved = record.content_status !== "pending";
+  const actionButtonsHtml = isApproved
+    ? `<button type="button" class="btn-sm danger" id="preview-reject-btn">Xoá</button>`
+    : `<button type="button" class="btn-sm" style="color:var(--green);border-color:var(--green-light);" id="preview-approve-btn">Duyệt</button>
+       <button type="button" class="btn-sm danger" id="preview-reject-btn">Từ chối</button>`;
+
   document.getElementById("modal").innerHTML = `
     <div class="modal-head"><h2 style="margin:0;font-size:16px;">Xem/Sửa — ${escHtmlAdmin(record.title || record.de_text || record.question || "")}</h2><button class="modal-close" id="m-close">&times;</button></div>
     <form id="preview-item-form">
@@ -1341,10 +1353,7 @@ async function previewPendingItem(kind, id, reloadFn){
       ${fieldsHtml}
       ${childHtml}
       <div class="modal-actions" style="justify-content:space-between;">
-        <div>
-          <button type="button" class="btn-sm" style="color:var(--green);border-color:var(--green-light);" id="preview-approve-btn">Duyệt</button>
-          <button type="button" class="btn-sm danger" id="preview-reject-btn">Từ chối</button>
-        </div>
+        <div>${actionButtonsHtml}</div>
         <div>
           <button type="button" class="btn btn-ghost" id="m-cancel">Đóng</button>
           <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
@@ -1381,11 +1390,13 @@ async function previewPendingItem(kind, id, reloadFn){
     return null;
   }
 
-  document.getElementById("preview-approve-btn").onclick = async ()=>{
-    const saveError = await savePreviewEdits();
-    if(saveError){ alert("Lỗi khi lưu trước khi duyệt: " + saveError.message); return; }
-    approveContent(cfg.table, id, async ()=>{ closeModal(); if(reloadFn) await reloadFn(); });
-  };
+  if(!isApproved){
+    document.getElementById("preview-approve-btn").onclick = async ()=>{
+      const saveError = await savePreviewEdits();
+      if(saveError){ alert("Lỗi khi lưu trước khi duyệt: " + saveError.message); return; }
+      approveContent(cfg.table, id, async ()=>{ closeModal(); if(reloadFn) await reloadFn(); });
+    };
+  }
   document.getElementById("preview-reject-btn").onclick = ()=> rejectContent(cfg.table, id, async ()=>{ closeModal(); if(reloadFn) await reloadFn(); });
   document.getElementById("preview-item-form").onsubmit = async (e)=>{
     e.preventDefault();
@@ -2328,14 +2339,23 @@ async function loadParents(){
   document.getElementById("linked-students-card").style.display = "none";
   document.getElementById("pending-content-card").style.display = "none";
   const [{ data: parentLinks }, { data: teacherLinks },
-         { data: pendingVocab }, { data: pendingGrammar }, { data: pendingReading }, { data: pendingListening }, { data: pendingDialogues }] = await Promise.all([
+         { data: pendingVocab }, { data: pendingGrammar }, { data: pendingReading }, { data: pendingListening }, { data: pendingDialogues },
+         { data: approvedVocab }, { data: approvedGrammar }, { data: approvedReading }, { data: approvedListening }, { data: approvedDialogues }] = await Promise.all([
     sb.from("parent_links").select("parent_id"),
     sb.from("teacher_links").select("teacher_id"),
     sb.from("vocab_items").select("created_by").eq("content_status", "pending"),
     sb.from("grammar_exercises").select("created_by").eq("content_status", "pending"),
     sb.from("reading_passages").select("created_by").eq("content_status", "pending"),
     sb.from("listening_passages").select("created_by").eq("content_status", "pending"),
-    sb.from("dialogues").select("created_by").eq("content_status", "pending")
+    sb.from("dialogues").select("created_by").eq("content_status", "pending"),
+    // "Đề đã duyệt" (mục 13.49) — lọc created_by KHÔNG rỗng để chỉ đếm nội
+    // dung DO GIÁO VIÊN gửi rồi được duyệt, tránh phải tải cả kho nội dung do
+    // admin tự nhập (created_by luôn rỗng với nội dung admin tự thêm).
+    sb.from("vocab_items").select("created_by").eq("content_status", "approved").not("created_by", "is", null),
+    sb.from("grammar_exercises").select("created_by").eq("content_status", "approved").not("created_by", "is", null),
+    sb.from("reading_passages").select("created_by").eq("content_status", "approved").not("created_by", "is", null),
+    sb.from("listening_passages").select("created_by").eq("content_status", "approved").not("created_by", "is", null),
+    sb.from("dialogues").select("created_by").eq("content_status", "approved").not("created_by", "is", null)
   ]);
   const countBy = (rows, key) => {
     const m = {};
@@ -2344,14 +2364,17 @@ async function loadParents(){
   };
   const parentCounts = countBy(parentLinks, "parent_id");
   const teacherCounts = countBy(teacherLinks, "teacher_id");
-  // Tổng đề đang chờ duyệt do giáo viên gửi, gộp cả 5 loại nội dung (mục
-  // 13.44/13.47) — dùng "created_by" chung, gom vào 1 map thay vì đếm riêng
-  // từng loại vì chỉ cần TỔNG hiện ở đây (bấm vào số mới xem chi tiết từng loại).
+  // Tổng đề đang chờ duyệt / đã duyệt do giáo viên gửi, gộp cả 5 loại nội dung
+  // (mục 13.44/13.47/13.49) — dùng "created_by" chung, gom vào 1 map thay vì
+  // đếm riêng từng loại vì chỉ cần TỔNG hiện ở đây (bấm vào số mới xem chi
+  // tiết từng loại).
   const pendingCounts = countBy([...(pendingVocab||[]), ...(pendingGrammar||[]), ...(pendingReading||[]), ...(pendingListening||[]), ...(pendingDialogues||[])], "created_by");
+  const approvedCounts = countBy([...(approvedVocab||[]), ...(approvedGrammar||[]), ...(approvedReading||[]), ...(approvedListening||[]), ...(approvedDialogues||[])], "created_by");
 
   const renderList = (role, counts) => (allProfiles||[]).filter(p => p.role === role).map(p => {
-    const pendingCell = role === "teacher"
-      ? `<td><span class="link-count" data-show-pending="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}" style="${pendingCounts[p.id] ? 'color:var(--red);' : ''}">${pendingCounts[p.id] || 0}</span></td>`
+    const contentCells = role === "teacher"
+      ? `<td><span class="link-count" data-show-pending="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}" style="${pendingCounts[p.id] ? 'color:var(--red);' : ''}">${pendingCounts[p.id] || 0}</span></td>
+         <td><span class="link-count" data-show-approved="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}" style="${approvedCounts[p.id] ? 'color:var(--green);' : ''}">${approvedCounts[p.id] || 0}</span></td>`
       : "";
     return `
     <tr>
@@ -2360,7 +2383,7 @@ async function loadParents(){
       <td>${escHtmlAdmin(p.address || "—")}</td>
       <td>${p.created_at ? new Date(p.created_at).toLocaleDateString("vi-VN") : "—"}</td>
       <td><span class="link-count" data-show-linked="${role}" data-id="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">${counts[p.id] || 0}</span></td>
-      ${pendingCell}
+      ${contentCells}
       <td>
         <button class="btn-sm" data-edit-person="${p.id}">Sửa</button>
         <button class="btn-sm" data-reset-pw="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">Đổi mật khẩu</button>
@@ -2373,7 +2396,7 @@ async function loadParents(){
   document.getElementById("parent-count").textContent = parents.length;
   document.getElementById("teacher-count").textContent = teachers.length;
   document.getElementById("parent-list-body").innerHTML = parents.length ? renderList("parent", parentCounts) : `<tr><td colspan="6">Chưa có phụ huynh nào.</td></tr>`;
-  document.getElementById("teacher-list-body").innerHTML = teachers.length ? renderList("teacher", teacherCounts) : `<tr><td colspan="7">Chưa có giáo viên nào.</td></tr>`;
+  document.getElementById("teacher-list-body").innerHTML = teachers.length ? renderList("teacher", teacherCounts) : `<tr><td colspan="8">Chưa có giáo viên nào.</td></tr>`;
 
   document.querySelectorAll("[data-reset-pw]").forEach(btn=>{
     btn.addEventListener("click", ()=> openResetUserPassword(btn.dataset.resetPw, btn.dataset.email));
@@ -2382,7 +2405,10 @@ async function loadParents(){
     el.addEventListener("click", ()=> showLinkedStudents(el.dataset.showLinked, el.dataset.id, el.dataset.email));
   });
   document.querySelectorAll("[data-show-pending]").forEach(el=>{
-    el.addEventListener("click", ()=> showPendingContent(el.dataset.showPending, el.dataset.email));
+    el.addEventListener("click", ()=> showTeacherContent(el.dataset.showPending, el.dataset.email, "pending"));
+  });
+  document.querySelectorAll("[data-show-approved]").forEach(el=>{
+    el.addEventListener("click", ()=> showTeacherContent(el.dataset.showApproved, el.dataset.email, "approved"));
   });
   document.querySelectorAll("[data-edit-person]").forEach(btn=>{
     btn.addEventListener("click", ()=> openEditPerson(btn.dataset.editPerson));
@@ -2469,24 +2495,30 @@ async function showLinkedStudents(role, personId, personEmail){
   }).join("") : `<tr><td colspan="6">Chưa có học sinh nào.</td></tr>`;
 }
 
-// Hiện TẤT CẢ đề (từ vựng/đọc/nghe/hội thoại) đang "pending" của 1 giáo viên
-// khi bấm vào số ở cột "Tổng đề cần duyệt" (mục 13.44) — cách xem theo GIÁO
-// VIÊN, bổ sung cho cách xem theo LOẠI NỘI DUNG (loadPendingSummary() ở từng
-// section Đọc/Nghe/Hội thoại) — cùng dùng chung approveContent()/rejectContent().
-async function showPendingContent(teacherId, teacherEmail){
+// Hiện TẤT CẢ đề (từ vựng/ngữ pháp/đọc/nghe/hội thoại) của 1 giáo viên theo
+// ĐÚNG 1 trạng thái (status = "pending" hoặc "approved") khi bấm vào số ở cột
+// "Đề cần duyệt"/"Đề đã duyệt" (mục 13.44/13.49) — cách xem theo GIÁO VIÊN, bổ
+// sung cho cách xem theo LOẠI NỘI DUNG (loadPendingSummary()/
+// loadPendingGrammarSummary() ở từng section) — cùng dùng chung
+// approveContent()/rejectContent(). Với đề ĐÃ DUYỆT: không có nút "Duyệt" (vô
+// nghĩa), nút xoá đổi tên "Xoá" thay vì "Từ chối" (tránh nhầm là chỉ hoàn tác
+// 1 bài chờ duyệt — thực ra là xoá hẳn nội dung đang sống, đang hiện cho học
+// sinh). previewPendingItem() cũng tự ẩn/đổi tên nút tương tự khi mở modal.
+async function showTeacherContent(teacherId, teacherEmail, status){
   const card = document.getElementById("pending-content-card");
   const body = document.getElementById("pending-content-body");
-  document.getElementById("pending-content-title").textContent = `Đề đang chờ duyệt của giáo viên ${teacherEmail}`;
+  const statusLabel = status === "approved" ? "đã duyệt" : "đang chờ duyệt";
+  document.getElementById("pending-content-title").textContent = `Đề ${statusLabel} của giáo viên ${teacherEmail}`;
   card.style.display = "block";
   body.innerHTML = `<tr><td colspan="5">Đang tải...</td></tr>`;
   card.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
   const [{ data: vocab }, { data: grammar }, { data: reading }, { data: listening }, { data: dialogues }] = await Promise.all([
-    sb.from("vocab_items").select("id,language,level,de_text").eq("created_by", teacherId).eq("content_status", "pending"),
-    sb.from("grammar_exercises").select("id, question, grammar_lessons(language,level)").eq("created_by", teacherId).eq("content_status", "pending"),
-    sb.from("reading_passages").select("id,language,level,title").eq("created_by", teacherId).eq("content_status", "pending"),
-    sb.from("listening_passages").select("id,language,level,title").eq("created_by", teacherId).eq("content_status", "pending"),
-    sb.from("dialogues").select("id,language,level,title").eq("created_by", teacherId).eq("content_status", "pending")
+    sb.from("vocab_items").select("id,language,level,de_text").eq("created_by", teacherId).eq("content_status", status),
+    sb.from("grammar_exercises").select("id, question, grammar_lessons(language,level)").eq("created_by", teacherId).eq("content_status", status),
+    sb.from("reading_passages").select("id,language,level,title").eq("created_by", teacherId).eq("content_status", status),
+    sb.from("listening_passages").select("id,language,level,title").eq("created_by", teacherId).eq("content_status", status),
+    sb.from("dialogues").select("id,language,level,title").eq("created_by", teacherId).eq("content_status", status)
   ]);
   const rows = [
     ...(vocab||[]).map(r=>({ type:"Từ vựng", table:"vocab_items", id:r.id, language:r.language, level:r.level, label:r.de_text })),
@@ -2496,22 +2528,24 @@ async function showPendingContent(teacherId, teacherEmail){
     ...(dialogues||[]).map(r=>({ type:"Hội thoại", table:"dialogues", id:r.id, language:r.language, level:r.level, label:r.title }))
   ];
 
-  const reload = ()=>{ showPendingContent(teacherId, teacherEmail); loadParents(); };
+  const reload = ()=>{ showTeacherContent(teacherId, teacherEmail, status); loadParents(); };
   body.innerHTML = rows.length ? rows.map(r=>{
     const langCfg = LANGS_CFG[r.language];
     const langBadge = langCfg ? `${langCfg.flagEmoji} ${r.language.toUpperCase()}` : r.language;
+    const actionsHtml = status === "approved"
+      ? `<button class="btn-sm" data-view-pending="${r.table}:${r.id}">Xem/Sửa</button>
+         <button class="btn-sm danger" data-reject-pending="${r.table}:${r.id}">Xoá</button>`
+      : `<button class="btn-sm" data-view-pending="${r.table}:${r.id}">Xem/Sửa</button>
+         <button class="btn-sm" style="color:var(--green);border-color:var(--green-light);" data-approve-pending="${r.table}:${r.id}">Duyệt</button>
+         <button class="btn-sm danger" data-reject-pending="${r.table}:${r.id}">Từ chối</button>`;
     return `<tr>
       <td><span class="badge">${r.type}</span></td>
       <td>${langBadge}</td>
       <td><span class="badge">${escHtmlAdmin(r.level)}</span></td>
       <td>${escHtmlAdmin(r.label)}</td>
-      <td style="white-space:nowrap;">
-        <button class="btn-sm" data-view-pending="${r.table}:${r.id}">Xem/Sửa</button>
-        <button class="btn-sm" style="color:var(--green);border-color:var(--green-light);" data-approve-pending="${r.table}:${r.id}">Duyệt</button>
-        <button class="btn-sm danger" data-reject-pending="${r.table}:${r.id}">Từ chối</button>
-      </td>
+      <td style="white-space:nowrap;">${actionsHtml}</td>
     </tr>`;
-  }).join("") : `<tr><td colspan="5">Không có đề nào đang chờ duyệt.</td></tr>`;
+  }).join("") : `<tr><td colspan="5">Không có đề nào ${statusLabel}.</td></tr>`;
   body.querySelectorAll("[data-view-pending]").forEach(btn=>{
     const [t, id] = btn.dataset.viewPending.split(":");
     btn.addEventListener("click", ()=> previewPendingItem(pendingKindOf(t), Number(id), reload));
