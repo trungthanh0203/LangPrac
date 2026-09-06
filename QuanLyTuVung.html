@@ -607,7 +607,7 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
         đã đăng ký đó khi sửa hồ sơ học sinh. Ở đây chỉ để xem tổng quan + đổi
         mật khẩu khi cần.
       </div>
-      <div class="card">
+      <div class="card" id="parent-table-card">
         <h3>Phụ huynh (<span id="parent-count">0</span>)</h3>
         <div class="table-wrap">
           <table>
@@ -616,7 +616,7 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
           </table>
         </div>
       </div>
-      <div class="card">
+      <div class="card" id="teacher-table-card">
         <h3>Giáo viên (<span id="teacher-count">0</span>)</h3>
         <div class="table-wrap">
           <table>
@@ -1258,8 +1258,40 @@ async function previewPendingItem(kind, id, reloadFn){
   if(error || !record){ alert("Lỗi tải nội dung: " + (error ? error.message : "không tìm thấy")); return; }
   const language = kind === "grammar" ? (record.grammar_lessons && record.grammar_lessons.language) : record.language;
   const level = kind === "grammar" ? (record.grammar_lessons && record.grammar_lessons.level) : record.level;
-  const langCfg = LANGS_CFG[language];
-  const langLabel = langCfg ? `${langCfg.flagEmoji} ${(language||"").toUpperCase()}` : language;
+  // Ngôn ngữ/Trình độ SỬA ĐƯỢC ngay tại đây (mục 13.50). Với grammar_exercises
+  // (không có cột language/level riêng, chỉ có lesson_id) thì 2 select này
+  // KHÔNG có data-f — chỉ dùng để tra ra ĐÚNG lesson_id (bài học đã có sẵn)
+  // khi lưu, y hệt cách GiaoVien.html cho giáo viên chọn khi gửi bài tập mới.
+  let grammarLessonsForSelect = [];
+  if(kind === "grammar"){
+    const { data: lessons } = await sb.from("grammar_lessons").select("id,language,level");
+    grammarLessonsForSelect = lessons || [];
+  }
+  function buildLevelOptions(forLanguage, currentLevel){
+    if(kind === "grammar"){
+      const levelsWithLessons = grammarLessonsForSelect.filter(l=>l.language===forLanguage).map(l=>l.level);
+      const cfgLevels = (LANGS_CFG[forLanguage] && LANGS_CFG[forLanguage].levels) || [];
+      const filtered = cfgLevels.filter(lv=>levelsWithLessons.includes(lv.code));
+      return filtered.length
+        ? filtered.map(lv=>`<option value="${lv.code}" ${lv.code===currentLevel?'selected':''}>${lv.label}</option>`).join("")
+        : `<option value="">— Không có —</option>`;
+    }
+    const cfgLevels = (LANGS_CFG[forLanguage] && LANGS_CFG[forLanguage].levels) || [];
+    return cfgLevels.map(lv=>`<option value="${lv.code}" ${lv.code===currentLevel?'selected':''}>${lv.label}</option>`).join("");
+  }
+  const languageOptionsForKind = kind === "grammar"
+    ? [...new Set(grammarLessonsForSelect.map(l=>l.language))]
+    : Object.keys(LANGS_CFG);
+  const languageLevelHtml = `
+    <div class="field-row"><label>Ngôn ngữ</label>
+      <select ${kind==="grammar"?"":'data-f="language"'} id="preview-language">
+        ${languageOptionsForKind.map(code=>`<option value="${code}" ${code===language?'selected':''}>${LANGS_CFG[code] ? LANGS_CFG[code].adminLabel : code}</option>`).join("")}
+      </select>
+    </div>
+    <div class="field-row"><label>Trình độ</label>
+      <select ${kind==="grammar"?"":'data-f="level"'} id="preview-level">${buildLevelOptions(language, level)}</select>
+    </div>
+  `;
 
   let fieldsHtml = "";
   let childHtml = "";
@@ -1349,7 +1381,7 @@ async function previewPendingItem(kind, id, reloadFn){
   document.getElementById("modal").innerHTML = `
     <div class="modal-head"><h2 style="margin:0;font-size:16px;">Xem/Sửa — ${escHtmlAdmin(record.title || record.de_text || record.question || "")}</h2><button class="modal-close" id="m-close">&times;</button></div>
     <form id="preview-item-form">
-      <div class="field-row"><label>Ngôn ngữ / Trình độ</label><div style="padding:6px 0;font-weight:600;">${langLabel} · ${escHtmlAdmin(level)}</div></div>
+      ${languageLevelHtml}
       ${fieldsHtml}
       ${childHtml}
       <div class="modal-actions" style="justify-content:space-between;">
@@ -1363,6 +1395,9 @@ async function previewPendingItem(kind, id, reloadFn){
   document.getElementById("overlay").classList.add("show");
   document.getElementById("m-close").onclick = closeModal;
   document.getElementById("m-cancel").onclick = closeModal;
+  document.getElementById("preview-language").addEventListener("change", (e)=>{
+    document.getElementById("preview-level").innerHTML = buildLevelOptions(e.target.value, null);
+  });
 
   // Lưu CẢ payload chính (title/passage_text/...) LẪN từng câu hỏi con đã sửa
   // (data-qf/data-qid, mục 13.46) — dùng chung cho cả nút "Lưu thay đổi" VÀ
@@ -1372,6 +1407,15 @@ async function previewPendingItem(kind, id, reloadFn){
     const form = document.getElementById("preview-item-form");
     const payload = {};
     form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+    // grammar_exercises: đổi ngôn ngữ/trình độ nghĩa là chuyển sang 1 bài học
+    // KHÁC đã có sẵn (không có cột language/level riêng để sửa trực tiếp).
+    if(kind === "grammar"){
+      const newLang = document.getElementById("preview-language").value;
+      const newLevel = document.getElementById("preview-level").value;
+      const lesson = grammarLessonsForSelect.find(l=>l.language===newLang && l.level===newLevel);
+      if(!lesson) return { message: "Chưa có bài học ngữ pháp cho ngôn ngữ/trình độ này." };
+      payload.lesson_id = lesson.id;
+    }
     const { error } = await sb.from(cfg.table).update(payload).eq("id", id);
     if(error) return error;
     if(cfg.childTable){
@@ -2463,6 +2507,12 @@ async function showLinkedStudents(role, personId, personEmail){
   const body = document.getElementById("linked-students-body");
   document.getElementById("linked-students-title").textContent =
     role === "parent" ? `Học sinh liên kết với phụ huynh ${personEmail}` : `Học sinh do giáo viên ${personEmail} phụ trách`;
+  // Di chuyển card này xuống NGAY DƯỚI đúng bảng vừa bấm (Phụ huynh hay Giáo
+  // viên) — trước đây card đặt cố định sau CẢ 2 bảng nên bấm ở bảng Phụ huynh
+  // phải cuộn qua hết bảng Giáo viên mới thấy, dù scrollIntoView() có tự cuộn
+  // tới đúng vị trí, vị trí đó vẫn ở SAU bảng Giáo viên trong luồng trang.
+  const anchorCard = document.getElementById(role === "parent" ? "parent-table-card" : "teacher-table-card");
+  anchorCard.insertAdjacentElement("afterend", card);
   card.style.display = "block";
   body.innerHTML = `<tr><td colspan="6">Đang tải...</td></tr>`;
   card.scrollIntoView({ behavior: "smooth", block: "nearest" });

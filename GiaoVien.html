@@ -183,18 +183,20 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
   </div>
 
   <div id="content-tab" style="display:none;">
-    <div class="card">
-      <h2 style="font-size:14px;">Thống kê nội dung đã đóng góp theo cấp độ</h2>
-      <div class="sub">Bấm vào 1 cột để xem chi tiết cấp độ đó theo kỹ năng ở biểu đồ bên dưới (bấm lại để bỏ chọn).</div>
-      <div id="content-stats-level-chart"><div class="loading-msg">Đang tải…</div></div>
-      <div style="display:flex;gap:16px;font-size:12px;color:var(--text-2);margin-top:10px;">
-        <span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:3px;background:#f2994a;display:inline-block;"></span>Chưa duyệt</span>
-        <span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:3px;background:var(--green);display:inline-block;"></span>Đã duyệt</span>
+    <div style="display:flex;gap:var(--gap);flex-wrap:wrap;">
+      <div class="card" style="flex:1;min-width:280px;">
+        <h2 style="font-size:14px;">Thống kê nội dung đã đóng góp theo cấp độ</h2>
+        <div class="sub">Bấm vào 1 cột để xem chi tiết cấp độ đó theo kỹ năng ở biểu đồ bên cạnh (bấm lại để bỏ chọn).</div>
+        <div id="content-stats-level-chart"><div class="loading-msg">Đang tải…</div></div>
+        <div style="display:flex;gap:16px;font-size:12px;color:var(--text-2);margin-top:10px;">
+          <span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:3px;background:#f2994a;display:inline-block;"></span>Chưa duyệt</span>
+          <span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:3px;background:var(--green);display:inline-block;"></span>Đã duyệt</span>
+        </div>
       </div>
-    </div>
-    <div class="card">
-      <h2 style="font-size:14px;" id="content-stats-skill-title">Theo kỹ năng — tất cả cấp độ</h2>
-      <div id="content-stats-skill-chart"><div class="loading-msg">Đang tải…</div></div>
+      <div class="card" style="flex:1;min-width:280px;">
+        <h2 style="font-size:14px;" id="content-stats-skill-title">Theo kỹ năng — tất cả cấp độ</h2>
+        <div id="content-stats-skill-chart"><div class="loading-msg">Đang tải…</div></div>
+      </div>
     </div>
 
     <div class="teacher-nav">
