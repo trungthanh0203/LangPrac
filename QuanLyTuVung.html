@@ -188,6 +188,7 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
     <div class="section-tabs">
       <button id="sec-dashboard" data-group="users" class="active">🎓 Học sinh</button>
       <button id="sec-parents" data-group="users">👪 Phụ huynh &amp; Giáo viên</button>
+      <button id="sec-admins" data-group="users" style="display:none;">🛡️ Quản trị viên</button>
       <button id="sec-content-dash" data-group="content" style="display:none;">📊 Nội dung</button>
       <button id="sec-vocab" data-group="content" style="display:none;">📚 Từ vựng</button>
       <button id="sec-grammar" data-group="content" style="display:none;">📘 Ngữ pháp</button>
@@ -597,6 +598,46 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
       </div>
     </div>
 
+    <div id="admins-section" style="display:none;">
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:var(--gap);">
+        Chỉ Super Admin mới thấy và thao tác được ở mục này. Admin thường KHÔNG
+        thể tự cấp/đổi quyền cho mình hay người khác (chặn ở cả giao diện lẫn
+        RLS phía Supabase).
+      </div>
+      <div class="card">
+        <h3>Quản trị viên hiện tại</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Email</th><th>Điện thoại</th><th>Địa chỉ</th><th>Vai trò</th><th></th></tr></thead>
+            <tbody id="admins-list-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Cấp quyền quản trị mới</h3>
+        <div class="sub" style="font-size:12px;color:var(--text-2);margin-bottom:10px;">
+          Chỉ chọn được tài khoản đã tự đăng ký sẵn (giống học sinh) và chưa
+          phải phụ huynh/giáo viên/quản trị viên — giống cách gán phụ huynh/
+          giáo viên ở tab Học sinh, không tạo tài khoản mới ở đây.
+        </div>
+        <div class="field-row" style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+          <div style="flex:1;min-width:220px;">
+            <label style="display:block;font-size:11.5px;color:var(--text-2);margin-bottom:4px;font-weight:600;">Tài khoản</label>
+            <select id="grant-admin-account" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;"></select>
+          </div>
+          <div>
+            <label style="display:block;font-size:11.5px;color:var(--text-2);margin-bottom:4px;font-weight:600;">Vai trò</label>
+            <select id="grant-admin-role" style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;">
+              <option value="admin">Admin</option>
+              <option value="super_admin">Super Admin</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="btn-grant-admin">Cấp quyền</button>
+        </div>
+        <div class="result-msg" id="grant-admin-result"></div>
+      </div>
+    </div>
+
     <div id="dashboard-section">
       <div class="dash-cards" id="dash-cards"></div>
 
@@ -840,8 +881,10 @@ async function doLogout(){ await sb.auth.signOut(); ME = null; showScreen("login
 async function afterLogin(){
   const { data: { user } } = await sb.auth.getUser();
   if(!user){ showScreen("login"); return; }
-  const { data: adminRow } = await sb.from("admins").select("user_id").eq("user_id", user.id).limit(1);
+  const { data: adminRow } = await sb.from("admins").select("user_id, role").eq("user_id", user.id).limit(1);
   if(!adminRow || !adminRow.length){ showScreen("denied"); return; }
+  CURRENT_ADMIN_ID = user.id;
+  IS_SUPER_ADMIN = adminRow[0].role === "super_admin";
   document.getElementById("header-admin-email").textContent = user.email || "";
   showScreen("main");
   loadData();
@@ -1171,16 +1214,24 @@ document.getElementById("btn-import").addEventListener("click", async ()=>{
 // ============================================================
 // Chuyển đổi giữa 4 khu vực quản trị: Từ vựng / Ngữ pháp / Đọc / Hội thoại
 // ============================================================
-const ALL_SECTIONS = ["dashboard", "vocab", "grammar", "reading", "listening", "dialogue", "math", "parents", "content-dash"];
+const ALL_SECTIONS = ["dashboard", "vocab", "grammar", "reading", "listening", "dialogue", "math", "parents", "admins", "content-dash"];
 // Nhóm dashboard lớn (2 cấp điều hướng): "users" = Quản trị người dùng (Học sinh,
-// Phụ huynh & Giáo viên), "content" = Quản trị nội dung (dashboard tổng quan +
-// 6 tab soạn bài cũ, giữ nguyên logic bên trong, chỉ gom lại 1 nhóm cho gọn).
-const SECTION_GROUP = { dashboard: "users", parents: "users", "content-dash": "content", vocab: "content", grammar: "content", reading: "content", listening: "content", dialogue: "content", math: "content" };
+// Phụ huynh & Giáo viên, Quản trị viên — mục 13.36), "content" = Quản trị nội
+// dung (dashboard tổng quan + 6 tab soạn bài cũ, giữ nguyên logic bên trong,
+// chỉ gom lại 1 nhóm cho gọn).
+const SECTION_GROUP = { dashboard: "users", parents: "users", admins: "users", "content-dash": "content", vocab: "content", grammar: "content", reading: "content", listening: "content", dialogue: "content", math: "content" };
+// true khi tài khoản đang đăng nhập là super_admin — gán trong afterLogin()
+// (mục 13.36). Tab "🛡️ Quản trị viên" chỉ hiện khi cờ này bật; kiểm tra lại 1
+// lần nữa ở loadAdmins() phòng khi bị vào thẳng qua devtools, và RLS phía
+// Supabase mới là lớp chặn thật sự (client-side chỉ để ẩn UI cho gọn).
+let IS_SUPER_ADMIN = false;
+let CURRENT_ADMIN_ID = null;
 function switchGroup(group){
   document.getElementById("grp-users").classList.toggle("active", group === "users");
   document.getElementById("grp-content").classList.toggle("active", group === "content");
   ALL_SECTIONS.forEach(name=>{
-    document.getElementById(`sec-${name}`).style.display = (SECTION_GROUP[name] === group) ? "" : "none";
+    const visible = SECTION_GROUP[name] === group && (name !== "admins" || IS_SUPER_ADMIN);
+    document.getElementById(`sec-${name}`).style.display = visible ? "" : "none";
   });
   const firstInGroup = ALL_SECTIONS.find(name => SECTION_GROUP[name] === group);
   switchSection(firstInGroup);
@@ -1201,6 +1252,7 @@ function switchSection(active){
   else if(active === "dialogue") loadDialogues();
   else if(active === "math") loadMath();
   else if(active === "parents") loadParents();
+  else if(active === "admins") loadAdmins();
 }
 document.getElementById("sec-dashboard").addEventListener("click", ()=> switchSection("dashboard"));
 document.getElementById("sec-vocab").addEventListener("click", ()=> switchSection("vocab"));
@@ -1210,6 +1262,7 @@ document.getElementById("sec-listening").addEventListener("click", ()=> switchSe
 document.getElementById("sec-dialogue").addEventListener("click", ()=> switchSection("dialogue"));
 document.getElementById("sec-math").addEventListener("click", ()=> switchSection("math"));
 document.getElementById("sec-parents").addEventListener("click", ()=> switchSection("parents"));
+document.getElementById("sec-admins").addEventListener("click", ()=> switchSection("admins"));
 document.getElementById("sec-content-dash").addEventListener("click", ()=> switchSection("content-dash"));
 
 // ============================================================
@@ -1943,6 +1996,86 @@ async function showLinkedStudents(role, personId, personEmail){
     </tr>`;
   }).join("") : `<tr><td colspan="6">Chưa có học sinh nào.</td></tr>`;
 }
+
+// ============================================================
+// Tab "🛡️ Quản trị viên" — CHỈ super_admin thấy/thao tác được (mục 13.36).
+// Admin thường không tự cấp/đổi quyền cho mình hay người khác — chặn cả ở UI
+// (tab ẩn, xem switchGroup()) lẫn RLS (bảng admins chỉ cho super_admin insert/
+// update/delete, xem 41_migration_add_super_admin.sql).
+// ============================================================
+async function loadAdmins(){
+  const listBody = document.getElementById("admins-list-body");
+  if(!IS_SUPER_ADMIN){
+    listBody.innerHTML = `<tr><td colspan="5">Chỉ Super Admin mới truy cập được mục này.</td></tr>`;
+    document.getElementById("grant-admin-account").innerHTML = "";
+    return;
+  }
+  listBody.innerHTML = `<tr><td colspan="5">Đang tải...</td></tr>`;
+
+  const [{ data: adminRows, error }, { data: allProfiles }] = await Promise.all([
+    sb.from("admins").select("user_id, role"),
+    sb.from("profiles").select("id,email,phone,address,role").order("email")
+  ]);
+  if(error){
+    listBody.innerHTML = `<tr><td colspan="5">Lỗi tải dữ liệu: ${escHtmlAdmin(error.message)} — đã chạy migration 41 trên Supabase chưa?</td></tr>`;
+    return;
+  }
+  const profileById = Object.fromEntries((allProfiles||[]).map(p=>[p.id,p]));
+
+  listBody.innerHTML = (adminRows||[]).length ? adminRows.map(a=>{
+    const p = profileById[a.user_id] || {};
+    const isSelf = a.user_id === CURRENT_ADMIN_ID;
+    return `<tr>
+      <td>${escHtmlAdmin(p.email || a.user_id)}</td>
+      <td>${escHtmlAdmin(p.phone || "—")}</td>
+      <td>${escHtmlAdmin(p.address || "—")}</td>
+      <td>
+        <select data-role-select="${a.user_id}" ${isSelf ? "disabled title=\"Không thể tự đổi quyền của chính mình\"" : ""}>
+          <option value="admin" ${a.role==="admin"?"selected":""}>Admin</option>
+          <option value="super_admin" ${a.role==="super_admin"?"selected":""}>Super Admin</option>
+        </select>
+      </td>
+      <td>${isSelf ? `<span style="color:var(--text-3);">— Tài khoản của bạn —</span>` : `<button class="btn-sm danger" data-revoke-admin="${a.user_id}">Thu hồi quyền</button>`}</td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="5">Chưa có quản trị viên nào.</td></tr>`;
+
+  document.querySelectorAll("[data-role-select]:not([disabled])").forEach(sel=>{
+    sel.addEventListener("change", async ()=>{
+      const { error } = await sb.from("admins").update({ role: sel.value }).eq("user_id", sel.dataset.roleSelect);
+      if(error){ alert("Lỗi: " + error.message); }
+      await loadAdmins();
+    });
+  });
+  document.querySelectorAll("[data-revoke-admin]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      if(!confirm("Thu hồi quyền quản trị của tài khoản này? Họ sẽ không đăng nhập được vào trang quản trị nữa.")) return;
+      const { error } = await sb.from("admins").delete().eq("user_id", btn.dataset.revokeAdmin);
+      if(error){ alert("Lỗi: " + error.message); }
+      await loadAdmins();
+    });
+  });
+
+  // Ứng viên cấp quyền mới: tài khoản đã tự đăng ký (role KHÔNG phải phụ
+  // huynh/giáo viên) và CHƯA phải quản trị viên — đúng "không phải giáo viên
+  // hay phụ huynh" người dùng chốt.
+  const adminIds = new Set((adminRows||[]).map(a=>a.user_id));
+  const eligible = (allProfiles||[]).filter(p => !["parent","teacher"].includes(p.role) && !adminIds.has(p.id));
+  document.getElementById("grant-admin-account").innerHTML = eligible.length
+    ? eligible.map(p=>`<option value="${p.id}">${escHtmlAdmin(p.email||p.id)}</option>`).join("")
+    : `<option value="">— Không có tài khoản phù hợp —</option>`;
+}
+
+document.getElementById("btn-grant-admin").addEventListener("click", async ()=>{
+  const accountId = document.getElementById("grant-admin-account").value;
+  const role = document.getElementById("grant-admin-role").value;
+  const resultEl = document.getElementById("grant-admin-result");
+  if(!accountId){ resultEl.textContent = "Vui lòng chọn 1 tài khoản."; resultEl.className = "result-msg err"; return; }
+  const { error } = await sb.from("admins").insert({ user_id: accountId, role });
+  if(error){ resultEl.textContent = "Lỗi: " + error.message; resultEl.className = "result-msg err"; return; }
+  resultEl.textContent = "";
+  resultEl.className = "result-msg";
+  await loadAdmins();
+});
 
 // Đổi mật khẩu phụ huynh/giáo viên — gọi RPC dùng chung admin_reset_user_password()
 // (36_migration_add_teacher_role.sql, thay cho admin_reset_parent_password() cũ
