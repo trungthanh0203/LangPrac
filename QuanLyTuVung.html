@@ -1149,11 +1149,16 @@ async function loadPendingSummary(table, cardId, bodyId, countId, reloadFn){
       <td>${escHtmlAdmin(r.title)}</td>
       <td>${escHtmlAdmin(creator)}</td>
       <td style="white-space:nowrap;">
+        <button class="btn-sm" data-view-pending="${table}:${r.id}">Xem/Sửa</button>
         <button class="btn-sm" style="color:var(--green);border-color:var(--green-light);" data-approve-pending="${table}:${r.id}">Duyệt</button>
         <button class="btn-sm danger" data-reject-pending="${table}:${r.id}">Từ chối</button>
       </td>
     </tr>`;
   }).join("");
+  body.querySelectorAll("[data-view-pending]").forEach(btn=>{
+    const [t, id] = btn.dataset.viewPending.split(":");
+    btn.addEventListener("click", ()=> previewPendingItem(pendingKindOf(t), Number(id), reloadFn));
+  });
   body.querySelectorAll("[data-approve-pending]").forEach(btn=>{
     const [t, id] = btn.dataset.approvePending.split(":");
     btn.addEventListener("click", ()=> approveContent(t, Number(id), reloadFn));
@@ -1162,6 +1167,108 @@ async function loadPendingSummary(table, cardId, bodyId, countId, reloadFn){
     const [t, id] = btn.dataset.rejectPending.split(":");
     btn.addEventListener("click", ()=> rejectContent(t, Number(id), reloadFn));
   });
+}
+
+// ---------- "Xem/Sửa" 1 đề đang chờ duyệt trước khi Duyệt/Từ chối (mục 13.45) ----------
+// Trước đây phải Duyệt "mù" (chỉ thấy tiêu đề trong danh sách tóm tắt) — modal
+// này tải TRỰC TIẾP từ DB theo id (KHÔNG dựa vào CURRENT_PASSAGES/CURRENT_LI_
+// PASSAGES/CURRENT_DIALOGUES vì các biến đó chỉ chứa đúng 1 ngôn ngữ/trình độ
+// đang chọn ở dropdown — đề đang chờ duyệt có thể thuộc ngôn ngữ/trình độ KHÁC,
+// dùng lại các biến đó sẽ không tìm thấy record) — nên hoạt động đúng dù mở từ
+// bảng nào (theo loại nội dung hay theo giáo viên). Cho sửa luôn nội dung
+// ngay trong modal + xem đủ câu hỏi/câu thoại kèm đáp án, và Duyệt/Từ chối
+// ngay tại đây luôn cho tiện (không cần đóng modal rồi tìm lại đúng dòng).
+function pendingKindOf(table){
+  return table === "reading_passages" ? "reading"
+    : table === "listening_passages" ? "listening"
+    : table === "dialogues" ? "dialogue"
+    : "vocab";
+}
+async function previewPendingItem(kind, id, reloadFn){
+  const cfg = {
+    vocab: { table: "vocab_items" },
+    reading: { table: "reading_passages", childTable: "reading_questions", childFk: "passage_id" },
+    listening: { table: "listening_passages", childTable: "listening_questions", childFk: "passage_id" },
+    dialogue: { table: "dialogues", childTable: "dialogue_lines", childFk: "dialogue_id" }
+  }[kind];
+  const { data: record, error } = await sb.from(cfg.table).select("*").eq("id", id).maybeSingle();
+  if(error || !record){ alert("Lỗi tải nội dung: " + (error ? error.message : "không tìm thấy")); return; }
+  const langCfg = LANGS_CFG[record.language];
+  const langLabel = langCfg ? `${langCfg.flagEmoji} ${record.language.toUpperCase()}` : record.language;
+
+  let fieldsHtml = "";
+  let childHtml = "";
+  if(kind === "vocab"){
+    fieldsHtml = `
+      <div class="field-row"><label>Loại</label><div style="padding:6px 0;">${record.type==='word'?'Từ':'Câu'}</div></div>
+      <div class="field-row"><label>Từ / Câu</label><input data-f="de_text" value="${(record.de_text||'').replace(/"/g,'&quot;')}"></div>
+      <div class="field-row"><label>Phiên âm</label><input data-f="phonetic" value="${(record.phonetic||'').replace(/"/g,'&quot;')}"></div>
+      <div class="field-row"><label>Nghĩa tiếng Việt</label><input data-f="vi_meaning" value="${(record.vi_meaning||'').replace(/"/g,'&quot;')}"></div>
+      <div class="field-row"><label>Nghĩa tiếng Anh</label><input data-f="en_meaning" value="${(record.en_meaning||'').replace(/"/g,'&quot;')}"></div>
+      <div class="field-row"><label>Chủ đề</label><input data-f="category" list="vocab-category-list" value="${(record.category||'').replace(/"/g,'&quot;')}"></div>
+    `;
+  } else if(kind === "reading" || kind === "listening"){
+    fieldsHtml = `
+      <div class="field-row"><label>Tiêu đề</label><input data-f="title" value="${(record.title||'').replace(/"/g,'&quot;')}"></div>
+      <div class="field-row"><label>Nội dung đoạn văn</label><textarea data-f="passage_text" style="min-height:160px;">${record.passage_text||''}</textarea></div>
+    `;
+    const { data: questions } = await sb.from(cfg.childTable).select("*").eq(cfg.childFk, id).order("order_index");
+    childHtml = `<div class="field-row"><label>Câu hỏi (${(questions||[]).length})</label>${
+      (questions&&questions.length) ? questions.map((q,i)=>`
+        <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;">
+          <div style="font-weight:700;font-size:13px;">${i+1}. ${escHtmlAdmin(q.question)}</div>
+          <div style="font-size:12.5px;color:var(--text-2);margin-top:4px;">${q.type==='multiple_choice'?'Trắc nghiệm':'Điền từ'}${q.options ? ' · Lựa chọn: '+escHtmlAdmin(q.options) : ''}</div>
+          <div style="font-size:12.5px;color:var(--green);font-weight:700;margin-top:4px;">Đáp án đúng: ${escHtmlAdmin(q.correct_answer)}</div>
+          ${q.explanation ? `<div style="font-size:12px;color:var(--text-2);margin-top:2px;">Giải thích: ${escHtmlAdmin(q.explanation)}</div>` : ""}
+        </div>`).join("") : `<div style="color:var(--text-2);font-size:13px;">Chưa có câu hỏi nào.</div>`
+    }</div>`;
+  } else if(kind === "dialogue"){
+    fieldsHtml = `
+      <div class="field-row"><label>Tiêu đề</label><input data-f="title" value="${(record.title||'').replace(/"/g,'&quot;')}"></div>
+      <div class="field-row"><label>Bối cảnh</label><input data-f="scenario" value="${(record.scenario||'').replace(/"/g,'&quot;')}"></div>
+      <div class="field-row"><label>Tên vai A</label><input data-f="role_a_name" value="${(record.role_a_name||'').replace(/"/g,'&quot;')}"></div>
+      <div class="field-row"><label>Tên vai B</label><input data-f="role_b_name" value="${(record.role_b_name||'').replace(/"/g,'&quot;')}"></div>
+    `;
+    const { data: lines } = await sb.from(cfg.childTable).select("*").eq(cfg.childFk, id).order("order_index");
+    childHtml = `<div class="field-row"><label>Câu thoại (${(lines||[]).length})</label>${
+      (lines&&lines.length) ? lines.map(l=>`
+        <div style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:6px;">
+          <b>${escHtmlAdmin(l.speaker)}</b> — ${escHtmlAdmin(l.line_text)}
+        </div>`).join("") : `<div style="color:var(--text-2);font-size:13px;">Chưa có câu thoại nào.</div>`
+    }</div>`;
+  }
+
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Xem/Sửa — ${escHtmlAdmin(record.title || record.de_text || "")}</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="preview-item-form">
+      <div class="field-row"><label>Ngôn ngữ / Trình độ</label><div style="padding:6px 0;font-weight:600;">${langLabel} · ${escHtmlAdmin(record.level)}</div></div>
+      ${fieldsHtml}
+      ${childHtml}
+      <div class="modal-actions" style="justify-content:space-between;">
+        <div>
+          <button type="button" class="btn-sm" style="color:var(--green);border-color:var(--green-light);" id="preview-approve-btn">Duyệt</button>
+          <button type="button" class="btn-sm danger" id="preview-reject-btn">Từ chối</button>
+        </div>
+        <div>
+          <button type="button" class="btn btn-ghost" id="m-cancel">Đóng</button>
+          <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+        </div>
+      </div>
+    </form>`;
+  document.getElementById("overlay").classList.add("show");
+  document.getElementById("m-close").onclick = closeModal;
+  document.getElementById("m-cancel").onclick = closeModal;
+  document.getElementById("preview-approve-btn").onclick = ()=> approveContent(cfg.table, id, async ()=>{ closeModal(); if(reloadFn) await reloadFn(); });
+  document.getElementById("preview-reject-btn").onclick = ()=> rejectContent(cfg.table, id, async ()=>{ closeModal(); if(reloadFn) await reloadFn(); });
+  document.getElementById("preview-item-form").onsubmit = async (e)=>{
+    e.preventDefault();
+    const payload = {};
+    e.target.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+    const { error: saveError } = await sb.from(cfg.table).update(payload).eq("id", id);
+    if(saveError){ alert("Lỗi: " + saveError.message); return; }
+    closeModal();
+    if(reloadFn) await reloadFn();
+  };
 }
 
 function wireItemForm(record){
@@ -2271,11 +2378,16 @@ async function showPendingContent(teacherId, teacherEmail){
       <td><span class="badge">${escHtmlAdmin(r.level)}</span></td>
       <td>${escHtmlAdmin(r.label)}</td>
       <td style="white-space:nowrap;">
+        <button class="btn-sm" data-view-pending="${r.table}:${r.id}">Xem/Sửa</button>
         <button class="btn-sm" style="color:var(--green);border-color:var(--green-light);" data-approve-pending="${r.table}:${r.id}">Duyệt</button>
         <button class="btn-sm danger" data-reject-pending="${r.table}:${r.id}">Từ chối</button>
       </td>
     </tr>`;
   }).join("") : `<tr><td colspan="5">Không có đề nào đang chờ duyệt.</td></tr>`;
+  body.querySelectorAll("[data-view-pending]").forEach(btn=>{
+    const [t, id] = btn.dataset.viewPending.split(":");
+    btn.addEventListener("click", ()=> previewPendingItem(pendingKindOf(t), Number(id), reload));
+  });
   body.querySelectorAll("[data-approve-pending]").forEach(btn=>{
     const [t, id] = btn.dataset.approvePending.split(":");
     btn.addEventListener("click", ()=> approveContent(t, Number(id), reload));
