@@ -185,6 +185,7 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
   <div id="content-tab" style="display:none;">
     <div class="teacher-nav">
       <button type="button" class="teacher-nav-btn active" data-content-nav="vocab">Từ vựng</button>
+      <button type="button" class="teacher-nav-btn" data-content-nav="grammar">Ngữ pháp</button>
       <button type="button" class="teacher-nav-btn" data-content-nav="reading">Đọc</button>
       <button type="button" class="teacher-nav-btn" data-content-nav="listening">Nghe</button>
       <button type="button" class="teacher-nav-btn" data-content-nav="dialogue">Hội thoại</button>
@@ -221,6 +222,49 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
         </table>
       </div>
     </div>
+    </div>
+
+    <div id="content-grammar-pane" style="display:none;">
+      <div class="card">
+        <h2 style="font-size:14px;">Thêm bài tập Ngữ pháp mới</h2>
+        <div class="sub">Chỉ thêm được vào bài học ngữ pháp ĐÃ CÓ SẴN (do quản trị viên biên soạn) — nếu chưa thấy ngôn ngữ/trình độ cần, liên hệ quản trị viên để tạo bài học trước.</div>
+        <form id="grammar-exercise-form">
+          <div class="field-row"><label>Ngôn ngữ</label><select id="grammar-language"></select></div>
+          <div class="field-row"><label>Trình độ</label><select id="grammar-level"></select></div>
+          <div class="field-row"><label>Loại bài tập</label>
+            <select data-f="type">
+              <option value="multiple_choice">Trắc nghiệm</option>
+              <option value="fill_blank">Điền vào chỗ trống</option>
+              <option value="sentence_ordering">Sắp xếp câu</option>
+              <option value="listening_choice">Nghe & chọn đáp án</option>
+              <option value="synonym_antonym">Đồng nghĩa/Trái nghĩa</option>
+              <option value="odd_one_out">Từ khác nhóm</option>
+              <option value="word_form">Biến đổi từ</option>
+              <option value="listening_dictation">Nghe – Viết lại</option>
+              <option value="error_correction">Tìm và sửa lỗi sai</option>
+              <option value="verb_conjugation">Chia động từ theo ngữ cảnh</option>
+            </select>
+          </div>
+          <div class="field-row"><label>Câu hỏi (riêng "Nghe – Viết lại": đây là câu sẽ được đọc lên, KHÔNG hiện chữ cho học sinh thấy)</label><input data-f="question" required></div>
+          <div class="field-row"><label>Các lựa chọn (cách nhau bởi dấu phẩy — chỉ cần cho trắc nghiệm/nghe & chọn)</label><input data-f="options"></div>
+          <div class="field-row"><label>Đáp án đúng (riêng "Nghe – Viết lại": gõ đúng nguyên văn câu ở ô Câu hỏi)</label><input data-f="correct_answer" required></div>
+          <div class="field-row"><label>Giải thích (tuỳ chọn)</label><input data-f="explanation"></div>
+          <div class="field-row"><label>Thứ tự</label><input data-f="order_index" type="number" value="1"></div>
+          <button class="btn btn-primary" type="submit" id="grammar-exercise-submit-btn" style="width:auto;padding:10px 22px;margin-top:0;">Gửi duyệt</button>
+          <button type="button" class="btn-sm" id="btn-cancel-grammar-edit" style="display:none;">Huỷ sửa</button>
+          <div class="login-ok" id="grammar-exercise-ok" style="display:none;margin-top:12px;"></div>
+          <div class="login-error" id="grammar-exercise-error" style="display:none;margin-top:12px;"></div>
+        </form>
+      </div>
+      <div class="card">
+        <h2 style="font-size:14px;">Bài tập Ngữ pháp tôi đã gửi</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ngôn ngữ</th><th>Trình độ</th><th>Loại</th><th>Câu hỏi</th><th>Trạng thái</th><th></th></tr></thead>
+            <tbody id="my-grammar-body"><tr><td colspan="6">Đang tải…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <div id="content-reading-pane" style="display:none;">
@@ -523,6 +567,7 @@ async function afterLogin(){
   document.getElementById("only-quiz-filter").addEventListener("change", loadStudentDetail);
   loadOverview(user.id);
   initVocabForm();
+  initGrammarForm();
   readingManager.initForm();
   listeningManager.initForm();
   initDialogueForm();
@@ -713,7 +758,8 @@ const ACTIVITY_LABELS = { login:"Đăng nhập", logout:"Đăng xuất", languag
 const KIND_LABELS = { writing:"✍️ Viết", reading:"📖 Đọc", listening:"🎧 Nghe", math:"🔢 Toán", speaking_dialogue:"🗣️ Hội thoại" };
 const EX_TYPE_LABELS = {
   multiple_choice: "Trắc nghiệm", fill_blank: "Điền từ", sentence_ordering: "Sắp xếp câu",
-  listening_choice: "Nghe & chọn", synonym_antonym: "Đồng/Trái nghĩa", odd_one_out: "Từ khác nhóm", word_form: "Biến đổi từ"
+  listening_choice: "Nghe & chọn", synonym_antonym: "Đồng/Trái nghĩa", odd_one_out: "Từ khác nhóm", word_form: "Biến đổi từ",
+  listening_dictation: "Nghe – Viết lại", error_correction: "Tìm và sửa lỗi sai", verb_conjugation: "Chia động từ theo ngữ cảnh"
 };
 
 async function buildStudentBlock(studentId, studentEmail, dateStr, onlyQuiz){
@@ -937,7 +983,7 @@ document.querySelectorAll(".teacher-nav-btn[data-nav]").forEach(btn=>{
   });
 });
 
-// Sub-nav bên trong "📝 Đóng góp nội dung" — 4 loại nội dung, mỗi loại 1 pane
+// Sub-nav bên trong "📝 Đóng góp nội dung" — 5 loại nội dung, mỗi loại 1 pane
 // riêng (ẩn/hiện, không phá huỷ DOM). Tải dữ liệu MỚI mỗi lần chuyển sang 1
 // loại (không cache) vì danh sách hiếm khi lớn tới mức cần tối ưu thêm.
 document.querySelectorAll(".teacher-nav-btn[data-content-nav]").forEach(btn=>{
@@ -945,10 +991,11 @@ document.querySelectorAll(".teacher-nav-btn[data-content-nav]").forEach(btn=>{
     document.querySelectorAll(".teacher-nav-btn[data-content-nav]").forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
     const type = btn.dataset.contentNav;
-    ["vocab","reading","listening","dialogue"].forEach(t=>{
+    ["vocab","grammar","reading","listening","dialogue"].forEach(t=>{
       document.getElementById(`content-${t}-pane`).style.display = t === type ? "block" : "none";
     });
     if(type === "vocab") loadMyVocab();
+    if(type === "grammar") loadMyGrammar();
     if(type === "reading") readingManager.loadMyPassages();
     if(type === "listening") listeningManager.loadMyPassages();
     if(type === "dialogue") loadMyDialogues();
@@ -990,10 +1037,12 @@ function resetVocabForm(){
   document.getElementById("vocab-language").dispatchEvent(new Event("change"));
   document.getElementById("vocab-submit-btn").textContent = "Gửi duyệt";
   document.getElementById("btn-cancel-vocab-edit").style.display = "none";
+}
+document.getElementById("btn-cancel-vocab-edit").addEventListener("click", ()=>{
+  resetVocabForm();
   document.getElementById("vocab-submit-ok").style.display = "none";
   document.getElementById("vocab-submit-error").style.display = "none";
-}
-document.getElementById("btn-cancel-vocab-edit").addEventListener("click", resetVocabForm);
+});
 
 document.getElementById("vocab-submit-form").addEventListener("submit", async (e)=>{
   e.preventDefault();
@@ -1088,6 +1137,155 @@ async function loadMyVocab(){
 }
 
 // ============================================================
+// Mục 13.47 — mở rộng "giáo viên gửi, admin duyệt" sang Bài tập Ngữ pháp
+// (migration 47). Khác vocab_items (bảng phẳng): grammar_exercises KHÔNG có
+// cột language/level riêng, chỉ có lesson_id trỏ về grammar_lessons (1 bài
+// học/ngôn ngữ/trình độ, DO ADMIN BIÊN SOẠN SẴN — giáo viên chỉ thêm bài tập
+// vào bài học ĐÃ CÓ, không tự tạo bài học mới). Vì vậy 2 select "Ngôn ngữ"/
+// "Trình độ" ở đây KHÔNG có data-f (không phải cột của grammar_exercises) —
+// chỉ dùng để tra ra đúng lesson_id trước khi insert.
+// ============================================================
+let GRAMMAR_LESSONS = []; // {id, language, level} — tải 1 lần, dùng để tra lesson_id
+let currentEditingGrammarId = null;
+let MY_GRAMMAR_ROWS = [];
+
+async function initGrammarForm(){
+  await langsConfigPromise;
+  const { data } = await sb.from("grammar_lessons").select("id,language,level");
+  GRAMMAR_LESSONS = data || [];
+  const langSel = document.getElementById("grammar-language");
+  const levelSel = document.getElementById("grammar-level");
+  const langsWithLessons = [...new Set(GRAMMAR_LESSONS.map(l=>l.language))];
+  const orderedLangs = Object.keys(LANGS).filter(code=>langsWithLessons.includes(code));
+  langSel.innerHTML = orderedLangs.length
+    ? orderedLangs.map(code=>`<option value="${code}">${escHtml(LANGS[code].adminLabel || langLabel(code))}</option>`).join("")
+    : `<option value="">— Chưa có bài học ngữ pháp nào —</option>`;
+  function refreshLevels(){
+    const levelsWithLessons = GRAMMAR_LESSONS.filter(l=>l.language===langSel.value).map(l=>l.level);
+    const cfgLevels = (LANGS[langSel.value] && LANGS[langSel.value].levels) || [];
+    const orderedLevels = cfgLevels.filter(lv=>levelsWithLessons.includes(lv.code));
+    levelSel.innerHTML = orderedLevels.length
+      ? orderedLevels.map(lv=>`<option value="${lv.code}">${escHtml(lv.label)}</option>`).join("")
+      : `<option value="">— Không có —</option>`;
+  }
+  langSel.addEventListener("change", refreshLevels);
+  refreshLevels();
+}
+
+function resetGrammarForm(){
+  currentEditingGrammarId = null;
+  document.getElementById("grammar-exercise-form").reset();
+  document.getElementById("grammar-language").dispatchEvent(new Event("change"));
+  document.getElementById("grammar-exercise-submit-btn").textContent = "Gửi duyệt";
+  document.getElementById("btn-cancel-grammar-edit").style.display = "none";
+}
+document.getElementById("btn-cancel-grammar-edit").addEventListener("click", ()=>{
+  resetGrammarForm();
+  document.getElementById("grammar-exercise-ok").style.display = "none";
+  document.getElementById("grammar-exercise-error").style.display = "none";
+});
+
+document.getElementById("grammar-exercise-form").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const okEl = document.getElementById("grammar-exercise-ok");
+  const errEl = document.getElementById("grammar-exercise-error");
+  okEl.style.display = "none"; errEl.style.display = "none";
+  const language = document.getElementById("grammar-language").value;
+  const level = document.getElementById("grammar-level").value;
+  const lesson = GRAMMAR_LESSONS.find(l=>l.language===language && l.level===level);
+  if(!lesson){
+    errEl.textContent = "Chưa có bài học ngữ pháp cho ngôn ngữ/trình độ này — liên hệ quản trị viên để tạo bài học trước.";
+    errEl.style.display = "block";
+    return;
+  }
+  const form = e.target;
+  const payload = {};
+  form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+
+  // Kiểm tra trùng câu hỏi trong CÙNG bài học (mục 13.43). Khi đang SỬA, loại
+  // chính câu đang sửa ra khỏi so khớp.
+  const { data: existingEx } = await sb.from("grammar_exercises").select("id, question").eq("lesson_id", lesson.id);
+  if((existingEx||[]).some(r=> r.id !== currentEditingGrammarId && normalizeText(r.question) === normalizeText(payload.question))){
+    errEl.textContent = "Câu hỏi này đã tồn tại trong bài học này — vui lòng kiểm tra lại.";
+    errEl.style.display = "block";
+    return;
+  }
+
+  let error;
+  if(currentEditingGrammarId){
+    ({ error } = await sb.from("grammar_exercises").update(payload).eq("id", currentEditingGrammarId));
+  } else {
+    // KHÔNG gửi content_status/created_by — trigger force_teacher_content_pending()
+    // (migration 47) tự ép "pending" + đúng auth.uid() của giáo viên đang đăng nhập.
+    payload.lesson_id = lesson.id;
+    ({ error } = await sb.from("grammar_exercises").insert(payload));
+  }
+  if(error){ errEl.textContent = "Lỗi: " + error.message; errEl.style.display = "block"; return; }
+  okEl.textContent = currentEditingGrammarId ? "Đã cập nhật." : "Đã gửi! Nội dung sẽ hiện cho học sinh sau khi quản trị viên duyệt.";
+  okEl.style.display = "block";
+  resetGrammarForm();
+  loadMyGrammar();
+});
+
+async function loadMyGrammar(){
+  const body = document.getElementById("my-grammar-body");
+  body.innerHTML = `<tr><td colspan="6">Đang tải…</td></tr>`;
+  const { data, error } = await sb.from("grammar_exercises")
+    .select("*, grammar_lessons(language,level)")
+    .eq("created_by", CURRENT_TEACHER_ID).order("id", { ascending: false });
+  if(error){ body.innerHTML = `<tr><td colspan="6">Lỗi: ${escHtml(error.message)}</td></tr>`; return; }
+  MY_GRAMMAR_ROWS = data || [];
+  if(!MY_GRAMMAR_ROWS.length){ body.innerHTML = `<tr><td colspan="6">Bạn chưa gửi bài tập ngữ pháp nào.</td></tr>`; return; }
+  body.innerHTML = MY_GRAMMAR_ROWS.map(r=>{
+    const lesson = r.grammar_lessons || {};
+    const statusHtml = r.content_status === "pending"
+      ? `<span class="btn-sm" style="background:#fdf1e6;color:#b8722a;border:none;cursor:default;">🕒 Chờ duyệt</span>`
+      : `<span class="btn-sm" style="background:var(--green-light);color:var(--green);border:none;cursor:default;">✅ Đã duyệt</span>`;
+    const editBtnHtml = r.content_status === "pending" ? `<button class="btn-sm" data-edit-grammar="${r.id}">Sửa</button>` : "";
+    const deleteBtnHtml = r.content_status === "pending"
+      ? `<button class="btn-sm" style="color:var(--red);border-color:var(--red-light);" data-delete-grammar="${r.id}">Xoá</button>`
+      : "";
+    return `<tr>
+      <td>${escHtml(langLabel(lesson.language))}</td>
+      <td>${escHtml(lesson.level||"")}</td>
+      <td>${escHtml(EX_TYPE_LABELS[r.type] || r.type)}</td>
+      <td>${escHtml(r.question)}</td>
+      <td>${statusHtml}</td>
+      <td style="white-space:nowrap;">${editBtnHtml} ${deleteBtnHtml}</td>
+    </tr>`;
+  }).join("");
+  document.querySelectorAll("[data-edit-grammar]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const item = MY_GRAMMAR_ROWS.find(r=>String(r.id)===btn.dataset.editGrammar);
+      if(!item) return;
+      currentEditingGrammarId = item.id;
+      const lesson = item.grammar_lessons || {};
+      const form = document.getElementById("grammar-exercise-form");
+      document.getElementById("grammar-language").value = lesson.language;
+      document.getElementById("grammar-language").dispatchEvent(new Event("change"));
+      document.getElementById("grammar-level").value = lesson.level;
+      form.querySelector('[data-f="type"]').value = item.type;
+      form.querySelector('[data-f="question"]').value = item.question || "";
+      form.querySelector('[data-f="options"]').value = item.options || "";
+      form.querySelector('[data-f="correct_answer"]').value = item.correct_answer || "";
+      form.querySelector('[data-f="explanation"]').value = item.explanation || "";
+      form.querySelector('[data-f="order_index"]').value = item.order_index;
+      document.getElementById("grammar-exercise-submit-btn").textContent = "Cập nhật";
+      document.getElementById("btn-cancel-grammar-edit").style.display = "inline-block";
+      form.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+  document.querySelectorAll("[data-delete-grammar]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      if(!confirm("Xoá bài tập này?")) return;
+      const { error } = await sb.from("grammar_exercises").delete().eq("id", btn.dataset.deleteGrammar);
+      if(error){ alert("Lỗi: " + error.message); return; }
+      loadMyGrammar();
+    });
+  });
+}
+
+// ============================================================
 // Mục 13.42 — mở rộng "giáo viên gửi, admin duyệt" (mục 13.41, vocab_items)
 // sang Đọc/Nghe (migration 46). Đoạn văn Đọc và Nghe CÙNG cấu trúc (ngôn ngữ/
 // trình độ/tiêu đề/nội dung + câu hỏi type/question/options/correct_answer/
@@ -1127,10 +1325,12 @@ function initPassageContentManager(cfg){
     document.getElementById(`${prefix}-passage-language`).dispatchEvent(new Event("change"));
     document.getElementById(`${prefix}-passage-submit-btn`).textContent = "Gửi duyệt";
     document.getElementById(`btn-cancel-${prefix}-passage-edit`).style.display = "none";
+  }
+  document.getElementById(`btn-cancel-${prefix}-passage-edit`).addEventListener("click", ()=>{
+    resetPassageForm();
     document.getElementById(`${prefix}-passage-ok`).style.display = "none";
     document.getElementById(`${prefix}-passage-error`).style.display = "none";
-  }
-  document.getElementById(`btn-cancel-${prefix}-passage-edit`).addEventListener("click", resetPassageForm);
+  });
 
   document.getElementById(`${prefix}-passage-form`).addEventListener("submit", async (e)=>{
     e.preventDefault();
@@ -1352,10 +1552,12 @@ function resetDialogueForm(){
   document.getElementById("dialogue-language").dispatchEvent(new Event("change"));
   document.getElementById("dialogue-submit-btn").textContent = "Gửi duyệt";
   document.getElementById("btn-cancel-dialogue-edit").style.display = "none";
+}
+document.getElementById("btn-cancel-dialogue-edit").addEventListener("click", ()=>{
+  resetDialogueForm();
   document.getElementById("dialogue-ok").style.display = "none";
   document.getElementById("dialogue-error").style.display = "none";
-}
-document.getElementById("btn-cancel-dialogue-edit").addEventListener("click", resetDialogueForm);
+});
 
 document.getElementById("dialogue-form").addEventListener("submit", async (e)=>{
   e.preventDefault();

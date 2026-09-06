@@ -336,6 +336,16 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
         <div class="result-msg" id="lesson-import-result"></div>
       </div>
 
+      <div class="card" id="grammar-pending-card" style="display:none;">
+        <h3 style="margin:0 0 10px;">🕒 Bài tập Ngữ pháp đang chờ duyệt (<span id="grammar-pending-count">0</span>) — mọi ngôn ngữ/trình độ</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ngôn ngữ</th><th>Trình độ</th><th>Câu hỏi</th><th>Người gửi</th><th></th></tr></thead>
+            <tbody id="grammar-pending-body"></tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="card" id="exercises-card" style="display:none;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
           <h3 style="margin:0;">Bài tập (<span id="ex-count">0</span>)</h3>
@@ -343,7 +353,7 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>#</th><th>Loại</th><th>Câu hỏi</th><th>Đáp án đúng</th><th></th></tr></thead>
+            <thead><tr><th>#</th><th>Loại</th><th>Câu hỏi</th><th>Đáp án đúng</th><th>Trạng thái</th><th></th></tr></thead>
             <tbody id="ex-table-body"></tbody>
           </table>
         </div>
@@ -1169,6 +1179,52 @@ async function loadPendingSummary(table, cardId, bodyId, countId, reloadFn){
   });
 }
 
+// Bản riêng cho grammar_exercises (mục 13.47) — không dùng chung được với
+// loadPendingSummary() ở trên vì bảng này KHÔNG có cột language/level riêng
+// (chỉ có lesson_id), phải join sang grammar_lessons để lấy ngôn ngữ/trình độ,
+// và nhãn cột là "Câu hỏi" thay vì "Tiêu đề".
+async function loadPendingGrammarSummary(){
+  const { data, error } = await sb.from("grammar_exercises")
+    .select("id, question, created_by, grammar_lessons(language, level)")
+    .eq("content_status", "pending").order("id");
+  if(error) return;
+  const rows = data || [];
+  document.getElementById("grammar-pending-count").textContent = rows.length;
+  document.getElementById("grammar-pending-card").style.display = rows.length ? "block" : "none";
+  if(!rows.length) return;
+  await loadCreatorEmails(rows.map(r=>r.created_by));
+  const body = document.getElementById("grammar-pending-body");
+  body.innerHTML = rows.map(r=>{
+    const lesson = r.grammar_lessons || {};
+    const langCfg = LANGS_CFG[lesson.language];
+    const langBadge = langCfg ? `${langCfg.flagEmoji} ${(lesson.language||"").toUpperCase()}` : (lesson.language || "?");
+    const creator = r.created_by ? (CONTENT_CREATORS[r.created_by] || "?") : "?";
+    return `<tr>
+      <td><span class="badge">${langBadge}</span></td>
+      <td><span class="badge">${escHtmlAdmin(lesson.level || "?")}</span></td>
+      <td>${escHtmlAdmin(r.question)}</td>
+      <td>${escHtmlAdmin(creator)}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-sm" data-view-pending="grammar_exercises:${r.id}">Xem/Sửa</button>
+        <button class="btn-sm" style="color:var(--green);border-color:var(--green-light);" data-approve-pending="grammar_exercises:${r.id}">Duyệt</button>
+        <button class="btn-sm danger" data-reject-pending="grammar_exercises:${r.id}">Từ chối</button>
+      </td>
+    </tr>`;
+  }).join("");
+  body.querySelectorAll("[data-view-pending]").forEach(btn=>{
+    const [t, id] = btn.dataset.viewPending.split(":");
+    btn.addEventListener("click", ()=> previewPendingItem(pendingKindOf(t), Number(id), loadPendingGrammarSummary));
+  });
+  body.querySelectorAll("[data-approve-pending]").forEach(btn=>{
+    const [t, id] = btn.dataset.approvePending.split(":");
+    btn.addEventListener("click", ()=> approveContent(t, Number(id), loadPendingGrammarSummary));
+  });
+  body.querySelectorAll("[data-reject-pending]").forEach(btn=>{
+    const [t, id] = btn.dataset.rejectPending.split(":");
+    btn.addEventListener("click", ()=> rejectContent(t, Number(id), loadPendingGrammarSummary));
+  });
+}
+
 // ---------- "Xem/Sửa" 1 đề đang chờ duyệt trước khi Duyệt/Từ chối (mục 13.45) ----------
 // Trước đây phải Duyệt "mù" (chỉ thấy tiêu đề trong danh sách tóm tắt) — modal
 // này tải TRỰC TIẾP từ DB theo id (KHÔNG dựa vào CURRENT_PASSAGES/CURRENT_LI_
@@ -1182,19 +1238,26 @@ function pendingKindOf(table){
   return table === "reading_passages" ? "reading"
     : table === "listening_passages" ? "listening"
     : table === "dialogues" ? "dialogue"
+    : table === "grammar_exercises" ? "grammar"
     : "vocab";
 }
 async function previewPendingItem(kind, id, reloadFn){
   const cfg = {
     vocab: { table: "vocab_items" },
+    grammar: { table: "grammar_exercises" },
     reading: { table: "reading_passages", childTable: "reading_questions", childFk: "passage_id" },
     listening: { table: "listening_passages", childTable: "listening_questions", childFk: "passage_id" },
     dialogue: { table: "dialogues", childTable: "dialogue_lines", childFk: "dialogue_id" }
   }[kind];
-  const { data: record, error } = await sb.from(cfg.table).select("*").eq("id", id).maybeSingle();
+  // grammar_exercises không có cột language/level riêng — nạp kèm bài học
+  // (grammar_lessons) qua lesson_id để biết đúng ngôn ngữ/trình độ hiển thị.
+  const selectCols = kind === "grammar" ? "*, grammar_lessons(language,level)" : "*";
+  const { data: record, error } = await sb.from(cfg.table).select(selectCols).eq("id", id).maybeSingle();
   if(error || !record){ alert("Lỗi tải nội dung: " + (error ? error.message : "không tìm thấy")); return; }
-  const langCfg = LANGS_CFG[record.language];
-  const langLabel = langCfg ? `${langCfg.flagEmoji} ${record.language.toUpperCase()}` : record.language;
+  const language = kind === "grammar" ? (record.grammar_lessons && record.grammar_lessons.language) : record.language;
+  const level = kind === "grammar" ? (record.grammar_lessons && record.grammar_lessons.level) : record.level;
+  const langCfg = LANGS_CFG[language];
+  const langLabel = langCfg ? `${langCfg.flagEmoji} ${(language||"").toUpperCase()}` : language;
 
   let fieldsHtml = "";
   let childHtml = "";
@@ -1246,12 +1309,35 @@ async function previewPendingItem(kind, id, reloadFn){
           <b>${escHtmlAdmin(l.speaker)}</b> — ${escHtmlAdmin(l.line_text)}
         </div>`).join("") : `<div style="color:var(--text-2);font-size:13px;">Chưa có câu thoại nào.</div>`
     }</div>`;
+  } else if(kind === "grammar"){
+    // grammar_exercises là bảng PHẲNG (không có bảng con) — sửa trực tiếp qua
+    // data-f như vocab, không cần childHtml/data-qf.
+    fieldsHtml = `
+      <div class="field-row"><label>Loại bài tập</label>
+        <select data-f="type">
+          <option value="multiple_choice" ${record.type==='multiple_choice'?'selected':''}>Trắc nghiệm</option>
+          <option value="fill_blank" ${record.type==='fill_blank'?'selected':''}>Điền vào chỗ trống</option>
+          <option value="sentence_ordering" ${record.type==='sentence_ordering'?'selected':''}>Sắp xếp câu</option>
+          <option value="listening_choice" ${record.type==='listening_choice'?'selected':''}>Nghe & chọn đáp án</option>
+          <option value="synonym_antonym" ${record.type==='synonym_antonym'?'selected':''}>Đồng nghĩa/Trái nghĩa</option>
+          <option value="odd_one_out" ${record.type==='odd_one_out'?'selected':''}>Từ khác nhóm</option>
+          <option value="word_form" ${record.type==='word_form'?'selected':''}>Biến đổi từ</option>
+          <option value="listening_dictation" ${record.type==='listening_dictation'?'selected':''}>Nghe – Viết lại</option>
+          <option value="error_correction" ${record.type==='error_correction'?'selected':''}>Tìm và sửa lỗi sai</option>
+          <option value="verb_conjugation" ${record.type==='verb_conjugation'?'selected':''}>Chia động từ theo ngữ cảnh</option>
+        </select>
+      </div>
+      <div class="field-row"><label>Câu hỏi</label><input data-f="question" value="${(record.question||'').replace(/"/g,'&quot;')}"></div>
+      <div class="field-row"><label>Các lựa chọn (cách nhau bởi dấu phẩy)</label><input data-f="options" value="${(record.options||'').replace(/"/g,'&quot;')}"></div>
+      <div class="field-row"><label>Đáp án đúng</label><input data-f="correct_answer" value="${(record.correct_answer||'').replace(/"/g,'&quot;')}"></div>
+      <div class="field-row"><label>Giải thích (tuỳ chọn)</label><input data-f="explanation" value="${(record.explanation||'').replace(/"/g,'&quot;')}"></div>
+    `;
   }
 
   document.getElementById("modal").innerHTML = `
-    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Xem/Sửa — ${escHtmlAdmin(record.title || record.de_text || "")}</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Xem/Sửa — ${escHtmlAdmin(record.title || record.de_text || record.question || "")}</h2><button class="modal-close" id="m-close">&times;</button></div>
     <form id="preview-item-form">
-      <div class="field-row"><label>Ngôn ngữ / Trình độ</label><div style="padding:6px 0;font-weight:600;">${langLabel} · ${escHtmlAdmin(record.level)}</div></div>
+      <div class="field-row"><label>Ngôn ngữ / Trình độ</label><div style="padding:6px 0;font-weight:600;">${langLabel} · ${escHtmlAdmin(level)}</div></div>
       ${fieldsHtml}
       ${childHtml}
       <div class="modal-actions" style="justify-content:space-between;">
@@ -2242,10 +2328,11 @@ async function loadParents(){
   document.getElementById("linked-students-card").style.display = "none";
   document.getElementById("pending-content-card").style.display = "none";
   const [{ data: parentLinks }, { data: teacherLinks },
-         { data: pendingVocab }, { data: pendingReading }, { data: pendingListening }, { data: pendingDialogues }] = await Promise.all([
+         { data: pendingVocab }, { data: pendingGrammar }, { data: pendingReading }, { data: pendingListening }, { data: pendingDialogues }] = await Promise.all([
     sb.from("parent_links").select("parent_id"),
     sb.from("teacher_links").select("teacher_id"),
     sb.from("vocab_items").select("created_by").eq("content_status", "pending"),
+    sb.from("grammar_exercises").select("created_by").eq("content_status", "pending"),
     sb.from("reading_passages").select("created_by").eq("content_status", "pending"),
     sb.from("listening_passages").select("created_by").eq("content_status", "pending"),
     sb.from("dialogues").select("created_by").eq("content_status", "pending")
@@ -2257,10 +2344,10 @@ async function loadParents(){
   };
   const parentCounts = countBy(parentLinks, "parent_id");
   const teacherCounts = countBy(teacherLinks, "teacher_id");
-  // Tổng đề đang chờ duyệt do giáo viên gửi, gộp cả 4 loại nội dung (mục
-  // 13.44) — dùng "created_by" chung, gom vào 1 map thay vì đếm riêng từng
-  // loại vì chỉ cần TỔNG hiện ở đây (bấm vào số mới xem chi tiết từng loại).
-  const pendingCounts = countBy([...(pendingVocab||[]), ...(pendingReading||[]), ...(pendingListening||[]), ...(pendingDialogues||[])], "created_by");
+  // Tổng đề đang chờ duyệt do giáo viên gửi, gộp cả 5 loại nội dung (mục
+  // 13.44/13.47) — dùng "created_by" chung, gom vào 1 map thay vì đếm riêng
+  // từng loại vì chỉ cần TỔNG hiện ở đây (bấm vào số mới xem chi tiết từng loại).
+  const pendingCounts = countBy([...(pendingVocab||[]), ...(pendingGrammar||[]), ...(pendingReading||[]), ...(pendingListening||[]), ...(pendingDialogues||[])], "created_by");
 
   const renderList = (role, counts) => (allProfiles||[]).filter(p => p.role === role).map(p => {
     const pendingCell = role === "teacher"
@@ -2394,14 +2481,16 @@ async function showPendingContent(teacherId, teacherEmail){
   body.innerHTML = `<tr><td colspan="5">Đang tải...</td></tr>`;
   card.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
-  const [{ data: vocab }, { data: reading }, { data: listening }, { data: dialogues }] = await Promise.all([
+  const [{ data: vocab }, { data: grammar }, { data: reading }, { data: listening }, { data: dialogues }] = await Promise.all([
     sb.from("vocab_items").select("id,language,level,de_text").eq("created_by", teacherId).eq("content_status", "pending"),
+    sb.from("grammar_exercises").select("id, question, grammar_lessons(language,level)").eq("created_by", teacherId).eq("content_status", "pending"),
     sb.from("reading_passages").select("id,language,level,title").eq("created_by", teacherId).eq("content_status", "pending"),
     sb.from("listening_passages").select("id,language,level,title").eq("created_by", teacherId).eq("content_status", "pending"),
     sb.from("dialogues").select("id,language,level,title").eq("created_by", teacherId).eq("content_status", "pending")
   ]);
   const rows = [
     ...(vocab||[]).map(r=>({ type:"Từ vựng", table:"vocab_items", id:r.id, language:r.language, level:r.level, label:r.de_text })),
+    ...(grammar||[]).map(r=>({ type:"Ngữ pháp", table:"grammar_exercises", id:r.id, language: r.grammar_lessons && r.grammar_lessons.language, level: r.grammar_lessons && r.grammar_lessons.level, label:r.question })),
     ...(reading||[]).map(r=>({ type:"Đọc", table:"reading_passages", id:r.id, language:r.language, level:r.level, label:r.title })),
     ...(listening||[]).map(r=>({ type:"Nghe", table:"listening_passages", id:r.id, language:r.language, level:r.level, label:r.title })),
     ...(dialogues||[]).map(r=>({ type:"Hội thoại", table:"dialogues", id:r.id, language:r.language, level:r.level, label:r.title }))
@@ -2916,6 +3005,7 @@ async function loadLesson(){
   } else {
     document.getElementById("lesson-status").textContent = "Chưa có bài học cho lựa chọn này. Điền nội dung rồi bấm Lưu để tạo mới.";
     CURRENT_EXERCISES = [];
+    loadPendingGrammarSummary(); // vẫn hiện đề chờ duyệt (ở ngôn ngữ/trình độ KHÁC) dù combo này chưa có bài học
   }
 }
 
@@ -2944,7 +3034,9 @@ async function loadExercises(lessonId){
   const { data, error } = await sb.from("grammar_exercises").select("*").eq("lesson_id", lessonId).order("order_index");
   if(error){ alert("Lỗi khi tải bài tập: " + error.message); return; }
   CURRENT_EXERCISES = data || [];
+  await loadCreatorEmails(CURRENT_EXERCISES.map(ex=>ex.created_by));
   renderExercises();
+  loadPendingGrammarSummary();
 }
 
 function renderExercises(){
@@ -2955,7 +3047,9 @@ function renderExercises(){
       <td><span class="badge">${EX_TYPE_LABELS[ex.type] || ex.type}</span></td>
       <td>${ex.question}</td>
       <td>${ex.correct_answer}</td>
+      <td>${contentStatusHtml(ex)}</td>
       <td style="white-space:nowrap;">
+        ${contentApproveButtonsHtml(ex, "grammar_exercises", `()=>loadExercises(${CURRENT_LESSON.id})`)}
         <button class="btn-sm" onclick="openEditEx(${ex.id})">Sửa</button>
         <button class="btn-sm danger" onclick="deleteEx(${ex.id})">Xoá</button>
       </td>
