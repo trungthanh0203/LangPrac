@@ -206,7 +206,8 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
         <div class="field-row"><label>Nghĩa tiếng Anh (tuỳ chọn)</label><input data-f="en_meaning"></div>
         <div class="field-row"><label>Chủ đề (tuỳ chọn — chọn có sẵn hoặc gõ chủ đề mới)</label><input data-f="category" list="vocab-category-list"></div>
         <datalist id="vocab-category-list"></datalist>
-        <button class="btn btn-primary" type="submit" style="width:auto;padding:10px 22px;margin-top:0;">Gửi duyệt</button>
+        <button class="btn btn-primary" type="submit" id="vocab-submit-btn" style="width:auto;padding:10px 22px;margin-top:0;">Gửi duyệt</button>
+        <button type="button" class="btn-sm" id="btn-cancel-vocab-edit" style="display:none;">Huỷ sửa</button>
         <div class="login-ok" id="vocab-submit-ok" style="display:none;margin-top:12px;"></div>
         <div class="login-error" id="vocab-submit-error" style="display:none;margin-top:12px;"></div>
       </form>
@@ -231,7 +232,8 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
           <div class="field-row"><label>Trình độ</label><select data-f="level" id="reading-passage-level"></select></div>
           <div class="field-row"><label>Tiêu đề</label><input data-f="title" required></div>
           <div class="field-row"><label>Nội dung đoạn văn</label><textarea data-f="passage_text" style="min-height:140px;" required></textarea></div>
-          <button class="btn btn-primary" type="submit" style="width:auto;padding:10px 22px;margin-top:0;">Gửi duyệt</button>
+          <button class="btn btn-primary" type="submit" id="reading-passage-submit-btn" style="width:auto;padding:10px 22px;margin-top:0;">Gửi duyệt</button>
+          <button type="button" class="btn-sm" id="btn-cancel-reading-passage-edit" style="display:none;">Huỷ sửa</button>
           <div class="login-ok" id="reading-passage-ok" style="display:none;margin-top:12px;"></div>
           <div class="login-error" id="reading-passage-error" style="display:none;margin-top:12px;"></div>
         </form>
@@ -263,7 +265,7 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
             <div class="field-row"><label>Đáp án đúng</label><input data-f="correct_answer" required></div>
             <div class="field-row"><label>Giải thích (không bắt buộc)</label><input data-f="explanation"></div>
             <div class="field-row"><label>Thứ tự</label><input data-f="order_index" type="number" value="1"></div>
-            <button class="btn btn-primary" type="submit" style="width:auto;padding:8px 18px;margin-top:0;">Lưu câu hỏi</button>
+            <button class="btn btn-primary" type="submit" id="reading-question-submit-btn" style="width:auto;padding:8px 18px;margin-top:0;">Lưu câu hỏi</button>
             <button type="button" class="btn-sm" id="btn-cancel-reading-question">Huỷ</button>
           </form>
         </div>
@@ -285,7 +287,8 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
           <div class="field-row"><label>Trình độ</label><select data-f="level" id="listening-passage-level"></select></div>
           <div class="field-row"><label>Tiêu đề</label><input data-f="title" required></div>
           <div class="field-row"><label>Nội dung đoạn văn</label><textarea data-f="passage_text" style="min-height:140px;" required></textarea></div>
-          <button class="btn btn-primary" type="submit" style="width:auto;padding:10px 22px;margin-top:0;">Gửi duyệt</button>
+          <button class="btn btn-primary" type="submit" id="listening-passage-submit-btn" style="width:auto;padding:10px 22px;margin-top:0;">Gửi duyệt</button>
+          <button type="button" class="btn-sm" id="btn-cancel-listening-passage-edit" style="display:none;">Huỷ sửa</button>
           <div class="login-ok" id="listening-passage-ok" style="display:none;margin-top:12px;"></div>
           <div class="login-error" id="listening-passage-error" style="display:none;margin-top:12px;"></div>
         </form>
@@ -317,7 +320,7 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
             <div class="field-row"><label>Đáp án đúng</label><input data-f="correct_answer" required></div>
             <div class="field-row"><label>Giải thích (không bắt buộc)</label><input data-f="explanation"></div>
             <div class="field-row"><label>Thứ tự</label><input data-f="order_index" type="number" value="1"></div>
-            <button class="btn btn-primary" type="submit" style="width:auto;padding:8px 18px;margin-top:0;">Lưu câu hỏi</button>
+            <button class="btn btn-primary" type="submit" id="listening-question-submit-btn" style="width:auto;padding:8px 18px;margin-top:0;">Lưu câu hỏi</button>
             <button type="button" class="btn-sm" id="btn-cancel-listening-question">Huỷ</button>
           </form>
         </div>
@@ -341,7 +344,8 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
           <div class="field-row"><label>Bối cảnh (tuỳ chọn)</label><input data-f="scenario"></div>
           <div class="field-row"><label>Tên vai A</label><input data-f="role_a_name" value="A"></div>
           <div class="field-row"><label>Tên vai B</label><input data-f="role_b_name" value="B"></div>
-          <button class="btn btn-primary" type="submit" style="width:auto;padding:10px 22px;margin-top:0;">Gửi duyệt</button>
+          <button class="btn btn-primary" type="submit" id="dialogue-submit-btn" style="width:auto;padding:10px 22px;margin-top:0;">Gửi duyệt</button>
+          <button type="button" class="btn-sm" id="btn-cancel-dialogue-edit" style="display:none;">Huỷ sửa</button>
           <div class="login-ok" id="dialogue-ok" style="display:none;margin-top:12px;"></div>
           <div class="login-error" id="dialogue-error" style="display:none;margin-top:12px;"></div>
         </form>
@@ -972,6 +976,25 @@ async function initVocabForm(){
   document.getElementById("vocab-category-list").innerHTML = categories.map(c=>`<option value="${escHtml(c)}">`).join("");
 }
 
+// Sửa từ vựng đã gửi (mục 13.46) — dùng lại CHÍNH form thêm mới, chỉ khác
+// currentEditingVocabId khác null thì bấm Gửi sẽ UPDATE thay vì INSERT. Chỉ
+// cho sửa khi còn "pending" (khớp đúng RLS "Teacher update own pending
+// vocab_items" migration 45 — sửa được cả ngôn ngữ/trình độ, giống hệt admin
+// đang cho phép ở fieldForm() bên QuanLyTuVung.html, vì vocab_items không có
+// bảng con phụ thuộc như đoạn văn/hội thoại nên đổi ngôn ngữ/trình độ an toàn).
+let currentEditingVocabId = null;
+let MY_VOCAB_ROWS = [];
+function resetVocabForm(){
+  currentEditingVocabId = null;
+  document.getElementById("vocab-submit-form").reset();
+  document.getElementById("vocab-language").dispatchEvent(new Event("change"));
+  document.getElementById("vocab-submit-btn").textContent = "Gửi duyệt";
+  document.getElementById("btn-cancel-vocab-edit").style.display = "none";
+  document.getElementById("vocab-submit-ok").style.display = "none";
+  document.getElementById("vocab-submit-error").style.display = "none";
+}
+document.getElementById("btn-cancel-vocab-edit").addEventListener("click", resetVocabForm);
+
 document.getElementById("vocab-submit-form").addEventListener("submit", async (e)=>{
   e.preventDefault();
   const okEl = document.getElementById("vocab-submit-ok");
@@ -985,23 +1008,28 @@ document.getElementById("vocab-submit-form").addEventListener("submit", async (e
   // GIỐNG (chuẩn hoá khoảng trắng + không phân biệt hoa/thường) chưa, tránh gửi
   // trùng nội dung đã có (chỉ thấy được nội dung RLS cho phép: đã duyệt + của
   // chính mình — không phát hiện được bài "pending" của giáo viên KHÁC, chấp
-  // nhận được vì admin sẽ tự thấy trùng khi duyệt).
-  const { data: existingVocab } = await sb.from("vocab_items").select("de_text")
+  // nhận được vì admin sẽ tự thấy trùng khi duyệt). Khi đang SỬA, loại chính
+  // dòng đang sửa ra khỏi so khớp.
+  const { data: existingVocab } = await sb.from("vocab_items").select("id, de_text")
     .eq("language", payload.language).eq("level", payload.level).eq("type", payload.type);
-  if((existingVocab||[]).some(r=>normalizeText(r.de_text) === normalizeText(payload.de_text))){
+  if((existingVocab||[]).some(r=> r.id !== currentEditingVocabId && normalizeText(r.de_text) === normalizeText(payload.de_text))){
     errEl.textContent = "Từ/câu này đã tồn tại (cùng ngôn ngữ, trình độ và loại) — vui lòng kiểm tra lại.";
     errEl.style.display = "block";
     return;
   }
 
-  // KHÔNG gửi content_status/created_by — trigger force_teacher_vocab_pending()
-  // (migration 45) tự ép "pending" + đúng auth.uid() của giáo viên đang đăng nhập.
-  const { error } = await sb.from("vocab_items").insert(payload);
+  let error;
+  if(currentEditingVocabId){
+    ({ error } = await sb.from("vocab_items").update(payload).eq("id", currentEditingVocabId));
+  } else {
+    // KHÔNG gửi content_status/created_by — trigger force_teacher_vocab_pending()
+    // (migration 45) tự ép "pending" + đúng auth.uid() của giáo viên đang đăng nhập.
+    ({ error } = await sb.from("vocab_items").insert(payload));
+  }
   if(error){ errEl.textContent = "Lỗi: " + error.message; errEl.style.display = "block"; return; }
-  okEl.textContent = "Đã gửi! Nội dung sẽ hiện cho học sinh sau khi quản trị viên duyệt.";
+  okEl.textContent = currentEditingVocabId ? "Đã cập nhật." : "Đã gửi! Nội dung sẽ hiện cho học sinh sau khi quản trị viên duyệt.";
   okEl.style.display = "block";
-  form.reset();
-  document.getElementById("vocab-language").dispatchEvent(new Event("change"));
+  resetVocabForm();
   loadMyVocab();
 });
 
@@ -1010,11 +1038,13 @@ async function loadMyVocab(){
   body.innerHTML = `<tr><td colspan="6">Đang tải…</td></tr>`;
   const { data, error } = await sb.from("vocab_items").select("*").eq("created_by", CURRENT_TEACHER_ID).order("id", { ascending: false });
   if(error){ body.innerHTML = `<tr><td colspan="6">Lỗi: ${escHtml(error.message)}</td></tr>`; return; }
-  if(!data || !data.length){ body.innerHTML = `<tr><td colspan="6">Bạn chưa gửi từ vựng nào.</td></tr>`; return; }
-  body.innerHTML = data.map(r=>{
+  MY_VOCAB_ROWS = data || [];
+  if(!MY_VOCAB_ROWS.length){ body.innerHTML = `<tr><td colspan="6">Bạn chưa gửi từ vựng nào.</td></tr>`; return; }
+  body.innerHTML = MY_VOCAB_ROWS.map(r=>{
     const statusHtml = r.content_status === "pending"
       ? `<span class="btn-sm" style="background:#fdf1e6;color:#b8722a;border:none;cursor:default;">🕒 Chờ duyệt</span>`
       : `<span class="btn-sm" style="background:var(--green-light);color:var(--green);border:none;cursor:default;">✅ Đã duyệt</span>`;
+    const editBtnHtml = r.content_status === "pending" ? `<button class="btn-sm" data-edit-vocab="${r.id}">Sửa</button>` : "";
     const deleteBtnHtml = r.content_status === "pending"
       ? `<button class="btn-sm" style="color:var(--red);border-color:var(--red-light);" data-delete-vocab="${r.id}">Xoá</button>`
       : "";
@@ -1024,9 +1054,29 @@ async function loadMyVocab(){
       <td>${escHtml(r.de_text)}</td>
       <td>${escHtml(r.vi_meaning||"")}</td>
       <td>${statusHtml}</td>
-      <td>${deleteBtnHtml}</td>
+      <td style="white-space:nowrap;">${editBtnHtml} ${deleteBtnHtml}</td>
     </tr>`;
   }).join("");
+  document.querySelectorAll("[data-edit-vocab]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const item = MY_VOCAB_ROWS.find(r=>String(r.id)===btn.dataset.editVocab);
+      if(!item) return;
+      currentEditingVocabId = item.id;
+      const form = document.getElementById("vocab-submit-form");
+      form.querySelector('[data-f="language"]').value = item.language;
+      form.querySelector('[data-f="language"]').dispatchEvent(new Event("change"));
+      form.querySelector('[data-f="level"]').value = item.level;
+      form.querySelector('[data-f="type"]').value = item.type;
+      form.querySelector('[data-f="de_text"]').value = item.de_text || "";
+      form.querySelector('[data-f="phonetic"]').value = item.phonetic || "";
+      form.querySelector('[data-f="vi_meaning"]').value = item.vi_meaning || "";
+      form.querySelector('[data-f="en_meaning"]').value = item.en_meaning || "";
+      form.querySelector('[data-f="category"]').value = item.category || "";
+      document.getElementById("vocab-submit-btn").textContent = "Cập nhật";
+      document.getElementById("btn-cancel-vocab-edit").style.display = "inline-block";
+      form.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
   document.querySelectorAll("[data-delete-vocab]").forEach(btn=>{
     btn.addEventListener("click", async ()=>{
       if(!confirm("Xoá mục này?")) return;
@@ -1052,6 +1102,8 @@ function initPassageContentManager(cfg){
   let myPassages = [];
   let currentPassageId = null;
   let currentCanEdit = false;
+  let currentEditingPassageId = null;
+  let currentEditingQuestionId = null;
 
   async function initForm(){
     await langsConfigPromise;
@@ -1067,6 +1119,19 @@ function initPassageContentManager(cfg){
     refreshLevels();
   }
 
+  // Sửa lại đoạn văn đã gửi (mục 13.46) — chỉ cho khi còn "pending" (đúng RLS
+  // "Teacher update own pending X" migration 46), dùng lại CHÍNH form thêm mới.
+  function resetPassageForm(){
+    currentEditingPassageId = null;
+    document.getElementById(`${prefix}-passage-form`).reset();
+    document.getElementById(`${prefix}-passage-language`).dispatchEvent(new Event("change"));
+    document.getElementById(`${prefix}-passage-submit-btn`).textContent = "Gửi duyệt";
+    document.getElementById(`btn-cancel-${prefix}-passage-edit`).style.display = "none";
+    document.getElementById(`${prefix}-passage-ok`).style.display = "none";
+    document.getElementById(`${prefix}-passage-error`).style.display = "none";
+  }
+  document.getElementById(`btn-cancel-${prefix}-passage-edit`).addEventListener("click", resetPassageForm);
+
   document.getElementById(`${prefix}-passage-form`).addEventListener("submit", async (e)=>{
     e.preventDefault();
     const okEl = document.getElementById(`${prefix}-passage-ok`);
@@ -1078,20 +1143,25 @@ function initPassageContentManager(cfg){
 
     // Kiểm tra trùng tiêu đề (mục 13.43) — cùng ngôn ngữ/trình độ đã có
     // ${parentLabel} nào TRÙNG tiêu đề chưa (chuẩn hoá khoảng trắng/hoa-thường).
-    const { data: existingTitles } = await sb.from(parentTable).select("title")
+    // Khi đang SỬA, loại chính dòng đang sửa ra khỏi so khớp.
+    const { data: existingTitles } = await sb.from(parentTable).select("id, title")
       .eq("language", payload.language).eq("level", payload.level);
-    if((existingTitles||[]).some(r=>normalizeText(r.title) === normalizeText(payload.title))){
+    if((existingTitles||[]).some(r=> r.id !== currentEditingPassageId && normalizeText(r.title) === normalizeText(payload.title))){
       errEl.textContent = `Đã có ${parentLabel} cùng tiêu đề ở ngôn ngữ/trình độ này — vui lòng đổi tiêu đề hoặc kiểm tra lại.`;
       errEl.style.display = "block";
       return;
     }
 
-    const { error } = await sb.from(parentTable).insert(payload);
+    let error;
+    if(currentEditingPassageId){
+      ({ error } = await sb.from(parentTable).update(payload).eq("id", currentEditingPassageId));
+    } else {
+      ({ error } = await sb.from(parentTable).insert(payload));
+    }
     if(error){ errEl.textContent = "Lỗi: " + error.message; errEl.style.display = "block"; return; }
-    okEl.textContent = "Đã gửi! Nội dung sẽ hiện cho học sinh sau khi quản trị viên duyệt.";
+    okEl.textContent = currentEditingPassageId ? "Đã cập nhật." : "Đã gửi! Nội dung sẽ hiện cho học sinh sau khi quản trị viên duyệt.";
     okEl.style.display = "block";
-    form.reset();
-    document.getElementById(`${prefix}-passage-language`).dispatchEvent(new Event("change"));
+    resetPassageForm();
     loadMyPassages();
   });
 
@@ -1107,6 +1177,7 @@ function initPassageContentManager(cfg){
       const statusHtml = p.content_status === "pending"
         ? `<span class="btn-sm" style="background:#fdf1e6;color:#b8722a;border:none;cursor:default;">🕒 Chờ duyệt</span>`
         : `<span class="btn-sm" style="background:var(--green-light);color:var(--green);border:none;cursor:default;">✅ Đã duyệt</span>`;
+      const editBtnHtml = p.content_status === "pending" ? `<button class="btn-sm" data-edit-passage="${p.id}">Sửa</button>` : "";
       const deleteBtnHtml = p.content_status === "pending"
         ? `<button class="btn-sm" style="color:var(--red);border-color:var(--red-light);" data-delete-passage="${p.id}">Xoá</button>`
         : "";
@@ -1116,11 +1187,27 @@ function initPassageContentManager(cfg){
         <td>${escHtml(p.title)}</td>
         <td>${qCount}</td>
         <td>${statusHtml}</td>
-        <td style="white-space:nowrap;"><button class="btn-sm" data-manage-questions="${p.id}">Câu hỏi</button> ${deleteBtnHtml}</td>
+        <td style="white-space:nowrap;"><button class="btn-sm" data-manage-questions="${p.id}">Câu hỏi</button> ${editBtnHtml} ${deleteBtnHtml}</td>
       </tr>`;
     }).join("");
     body.querySelectorAll("[data-manage-questions]").forEach(btn=>{
       btn.addEventListener("click", ()=> openQuestionsPanel(Number(btn.dataset.manageQuestions)));
+    });
+    body.querySelectorAll("[data-edit-passage]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const passage = myPassages.find(p=>String(p.id)===btn.dataset.editPassage);
+        if(!passage) return;
+        currentEditingPassageId = passage.id;
+        const form = document.getElementById(`${prefix}-passage-form`);
+        form.querySelector('[data-f="language"]').value = passage.language;
+        form.querySelector('[data-f="language"]').dispatchEvent(new Event("change"));
+        form.querySelector('[data-f="level"]').value = passage.level;
+        form.querySelector('[data-f="title"]').value = passage.title || "";
+        form.querySelector('[data-f="passage_text"]').value = passage.passage_text || "";
+        document.getElementById(`${prefix}-passage-submit-btn`).textContent = "Cập nhật";
+        document.getElementById(`btn-cancel-${prefix}-passage-edit`).style.display = "inline-block";
+        form.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
     });
     body.querySelectorAll("[data-delete-passage]").forEach(btn=>{
       btn.addEventListener("click", async ()=>{
@@ -1139,8 +1226,15 @@ function initPassageContentManager(cfg){
     document.getElementById(`${prefix}-questions-panel`).style.display = "block";
     document.getElementById(`${prefix}-questions-title`).textContent = passage ? passage.title : "";
     document.getElementById(`${prefix}-question-form-wrap`).style.display = "none";
+    resetQuestionForm();
     document.getElementById(`btn-add-${prefix}-question`).style.display = currentCanEdit ? "inline-block" : "none";
     loadQuestions();
+  }
+
+  function resetQuestionForm(){
+    currentEditingQuestionId = null;
+    document.getElementById(`${prefix}-question-form`).reset();
+    document.getElementById(`${prefix}-question-submit-btn`).textContent = "Lưu câu hỏi";
   }
 
   async function loadQuestions(){
@@ -1155,8 +1249,26 @@ function initPassageContentManager(cfg){
         <td>${q.type==='multiple_choice'?'Trắc nghiệm':'Điền từ'}</td>
         <td>${escHtml(q.question)}</td>
         <td>${escHtml(q.correct_answer)}</td>
-        <td>${currentCanEdit ? `<button class="btn-sm danger" data-delete-question="${q.id}">Xoá</button>` : ""}</td>
+        <td style="white-space:nowrap;">${currentCanEdit
+          ? `<button class="btn-sm" data-edit-question="${q.id}">Sửa</button> <button class="btn-sm danger" data-delete-question="${q.id}">Xoá</button>`
+          : ""}</td>
       </tr>`).join("") : `<tr><td colspan="5">Chưa có câu hỏi nào.</td></tr>`;
+    body.querySelectorAll("[data-edit-question]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const q = rows.find(r=>String(r.id)===btn.dataset.editQuestion);
+        if(!q) return;
+        currentEditingQuestionId = q.id;
+        const form = document.getElementById(`${prefix}-question-form`);
+        form.querySelector('[data-f="type"]').value = q.type;
+        form.querySelector('[data-f="question"]').value = q.question || "";
+        form.querySelector('[data-f="options"]').value = q.options || "";
+        form.querySelector('[data-f="correct_answer"]').value = q.correct_answer || "";
+        form.querySelector('[data-f="explanation"]').value = q.explanation || "";
+        form.querySelector('[data-f="order_index"]').value = q.order_index;
+        document.getElementById(`${prefix}-question-submit-btn`).textContent = "Cập nhật câu hỏi";
+        document.getElementById(`${prefix}-question-form-wrap`).style.display = "block";
+      });
+    });
     body.querySelectorAll("[data-delete-question]").forEach(btn=>{
       btn.addEventListener("click", async ()=>{
         if(!confirm("Xoá câu hỏi này?")) return;
@@ -1168,10 +1280,12 @@ function initPassageContentManager(cfg){
   }
 
   document.getElementById(`btn-add-${prefix}-question`).addEventListener("click", ()=>{
+    resetQuestionForm();
     document.getElementById(`${prefix}-question-form-wrap`).style.display = "block";
   });
   document.getElementById(`btn-cancel-${prefix}-question`).addEventListener("click", ()=>{
     document.getElementById(`${prefix}-question-form-wrap`).style.display = "none";
+    resetQuestionForm();
   });
   document.getElementById(`btn-close-${prefix}-questions`).addEventListener("click", ()=>{
     document.getElementById(`${prefix}-questions-panel`).style.display = "none";
@@ -1181,20 +1295,27 @@ function initPassageContentManager(cfg){
     e.preventDefault();
     if(!currentPassageId) return;
     const form = e.target;
-    const payload = { passage_id: currentPassageId };
+    const payload = {};
     form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
 
-    // Kiểm tra trùng câu hỏi trong CÙNG đoạn văn này (mục 13.43).
-    const { data: existingQuestions } = await sb.from(childTable).select("question").eq("passage_id", currentPassageId);
-    if((existingQuestions||[]).some(r=>normalizeText(r.question) === normalizeText(payload.question))){
+    // Kiểm tra trùng câu hỏi trong CÙNG đoạn văn này (mục 13.43). Khi đang
+    // SỬA, loại chính câu đang sửa ra khỏi so khớp.
+    const { data: existingQuestions } = await sb.from(childTable).select("id, question").eq("passage_id", currentPassageId);
+    if((existingQuestions||[]).some(r=> r.id !== currentEditingQuestionId && normalizeText(r.question) === normalizeText(payload.question))){
       alert("Câu hỏi này đã tồn tại trong đoạn văn này — vui lòng kiểm tra lại.");
       return;
     }
 
-    const { error } = await sb.from(childTable).insert(payload);
+    let error;
+    if(currentEditingQuestionId){
+      ({ error } = await sb.from(childTable).update(payload).eq("id", currentEditingQuestionId));
+    } else {
+      payload.passage_id = currentPassageId;
+      ({ error } = await sb.from(childTable).insert(payload));
+    }
     if(error){ alert("Lỗi: " + error.message); return; }
-    form.reset();
     document.getElementById(`${prefix}-question-form-wrap`).style.display = "none";
+    resetQuestionForm();
     loadQuestions();
     loadMyPassages();
   });
@@ -1224,6 +1345,18 @@ async function initDialogueForm(){
   refreshLevels();
 }
 
+let currentEditingDialogueId = null;
+function resetDialogueForm(){
+  currentEditingDialogueId = null;
+  document.getElementById("dialogue-form").reset();
+  document.getElementById("dialogue-language").dispatchEvent(new Event("change"));
+  document.getElementById("dialogue-submit-btn").textContent = "Gửi duyệt";
+  document.getElementById("btn-cancel-dialogue-edit").style.display = "none";
+  document.getElementById("dialogue-ok").style.display = "none";
+  document.getElementById("dialogue-error").style.display = "none";
+}
+document.getElementById("btn-cancel-dialogue-edit").addEventListener("click", resetDialogueForm);
+
 document.getElementById("dialogue-form").addEventListener("submit", async (e)=>{
   e.preventDefault();
   const okEl = document.getElementById("dialogue-ok");
@@ -1233,21 +1366,26 @@ document.getElementById("dialogue-form").addEventListener("submit", async (e)=>{
   const payload = {};
   form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
 
-  // Kiểm tra trùng tiêu đề hội thoại (mục 13.43) — cùng ngôn ngữ/trình độ.
-  const { data: existingTitles } = await sb.from("dialogues").select("title")
+  // Kiểm tra trùng tiêu đề hội thoại (mục 13.43) — cùng ngôn ngữ/trình độ. Khi
+  // đang SỬA, loại chính hội thoại đang sửa ra khỏi so khớp.
+  const { data: existingTitles } = await sb.from("dialogues").select("id, title")
     .eq("language", payload.language).eq("level", payload.level);
-  if((existingTitles||[]).some(r=>normalizeText(r.title) === normalizeText(payload.title))){
+  if((existingTitles||[]).some(r=> r.id !== currentEditingDialogueId && normalizeText(r.title) === normalizeText(payload.title))){
     errEl.textContent = "Đã có hội thoại cùng tiêu đề ở ngôn ngữ/trình độ này — vui lòng đổi tiêu đề hoặc kiểm tra lại.";
     errEl.style.display = "block";
     return;
   }
 
-  const { error } = await sb.from("dialogues").insert(payload);
+  let error;
+  if(currentEditingDialogueId){
+    ({ error } = await sb.from("dialogues").update(payload).eq("id", currentEditingDialogueId));
+  } else {
+    ({ error } = await sb.from("dialogues").insert(payload));
+  }
   if(error){ errEl.textContent = "Lỗi: " + error.message; errEl.style.display = "block"; return; }
-  okEl.textContent = "Đã gửi! Nội dung sẽ hiện cho học sinh sau khi quản trị viên duyệt.";
+  okEl.textContent = currentEditingDialogueId ? "Đã cập nhật." : "Đã gửi! Nội dung sẽ hiện cho học sinh sau khi quản trị viên duyệt.";
   okEl.style.display = "block";
-  form.reset();
-  document.getElementById("dialogue-language").dispatchEvent(new Event("change"));
+  resetDialogueForm();
   loadMyDialogues();
 });
 
@@ -1263,6 +1401,7 @@ async function loadMyDialogues(){
     const statusHtml = d.content_status === "pending"
       ? `<span class="btn-sm" style="background:#fdf1e6;color:#b8722a;border:none;cursor:default;">🕒 Chờ duyệt</span>`
       : `<span class="btn-sm" style="background:var(--green-light);color:var(--green);border:none;cursor:default;">✅ Đã duyệt</span>`;
+    const editBtnHtml = d.content_status === "pending" ? `<button class="btn-sm" data-edit-dialogue="${d.id}">Sửa</button>` : "";
     const deleteBtnHtml = d.content_status === "pending"
       ? `<button class="btn-sm" style="color:var(--red);border-color:var(--red-light);" data-delete-dialogue="${d.id}">Xoá</button>`
       : "";
@@ -1272,11 +1411,29 @@ async function loadMyDialogues(){
       <td>${escHtml(d.title)}</td>
       <td>${lCount}</td>
       <td>${statusHtml}</td>
-      <td style="white-space:nowrap;"><button class="btn-sm" data-manage-lines="${d.id}">Câu thoại</button> ${deleteBtnHtml}</td>
+      <td style="white-space:nowrap;"><button class="btn-sm" data-manage-lines="${d.id}">Câu thoại</button> ${editBtnHtml} ${deleteBtnHtml}</td>
     </tr>`;
   }).join("");
   body.querySelectorAll("[data-manage-lines]").forEach(btn=>{
     btn.addEventListener("click", ()=> openLinesPanel(Number(btn.dataset.manageLines)));
+  });
+  body.querySelectorAll("[data-edit-dialogue]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const dlg = myDialogues.find(d=>String(d.id)===btn.dataset.editDialogue);
+      if(!dlg) return;
+      currentEditingDialogueId = dlg.id;
+      const form = document.getElementById("dialogue-form");
+      form.querySelector('[data-f="language"]').value = dlg.language;
+      form.querySelector('[data-f="language"]').dispatchEvent(new Event("change"));
+      form.querySelector('[data-f="level"]').value = dlg.level;
+      form.querySelector('[data-f="title"]').value = dlg.title || "";
+      form.querySelector('[data-f="scenario"]').value = dlg.scenario || "";
+      form.querySelector('[data-f="role_a_name"]').value = dlg.role_a_name || "A";
+      form.querySelector('[data-f="role_b_name"]').value = dlg.role_b_name || "B";
+      document.getElementById("dialogue-submit-btn").textContent = "Cập nhật";
+      document.getElementById("btn-cancel-dialogue-edit").style.display = "inline-block";
+      form.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   });
   body.querySelectorAll("[data-delete-dialogue]").forEach(btn=>{
     btn.addEventListener("click", async ()=>{

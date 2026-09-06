@@ -1213,13 +1213,23 @@ async function previewPendingItem(kind, id, reloadFn){
       <div class="field-row"><label>Nội dung đoạn văn</label><textarea data-f="passage_text" style="min-height:160px;">${record.passage_text||''}</textarea></div>
     `;
     const { data: questions } = await sb.from(cfg.childTable).select("*").eq(cfg.childFk, id).order("order_index");
+    // Câu hỏi/đáp án SỬA ĐƯỢC ngay tại đây (mục 13.46) — mỗi trường dùng
+    // data-qf (tên cột) + data-qid (id câu hỏi) để savePreviewEdits() gom lại
+    // thành từng payload update() riêng cho từng câu hỏi khi Lưu/Duyệt.
     childHtml = `<div class="field-row"><label>Câu hỏi (${(questions||[]).length})</label>${
       (questions&&questions.length) ? questions.map((q,i)=>`
         <div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;">
-          <div style="font-weight:700;font-size:13px;">${i+1}. ${escHtmlAdmin(q.question)}</div>
-          <div style="font-size:12.5px;color:var(--text-2);margin-top:4px;">${q.type==='multiple_choice'?'Trắc nghiệm':'Điền từ'}${q.options ? ' · Lựa chọn: '+escHtmlAdmin(q.options) : ''}</div>
-          <div style="font-size:12.5px;color:var(--green);font-weight:700;margin-top:4px;">Đáp án đúng: ${escHtmlAdmin(q.correct_answer)}</div>
-          ${q.explanation ? `<div style="font-size:12px;color:var(--text-2);margin-top:2px;">Giải thích: ${escHtmlAdmin(q.explanation)}</div>` : ""}
+          <div style="font-weight:700;font-size:12.5px;color:var(--text-2);margin-bottom:6px;">Câu hỏi #${i+1}</div>
+          <div class="field-row"><label>Loại</label>
+            <select data-qf="type" data-qid="${q.id}">
+              <option value="multiple_choice" ${q.type==='multiple_choice'?'selected':''}>Trắc nghiệm</option>
+              <option value="fill_blank" ${q.type==='fill_blank'?'selected':''}>Điền vào chỗ trống</option>
+            </select>
+          </div>
+          <div class="field-row"><label>Câu hỏi</label><input data-qf="question" data-qid="${q.id}" value="${(q.question||'').replace(/"/g,'&quot;')}"></div>
+          <div class="field-row"><label>Các lựa chọn (cách nhau bởi dấu phẩy)</label><input data-qf="options" data-qid="${q.id}" value="${(q.options||'').replace(/"/g,'&quot;')}"></div>
+          <div class="field-row"><label>Đáp án đúng</label><input data-qf="correct_answer" data-qid="${q.id}" value="${(q.correct_answer||'').replace(/"/g,'&quot;')}"></div>
+          <div class="field-row"><label>Giải thích (tuỳ chọn)</label><input data-qf="explanation" data-qid="${q.id}" value="${(q.explanation||'').replace(/"/g,'&quot;')}"></div>
         </div>`).join("") : `<div style="color:var(--text-2);font-size:13px;">Chưa có câu hỏi nào.</div>`
     }</div>`;
   } else if(kind === "dialogue"){
@@ -1258,13 +1268,42 @@ async function previewPendingItem(kind, id, reloadFn){
   document.getElementById("overlay").classList.add("show");
   document.getElementById("m-close").onclick = closeModal;
   document.getElementById("m-cancel").onclick = closeModal;
-  document.getElementById("preview-approve-btn").onclick = ()=> approveContent(cfg.table, id, async ()=>{ closeModal(); if(reloadFn) await reloadFn(); });
+
+  // Lưu CẢ payload chính (title/passage_text/...) LẪN từng câu hỏi con đã sửa
+  // (data-qf/data-qid, mục 13.46) — dùng chung cho cả nút "Lưu thay đổi" VÀ
+  // "Duyệt" (Duyệt phải lưu trước, không thì sửa xong bấm Duyệt luôn sẽ mất
+  // hết thay đổi vừa gõ vì approveContent() chỉ update content_status).
+  async function savePreviewEdits(){
+    const form = document.getElementById("preview-item-form");
+    const payload = {};
+    form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+    const { error } = await sb.from(cfg.table).update(payload).eq("id", id);
+    if(error) return error;
+    if(cfg.childTable){
+      const childUpdates = {};
+      form.querySelectorAll("[data-qf]").forEach(el=>{
+        const qid = el.dataset.qid;
+        if(!childUpdates[qid]) childUpdates[qid] = {};
+        childUpdates[qid][el.dataset.qf] = el.value;
+      });
+      const results = await Promise.all(Object.entries(childUpdates).map(([qid, qPayload]) =>
+        sb.from(cfg.childTable).update(qPayload).eq("id", Number(qid))
+      ));
+      const failed = results.find(r=>r.error);
+      if(failed) return failed.error;
+    }
+    return null;
+  }
+
+  document.getElementById("preview-approve-btn").onclick = async ()=>{
+    const saveError = await savePreviewEdits();
+    if(saveError){ alert("Lỗi khi lưu trước khi duyệt: " + saveError.message); return; }
+    approveContent(cfg.table, id, async ()=>{ closeModal(); if(reloadFn) await reloadFn(); });
+  };
   document.getElementById("preview-reject-btn").onclick = ()=> rejectContent(cfg.table, id, async ()=>{ closeModal(); if(reloadFn) await reloadFn(); });
   document.getElementById("preview-item-form").onsubmit = async (e)=>{
     e.preventDefault();
-    const payload = {};
-    e.target.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
-    const { error: saveError } = await sb.from(cfg.table).update(payload).eq("id", id);
+    const saveError = await savePreviewEdits();
     if(saveError){ alert("Lỗi: " + saveError.message); return; }
     closeModal();
     if(reloadFn) await reloadFn();
