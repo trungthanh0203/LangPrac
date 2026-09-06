@@ -670,11 +670,11 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>Email</th><th>Ngôn ngữ</th><th>Ngày đăng ký</th>
+              <th></th><th>Email</th><th>Ngôn ngữ</th><th>Ngày đăng ký</th>
               <th class="dash-sortable" data-sort="last_activity_at" style="cursor:pointer;">Hoạt động gần nhất ⇅</th>
               <th>Số bài đã làm</th>
               <th class="dash-sortable" data-sort="avg_score_pct" style="cursor:pointer;">Điểm TB ⇅</th>
-              <th>Phụ huynh liên kết</th><th>Giáo viên</th><th></th>
+              <th>Phụ huynh liên kết</th><th>Giáo viên</th><th>Điện thoại</th><th>Địa chỉ</th>
             </tr></thead>
             <tbody id="dash-table-body"></tbody>
           </table>
@@ -1720,6 +1720,7 @@ function renderDashTable(){
     const langLabel = (LANGS_CFG[s.selected_language] && LANGS_CFG[s.selected_language].adminLabel) || s.selected_language || "—";
     return `
       <tr class="${idle?'dash-idle':''}">
+        <td><button class="btn-sm" data-edit-student="${s.id}">Sửa</button></td>
         <td>${escHtmlAdmin(s.email)}</td>
         <td>${escHtmlAdmin(langLabel)}</td>
         <td>${new Date(s.created_at).toLocaleDateString("vi-VN")}</td>
@@ -1728,7 +1729,8 @@ function renderDashTable(){
         <td>${s.avg_score_pct==null ? "—" : s.avg_score_pct+"%"}</td>
         <td>${s.parent_emails ? escHtmlAdmin(s.parent_emails) : "— chưa có"}</td>
         <td>${s.teacher_emails ? escHtmlAdmin(s.teacher_emails) : "— chưa có"}</td>
-        <td><button class="btn-sm" data-edit-student="${s.id}">Sửa</button></td>
+        <td>${s.phone ? escHtmlAdmin(s.phone) : "— chưa có"}</td>
+        <td>${s.address ? escHtmlAdmin(s.address) : "— chưa có"}</td>
       </tr>`;
   }).join("");
 
