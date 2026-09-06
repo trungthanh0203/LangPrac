@@ -291,12 +291,13 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
         <select id="f-language" style="background:#fff;color:var(--text-1);border:1px solid var(--border);"><option value="all">Tất cả ngôn ngữ</option></select>
         <select id="f-level" style="background:#fff;color:var(--text-1);border:1px solid var(--border);"><option value="all">Tất cả trình độ</option></select>
         <select id="f-type" style="background:#fff;color:var(--text-1);border:1px solid var(--border);"><option value="all">Tất cả loại</option><option value="word">Từ</option><option value="sentence">Câu</option></select>
+        <select id="f-status" style="background:#fff;color:var(--text-1);border:1px solid var(--border);"><option value="all">Tất cả trạng thái</option><option value="pending">🕒 Chờ duyệt</option><option value="approved">✅ Đã duyệt</option></select>
         <input type="text" id="f-search" placeholder="Tìm kiếm..." style="background:#fff;color:var(--text-1);border:1px solid var(--border);">
       </div>
       <div class="table-wrap">
         <table>
           <thead><tr>
-            <th>Ngôn ngữ</th><th>Trình độ</th><th>Loại</th><th>Từ / Câu</th><th>Phiên âm</th><th>Nghĩa VI</th><th>Nghĩa EN</th><th>Chủ đề</th><th></th>
+            <th>Ngôn ngữ</th><th>Trình độ</th><th>Loại</th><th>Từ / Câu</th><th>Phiên âm</th><th>Nghĩa VI</th><th>Nghĩa EN</th><th>Chủ đề</th><th>Trạng thái</th><th></th>
           </tr></thead>
           <tbody id="table-body"></tbody>
         </table>
@@ -738,7 +739,8 @@ if(SUPABASE_URL.includes("YOUR-PROJECT") || SUPABASE_ANON_KEY.includes("YOUR-ANO
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let ME = null;
 let ITEMS = [];
-let filters = { language:"all", level:"all", type:"all", search:"" };
+let filters = { language:"all", level:"all", type:"all", status:"all", search:"" };
+let VOCAB_CREATORS = {}; // map created_by (uuid giáo viên) -> email, phục vụ hiển thị "Người gửi" ở cột Trạng thái
 
 // ============================================================
 // Cấu hình ngôn ngữ nạp động từ languages.json — thêm ngôn ngữ mới
@@ -913,6 +915,7 @@ async function afterLogin(){
 document.getElementById("f-language").addEventListener("change", e=>{ filters.language = e.target.value; rebuildLevelFilterOptions(); renderTable(); });
 document.getElementById("f-level").addEventListener("change", e=>{ filters.level = e.target.value; renderTable(); });
 document.getElementById("f-type").addEventListener("change", e=>{ filters.type = e.target.value; renderTable(); });
+document.getElementById("f-status").addEventListener("change", e=>{ filters.status = e.target.value; renderTable(); });
 document.getElementById("f-search").addEventListener("input", e=>{ filters.search = e.target.value.trim().toLowerCase(); renderTable(); });
 
 async function loadData(){
@@ -921,6 +924,15 @@ async function loadData(){
   const { data, error } = await sb.from("vocab_items").select("*").order("level").order("id");
   if(error){ document.getElementById("loading").textContent = "Lỗi: " + error.message; return; }
   ITEMS = data || [];
+  // Nội dung do giáo viên gửi (mục 13.41) có created_by -> tải email để hiện
+  // "Người gửi" cạnh badge trạng thái, chỉ query khi thật sự có dòng nào cần.
+  const creatorIds = [...new Set(ITEMS.filter(r=>r.created_by).map(r=>r.created_by))];
+  if(creatorIds.length){
+    const { data: creators } = await sb.from("profiles").select("id,email").in("id", creatorIds);
+    VOCAB_CREATORS = Object.fromEntries((creators||[]).map(c=>[c.id, c.email]));
+  } else {
+    VOCAB_CREATORS = {};
+  }
   document.getElementById("loading").style.display = "none";
   document.getElementById("app").style.display = "block";
   renderTable();
@@ -931,6 +943,7 @@ function getFiltered(){
     if(filters.language!=="all" && r.language!==filters.language) return false;
     if(filters.level!=="all" && r.level!==filters.level) return false;
     if(filters.type!=="all" && r.type!==filters.type) return false;
+    if(filters.status!=="all" && r.content_status!==filters.status) return false;
     if(filters.search){
       const hay = `${r.de_text||''} ${r.vi_meaning||''} ${r.en_meaning||''} ${r.category||''}`.toLowerCase();
       if(!hay.includes(filters.search)) return false;
@@ -946,6 +959,14 @@ function renderTable(){
     const langCfg = LANGS_CFG[r.language];
     const langBadge = langCfg ? `${langCfg.flagEmoji} ${r.language.toUpperCase()}` : r.language;
     const levelLabel = langCfg?.levels.find(lv=>lv.code===r.level)?.label || r.level;
+    const isPending = r.content_status === "pending";
+    const statusHtml = isPending
+      ? `<span class="badge" style="background:var(--amber-light);color:#b8722a;">🕒 Chờ duyệt</span>${r.created_by ? `<div style="font-size:11px;color:var(--text-2);margin-top:3px;">bởi ${VOCAB_CREATORS[r.created_by]||'?'}</div>` : ''}`
+      : `<span class="badge" style="background:var(--green-light);color:var(--green);">✅ Đã duyệt</span>`;
+    const approveButtonsHtml = isPending
+      ? `<button class="btn-sm" style="color:var(--green);border-color:var(--green-light);" onclick="approveVocab(${r.id})">Duyệt</button>
+         <button class="btn-sm danger" onclick="rejectVocab(${r.id})">Từ chối</button>`
+      : "";
     return `
     <tr>
       <td><span class="badge">${langBadge}</span></td>
@@ -956,7 +977,9 @@ function renderTable(){
       <td>${r.vi_meaning}</td>
       <td>${r.en_meaning||''}</td>
       <td>${r.category||''}</td>
+      <td>${statusHtml}</td>
       <td style="white-space:nowrap;">
+        ${approveButtonsHtml}
         <button class="btn-sm" onclick="openEdit(${r.id})">Sửa</button>
         <button class="btn-sm danger" onclick="deleteItem(${r.id})">Xoá</button>
       </td>
@@ -1010,6 +1033,19 @@ window.openEdit = function(id){
 };
 window.deleteItem = async function(id){
   if(!confirm("Xoá mục này?")) return;
+  const { error } = await sb.from("vocab_items").delete().eq("id", id);
+  if(error){ alert("Lỗi: " + error.message); return; }
+  await loadData();
+};
+// Duyệt/Từ chối nội dung giáo viên gửi (mục 13.41) — Từ chối = xoá luôn cho
+// gọn (không cần trạng thái "rejected" riêng, giáo viên có thể gửi lại nếu cần).
+window.approveVocab = async function(id){
+  const { error } = await sb.from("vocab_items").update({ content_status: "approved" }).eq("id", id);
+  if(error){ alert("Lỗi: " + error.message); return; }
+  await loadData();
+};
+window.rejectVocab = async function(id){
+  if(!confirm("Từ chối và xoá nội dung này?")) return;
   const { error } = await sb.from("vocab_items").delete().eq("id", id);
   if(error){ alert("Lỗi: " + error.message); return; }
   await loadData();

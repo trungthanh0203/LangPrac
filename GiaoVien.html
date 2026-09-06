@@ -83,6 +83,12 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
 .level-node[data-clickable]:hover{outline:2px solid var(--navy2);outline-offset:1px;}
 .level-detail-panel{background:var(--teal-light);}
 .level-detail-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-weight:700;font-size:13.5px;margin-bottom:10px;}
+.teacher-nav{display:flex;gap:8px;margin-bottom:var(--gap);}
+.teacher-nav-btn{padding:8px 14px;border-radius:8px;border:2px solid var(--border);background:#fff;font-size:13px;font-weight:700;color:var(--text-2);cursor:pointer;}
+.teacher-nav-btn.active{border-color:var(--navy2);color:var(--navy2);background:var(--teal-light);}
+.field-row{margin-bottom:12px;}
+.field-row label{display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;}
+.field-row input,.field-row select{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;}
 </style>
 </head>
 <body>
@@ -136,6 +142,12 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
       <button class="btn btn-outline" id="btn-logout">Đăng xuất</button>
     </div>
   </header>
+  <div class="teacher-nav">
+    <button type="button" class="teacher-nav-btn active" data-nav="students">📊 Học sinh phụ trách</button>
+    <button type="button" class="teacher-nav-btn" data-nav="content">📝 Đóng góp từ vựng</button>
+  </div>
+
+  <div id="students-tab">
   <div id="overview-section">
     <div class="dash-cards" id="teacher-cards"></div>
     <div class="card">
@@ -167,6 +179,38 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
       </label>
     </div>
     <div id="dashboard-area"><div class="loading-msg">Đang tải…</div></div>
+  </div>
+  </div>
+
+  <div id="content-tab" style="display:none;">
+    <div class="card">
+      <h2 style="font-size:14px;">Thêm từ vựng / câu mẫu mới</h2>
+      <div class="sub">Nội dung gửi lên sẽ ở trạng thái "Chờ duyệt" — chỉ hiện cho học sinh sau khi quản trị viên duyệt.</div>
+      <form id="vocab-submit-form">
+        <div class="field-row"><label>Ngôn ngữ</label><select data-f="language" id="vocab-language"></select></div>
+        <div class="field-row"><label>Trình độ</label><select data-f="level" id="vocab-level"></select></div>
+        <div class="field-row"><label>Loại</label>
+          <select data-f="type"><option value="word">Từ</option><option value="sentence">Câu</option></select>
+        </div>
+        <div class="field-row"><label>Từ / Câu (theo đúng ngôn ngữ đã chọn ở trên)</label><input data-f="de_text" required></div>
+        <div class="field-row"><label>Phiên âm (IPA/Pinyin..., tuỳ chọn)</label><input data-f="phonetic"></div>
+        <div class="field-row"><label>Nghĩa tiếng Việt</label><input data-f="vi_meaning" required></div>
+        <div class="field-row"><label>Nghĩa tiếng Anh (tuỳ chọn)</label><input data-f="en_meaning"></div>
+        <div class="field-row"><label>Chủ đề (tuỳ chọn)</label><input data-f="category"></div>
+        <button class="btn btn-primary" type="submit" style="width:auto;padding:10px 22px;margin-top:0;">Gửi duyệt</button>
+        <div class="login-ok" id="vocab-submit-ok" style="display:none;margin-top:12px;"></div>
+        <div class="login-error" id="vocab-submit-error" style="display:none;margin-top:12px;"></div>
+      </form>
+    </div>
+    <div class="card">
+      <h2 style="font-size:14px;">Từ vựng tôi đã gửi</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Ngôn ngữ</th><th>Trình độ</th><th>Từ / Câu</th><th>Nghĩa VI</th><th>Trạng thái</th><th></th></tr></thead>
+          <tbody id="my-vocab-body"><tr><td colspan="6">Đang tải…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -305,6 +349,7 @@ async function afterLogin(){
   document.getElementById("activity-date-filter").addEventListener("change", loadStudentDetail);
   document.getElementById("only-quiz-filter").addEventListener("change", loadStudentDetail);
   loadOverview(user.id);
+  initVocabForm();
 }
 
 (async function(){
@@ -693,6 +738,89 @@ document.getElementById("dashboard-area").addEventListener("click", (e)=>{
   const node = e.target.closest(".level-node[data-clickable]");
   if(node) showLevelDetail(node.dataset.student, node.dataset.lang, node.dataset.level);
 });
+
+// ============================================================
+// Mục 13.41 — Giáo viên đóng góp từ vựng, chờ Admin/Super Admin duyệt trước
+// khi hiện cho học sinh (migration 45: cột vocab_items.content_status/
+// created_by + RLS + trigger ép "pending" cho giáo viên). Chuyển đổi giữa 2
+// khu vực (danh sách học sinh / đóng góp từ vựng) bằng nav đơn giản, không
+// cần bộ máy tab như QuanLyTuVung.html vì trang này chỉ có 2 khu vực.
+// ============================================================
+document.querySelectorAll(".teacher-nav-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".teacher-nav-btn").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    const nav = btn.dataset.nav;
+    document.getElementById("students-tab").style.display = nav === "students" ? "block" : "none";
+    document.getElementById("content-tab").style.display = nav === "content" ? "block" : "none";
+    if(nav === "content") loadMyVocab();
+  });
+});
+
+async function initVocabForm(){
+  await langsConfigPromise;
+  const langSel = document.getElementById("vocab-language");
+  const levelSel = document.getElementById("vocab-level");
+  const langCodes = Object.keys(LANGS);
+  langSel.innerHTML = langCodes.map(code=>`<option value="${code}">${escHtml(LANGS[code].adminLabel || langLabel(code))}</option>`).join("");
+  function refreshLevels(){
+    const levels = (LANGS[langSel.value] && LANGS[langSel.value].levels) || [];
+    levelSel.innerHTML = levels.map(lv=>`<option value="${lv.code}">${escHtml(lv.label)}</option>`).join("");
+  }
+  langSel.addEventListener("change", refreshLevels);
+  refreshLevels();
+}
+
+document.getElementById("vocab-submit-form").addEventListener("submit", async (e)=>{
+  e.preventDefault();
+  const okEl = document.getElementById("vocab-submit-ok");
+  const errEl = document.getElementById("vocab-submit-error");
+  okEl.style.display = "none"; errEl.style.display = "none";
+  const form = e.target;
+  const payload = {};
+  form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+  // KHÔNG gửi content_status/created_by — trigger force_teacher_vocab_pending()
+  // (migration 45) tự ép "pending" + đúng auth.uid() của giáo viên đang đăng nhập.
+  const { error } = await sb.from("vocab_items").insert(payload);
+  if(error){ errEl.textContent = "Lỗi: " + error.message; errEl.style.display = "block"; return; }
+  okEl.textContent = "Đã gửi! Nội dung sẽ hiện cho học sinh sau khi quản trị viên duyệt.";
+  okEl.style.display = "block";
+  form.reset();
+  document.getElementById("vocab-language").dispatchEvent(new Event("change"));
+  loadMyVocab();
+});
+
+async function loadMyVocab(){
+  const body = document.getElementById("my-vocab-body");
+  body.innerHTML = `<tr><td colspan="6">Đang tải…</td></tr>`;
+  const { data, error } = await sb.from("vocab_items").select("*").eq("created_by", CURRENT_TEACHER_ID).order("id", { ascending: false });
+  if(error){ body.innerHTML = `<tr><td colspan="6">Lỗi: ${escHtml(error.message)}</td></tr>`; return; }
+  if(!data || !data.length){ body.innerHTML = `<tr><td colspan="6">Bạn chưa gửi từ vựng nào.</td></tr>`; return; }
+  body.innerHTML = data.map(r=>{
+    const statusHtml = r.content_status === "pending"
+      ? `<span class="btn-sm" style="background:#fdf1e6;color:#b8722a;border:none;cursor:default;">🕒 Chờ duyệt</span>`
+      : `<span class="btn-sm" style="background:var(--green-light);color:var(--green);border:none;cursor:default;">✅ Đã duyệt</span>`;
+    const deleteBtnHtml = r.content_status === "pending"
+      ? `<button class="btn-sm" style="color:var(--red);border-color:var(--red-light);" data-delete-vocab="${r.id}">Xoá</button>`
+      : "";
+    return `<tr>
+      <td>${escHtml(langLabel(r.language))}</td>
+      <td>${escHtml(r.level)}</td>
+      <td>${escHtml(r.de_text)}</td>
+      <td>${escHtml(r.vi_meaning||"")}</td>
+      <td>${statusHtml}</td>
+      <td>${deleteBtnHtml}</td>
+    </tr>`;
+  }).join("");
+  document.querySelectorAll("[data-delete-vocab]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      if(!confirm("Xoá mục này?")) return;
+      const { error } = await sb.from("vocab_items").delete().eq("id", btn.dataset.deleteVocab);
+      if(error){ alert("Lỗi: " + error.message); return; }
+      loadMyVocab();
+    });
+  });
+}
 </script>
 </body>
 </html>
