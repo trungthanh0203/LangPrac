@@ -154,7 +154,10 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
   </div>
 
   <div id="detail-section" style="display:none;">
-    <button type="button" class="btn btn-outline" style="background:var(--bg-card);color:var(--navy2);border:1px solid var(--border);margin-bottom:var(--gap);" id="btn-back-to-list">← Quay lại danh sách</button>
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:var(--gap);">
+      <h2 style="margin:0;" id="detail-student-title">Chi tiết học sinh</h2>
+      <button type="button" class="btn btn-outline" style="background:var(--bg-card);color:var(--navy2);border:1px solid var(--border);" id="btn-close-detail">Đóng chi tiết ✕</button>
+    </div>
     <div class="date-filter-bar">
       <label for="activity-date-filter">Xem hoạt động ngày:</label>
       <input type="date" id="activity-date-filter">
@@ -455,11 +458,12 @@ function renderTeacherStudentList(students){
 
 async function showStudentDetail(studentId, email){
   CURRENT_DETAIL_STUDENT = { id: studentId, email };
-  document.getElementById("overview-section").style.display = "none";
+  document.getElementById("detail-student-title").textContent = "Chi tiết học sinh: " + email;
   document.getElementById("detail-section").style.display = "block";
   const dateInput = document.getElementById("activity-date-filter");
   if(!dateInput.value) dateInput.value = todayLocalDateStr();
   await loadStudentDetail();
+  document.getElementById("detail-section").scrollIntoView({behavior:"smooth", block:"start"});
 }
 
 async function loadStudentDetail(){
@@ -471,10 +475,9 @@ async function loadStudentDetail(){
   area.innerHTML = await buildStudentBlock(CURRENT_DETAIL_STUDENT.id, CURRENT_DETAIL_STUDENT.email, dateStr, onlyQuiz);
 }
 
-document.getElementById("btn-back-to-list").addEventListener("click", ()=>{
+document.getElementById("btn-close-detail").addEventListener("click", ()=>{
   CURRENT_DETAIL_STUDENT = null;
   document.getElementById("detail-section").style.display = "none";
-  document.getElementById("overview-section").style.display = "block";
 });
 
 function escHtml(s){
