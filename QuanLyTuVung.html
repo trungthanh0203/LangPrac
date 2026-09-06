@@ -1808,14 +1808,20 @@ async function openEditStudent(id){
   if(!s) return;
 
   // Tải kèm: mọi tài khoản khác (để chọn làm phụ huynh/giáo viên) + liên kết
-  // hiện tại của đúng học sinh này. Đơn giản hoá: nếu 1 học sinh lỡ có NHIỀU
-  // dòng liên kết (hiếm, dữ liệu cũ), chỉ hiện/set dòng ĐẦU TIÊN — dropdown 1
-  // lựa chọn không hợp để sửa quan hệ nhiều-nhiều đầy đủ.
-  const [{ data: allProfiles }, { data: parentLinks }, { data: teacherLinks }] = await Promise.all([
+  // hiện tại của đúng học sinh này + danh sách quản trị viên (để LOẠI TRỪ khỏi
+  // dropdown — mục 13.37: phát hiện 1 tài khoản super_admin lỡ bị gán làm giáo
+  // viên vì dropdown này trước đây liệt kê MỌI profiles không phân biệt quản
+  // trị viên). Đơn giản hoá: nếu 1 học sinh lỡ có NHIỀU dòng liên kết (hiếm,
+  // dữ liệu cũ), chỉ hiện/set dòng ĐẦU TIÊN — dropdown 1 lựa chọn không hợp để
+  // sửa quan hệ nhiều-nhiều đầy đủ.
+  const [{ data: allProfilesRaw }, { data: parentLinks }, { data: teacherLinks }, { data: adminRows }] = await Promise.all([
     sb.from("profiles").select("id,email,role").neq("id", id).order("email"),
     sb.from("parent_links").select("parent_id").eq("student_id", id),
-    sb.from("teacher_links").select("teacher_id").eq("student_id", id)
+    sb.from("teacher_links").select("teacher_id").eq("student_id", id),
+    sb.from("admins").select("user_id")
   ]);
+  const adminIds = new Set((adminRows||[]).map(a=>a.user_id));
+  const allProfiles = (allProfilesRaw||[]).filter(p=> !adminIds.has(p.id));
   const currentParentId = (parentLinks && parentLinks[0] && parentLinks[0].parent_id) || "";
   const currentTeacherId = (teacherLinks && teacherLinks[0] && teacherLinks[0].teacher_id) || "";
 
@@ -2025,31 +2031,26 @@ async function loadAdmins(){
   listBody.innerHTML = (adminRows||[]).length ? adminRows.map(a=>{
     const p = profileById[a.user_id] || {};
     const isSelf = a.user_id === CURRENT_ADMIN_ID;
+    const roleLabel = a.role === "super_admin" ? "Super Admin" : "Admin";
     return `<tr>
       <td>${escHtmlAdmin(p.email || a.user_id)}</td>
       <td>${escHtmlAdmin(p.phone || "—")}</td>
       <td>${escHtmlAdmin(p.address || "—")}</td>
+      <td>${roleLabel}</td>
       <td>
-        <select data-role-select="${a.user_id}" ${isSelf ? "disabled title=\"Không thể tự đổi quyền của chính mình\"" : ""}>
-          <option value="admin" ${a.role==="admin"?"selected":""}>Admin</option>
-          <option value="super_admin" ${a.role==="super_admin"?"selected":""}>Super Admin</option>
-        </select>
+        <button class="btn-sm" data-edit-admin="${a.user_id}">Sửa</button>
+        ${isSelf ? "" : `<button class="btn-sm danger" data-delete-admin="${a.user_id}">Xóa</button>`}
       </td>
-      <td>${isSelf ? `<span style="color:var(--text-3);">— Tài khoản của bạn —</span>` : `<button class="btn-sm danger" data-revoke-admin="${a.user_id}">Thu hồi quyền</button>`}</td>
     </tr>`;
   }).join("") : `<tr><td colspan="5">Chưa có quản trị viên nào.</td></tr>`;
 
-  document.querySelectorAll("[data-role-select]:not([disabled])").forEach(sel=>{
-    sel.addEventListener("change", async ()=>{
-      const { error } = await sb.from("admins").update({ role: sel.value }).eq("user_id", sel.dataset.roleSelect);
-      if(error){ alert("Lỗi: " + error.message); }
-      await loadAdmins();
-    });
+  document.querySelectorAll("[data-edit-admin]").forEach(btn=>{
+    btn.addEventListener("click", ()=> openEditAdmin(btn.dataset.editAdmin));
   });
-  document.querySelectorAll("[data-revoke-admin]").forEach(btn=>{
+  document.querySelectorAll("[data-delete-admin]").forEach(btn=>{
     btn.addEventListener("click", async ()=>{
-      if(!confirm("Thu hồi quyền quản trị của tài khoản này? Họ sẽ không đăng nhập được vào trang quản trị nữa.")) return;
-      const { error } = await sb.from("admins").delete().eq("user_id", btn.dataset.revokeAdmin);
+      if(!confirm("Xoá quyền quản trị của tài khoản này? Họ sẽ không đăng nhập được vào trang quản trị nữa.")) return;
+      const { error } = await sb.from("admins").delete().eq("user_id", btn.dataset.deleteAdmin);
       if(error){ alert("Lỗi: " + error.message); }
       await loadAdmins();
     });
@@ -2076,6 +2077,55 @@ document.getElementById("btn-grant-admin").addEventListener("click", async ()=>{
   resultEl.className = "result-msg";
   await loadAdmins();
 });
+
+// Modal "Sửa" quản trị viên (mục 13.37 — thay cho dropdown/nút "Thu hồi quyền"
+// gắn thẳng trong bảng): sửa điện thoại/địa chỉ như hồ sơ bình thường + đổi
+// vai trò Admin/Super Admin — khoá đổi vai trò cho CHÍNH tài khoản đang đăng
+// nhập (không tự đổi quyền của mình), khớp giới hạn đã có ở bảng danh sách.
+async function openEditAdmin(userId){
+  const [{ data: profile }, { data: adminRow }] = await Promise.all([
+    sb.from("profiles").select("id,email,phone,address").eq("id", userId).maybeSingle(),
+    sb.from("admins").select("role").eq("user_id", userId).maybeSingle()
+  ]);
+  const isSelf = userId === CURRENT_ADMIN_ID;
+  const currentRole = (adminRow && adminRow.role) || "admin";
+
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Sửa quản trị viên — ${escHtmlAdmin((profile&&profile.email)||userId)}</h2><button class="modal-close" id="ea-close">&times;</button></div>
+    <form id="edit-admin-form">
+      <div class="field-row"><label>Số điện thoại</label><input data-f="phone" value="${((profile&&profile.phone)||'').replace(/"/g,'&quot;')}"></div>
+      <div class="field-row"><label>Địa chỉ</label><input data-f="address" value="${((profile&&profile.address)||'').replace(/"/g,'&quot;')}"></div>
+      <div class="field-row">
+        <label>Vai trò</label>
+        <select id="ea-role" ${isSelf ? "disabled title=\"Không thể tự đổi quyền của chính mình\"" : ""}>
+          <option value="admin" ${currentRole==="admin"?"selected":""}>Admin</option>
+          <option value="super_admin" ${currentRole==="super_admin"?"selected":""}>Super Admin</option>
+        </select>
+      </div>
+      <div class="result-msg" id="edit-admin-result"></div>
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="ea-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Lưu</button></div>
+    </form>`;
+  document.getElementById("overlay").classList.add("show");
+  document.getElementById("ea-close").onclick = closeModal;
+  document.getElementById("ea-cancel").onclick = closeModal;
+  document.getElementById("edit-admin-form").onsubmit = async (e)=>{
+    e.preventDefault();
+    const payload = {};
+    e.target.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+    const { error } = await sb.from("profiles").update(payload).eq("id", userId);
+    if(error){ document.getElementById("edit-admin-result").textContent = "Lỗi: " + error.message; return; }
+
+    if(!isSelf){
+      const newRole = document.getElementById("ea-role").value;
+      if(newRole !== currentRole){
+        const { error: roleErr } = await sb.from("admins").update({ role: newRole }).eq("user_id", userId);
+        if(roleErr){ document.getElementById("edit-admin-result").textContent = "Lỗi đổi vai trò: " + roleErr.message; return; }
+      }
+    }
+    closeModal();
+    await loadAdmins();
+  };
+}
 
 // Đổi mật khẩu phụ huynh/giáo viên — gọi RPC dùng chung admin_reset_user_password()
 // (36_migration_add_teacher_role.sql, thay cho admin_reset_parent_password() cũ
