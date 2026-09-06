@@ -96,6 +96,9 @@ td.content-cell{text-align:center;}
 /* Dashboard "📊 Nội dung" — lưới 4 biểu đồ kiểu drill-down (mục 13.28) */
 .content-dash-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--gap);}
 @media (max-width:900px){.content-dash-grid{grid-template-columns:1fr;}}
+.content-dash-grid-3col{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap);}
+@media (max-width:1100px){.content-dash-grid-3col{grid-template-columns:repeat(2,1fr);}}
+@media (max-width:700px){.content-dash-grid-3col{grid-template-columns:1fr;}}
 .chart-hint{font-size:12px;color:var(--text-2);margin-bottom:10px;}
 .content-filter-bar{display:none;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--navy2);background:var(--teal-light);border-radius:8px;padding:9px 14px;margin-bottom:var(--gap);}
 .content-donut-wrap{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
@@ -623,6 +626,9 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
           <div class="chart-hint">Số ngày kể từ lần hoạt động gần nhất của từng học sinh. Bấm 1 cột để lọc bảng chi tiết bên dưới.</div>
           <div id="dash-recency-chart" style="overflow-x:auto;"></div>
         </div>
+      </div>
+
+      <div class="content-dash-grid-3col">
         <div class="card">
           <h3>Tỉ lệ học sinh theo mức điểm trung bình</h3>
           <div class="chart-hint">Điểm trung bình mọi bài đã làm của từng học sinh, chia theo 4 mức. Rê chuột vào từng phần để xem chi tiết, bấm để lọc bảng bên dưới.</div>
@@ -637,6 +643,14 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
           <div class="content-donut-wrap">
             <div id="dash-lang-donut"></div>
             <div id="dash-lang-legend" class="content-donut-legend"></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Tỉ lệ học sinh theo Chu kỳ học</h3>
+          <div class="chart-hint">Theo thời hạn chu kỳ đang áp dụng cho từng học sinh. Rê chuột vào từng phần để xem chi tiết, bấm để lọc bảng bên dưới.</div>
+          <div class="content-donut-wrap">
+            <div id="dash-cycle-donut"></div>
+            <div id="dash-cycle-legend" class="content-donut-legend"></div>
           </div>
         </div>
       </div>
@@ -1208,7 +1222,7 @@ let dashSort = { key: "last_activity_at", dir: "asc" }; // mặc định: im ắ
 // Bộ lọc từ 4 biểu đồ thống kê (bấm cột/lát cắt để lọc bảng bên dưới, giống cơ
 // chế bên Dashboard Nội dung mục 13.28) — độc lập với ô tìm kiếm/cảnh báo im ắng
 // đã có sẵn, kết hợp AND với nhau khi lọc bảng.
-let DASH_FILTER = { day: null, activityDay: null, scoreBucket: null, intensityBucket: null, language: null, recency: null, noParent: false, noTeacher: false, notActiveToday: false };
+let DASH_FILTER = { day: null, activityDay: null, scoreBucket: null, intensityBucket: null, language: null, recency: null, cycleDuration: null, noParent: false, noTeacher: false, notActiveToday: false, expiringSoon: false };
 
 function daysSince(dateStr){
   if(!dateStr) return Infinity;
@@ -1247,6 +1261,28 @@ function recencyBucketKeyOf(s){
   if(d <= 5) return String(Math.max(d,0));
   return "6+";
 }
+// Chu kỳ học (mục 13.34) — "month" là mặc định hợp lý cho dữ liệu cũ/null
+// (trước khi chạy migration 40, hoặc học sinh tạo trước khi có tính năng này).
+function cycleDurationKeyOf(s){ return s.cycle_duration || "month"; }
+// Số ngày còn lại tới hết chu kỳ (âm = đã hết hạn); Infinity nếu chưa có chu kỳ.
+function daysUntilCycleEnd(s){
+  if(!s.cycle_end_date) return Infinity;
+  const end = new Date(s.cycle_end_date + "T00:00:00").getTime();
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.round((end - today.getTime()) / 86400000);
+}
+function expiringSoonOf(s){ const d = daysUntilCycleEnd(s); return d >= 0 && d <= 10; }
+// Tính ngày cuối kỳ từ ngày đầu kỳ + loại chu kỳ — dùng khi admin sửa/gia hạn
+// chu kỳ học ở modal "Sửa học sinh" (openEditStudent()).
+function computeCycleEndDate(startDateStr, duration){
+  const d = new Date(startDateStr + "T00:00:00");
+  if(duration === "week") d.setDate(d.getDate() + 7);
+  else if(duration === "6months") d.setMonth(d.getMonth() + 6);
+  else if(duration === "year") d.setFullYear(d.getFullYear() + 1);
+  else d.setMonth(d.getMonth() + 1); // "month" hoặc giá trị lạ -> mặc định 1 tháng
+  const pad = n => String(n).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
 
 function setStudSignupDayFilter(day){ DASH_FILTER.day = (DASH_FILTER.day===day) ? null : day; refreshStudentStats(); }
 function setStudActivityDayFilter(day){ DASH_FILTER.activityDay = (DASH_FILTER.activityDay===day) ? null : day; refreshStudentStats(); }
@@ -1254,10 +1290,12 @@ function setStudScoreFilter(key){ DASH_FILTER.scoreBucket = (DASH_FILTER.scoreBu
 function setStudIntensityFilter(key){ DASH_FILTER.intensityBucket = (DASH_FILTER.intensityBucket===key) ? null : key; refreshStudentStats(); }
 function setStudLangFilter(key){ DASH_FILTER.language = (DASH_FILTER.language===key) ? null : key; refreshStudentStats(); }
 function setStudRecencyFilter(key){ DASH_FILTER.recency = (DASH_FILTER.recency===key) ? null : key; refreshStudentStats(); }
-function clearStudFilters(){ DASH_FILTER = { day:null, activityDay:null, scoreBucket:null, intensityBucket:null, language:null, recency:null, noParent:false, noTeacher:false, notActiveToday:false }; refreshStudentStats(); }
+function setStudCycleFilter(key){ DASH_FILTER.cycleDuration = (DASH_FILTER.cycleDuration===key) ? null : key; refreshStudentStats(); }
+function clearStudFilters(){ DASH_FILTER = { day:null, activityDay:null, scoreBucket:null, intensityBucket:null, language:null, recency:null, cycleDuration:null, noParent:false, noTeacher:false, notActiveToday:false, expiringSoon:false }; refreshStudentStats(); }
 function setStudNoParentFilter(){ DASH_FILTER.noParent = !DASH_FILTER.noParent; refreshStudentStats(); if(DASH_FILTER.noParent) scrollToStudentTable(); }
 function setStudNoTeacherFilter(){ DASH_FILTER.noTeacher = !DASH_FILTER.noTeacher; refreshStudentStats(); if(DASH_FILTER.noTeacher) scrollToStudentTable(); }
 function setStudNotActiveTodayFilter(){ DASH_FILTER.notActiveToday = !DASH_FILTER.notActiveToday; refreshStudentStats(); if(DASH_FILTER.notActiveToday) scrollToStudentTable(); }
+function setStudExpiringSoonFilter(){ DASH_FILTER.expiringSoon = !DASH_FILTER.expiringSoon; refreshStudentStats(); if(DASH_FILTER.expiringSoon) scrollToStudentTable(); }
 function scrollToStudentTable(){
   const tableCard = document.getElementById("dash-table-body").closest(".card");
   if(tableCard) tableCard.scrollIntoView({ block: "start" });
@@ -1285,9 +1323,14 @@ function renderStudFilterBar(){
     const def = computeRecencyBuckets(DASH_STUDENTS).find(b=>b.key===DASH_FILTER.recency);
     parts.push(`Hoạt động gần nhất: <b>${escHtmlAdmin(def ? def.label : DASH_FILTER.recency)}</b>`);
   }
+  if(DASH_FILTER.cycleDuration){
+    const def = computeCycleBuckets(DASH_STUDENTS).find(b=>b.key===DASH_FILTER.cycleDuration);
+    parts.push(`Chu kỳ: <b>${escHtmlAdmin(def ? def.label : DASH_FILTER.cycleDuration)}</b>`);
+  }
   if(DASH_FILTER.noParent) parts.push(`<b>Chưa có phụ huynh</b>`);
   if(DASH_FILTER.noTeacher) parts.push(`<b>Chưa có giáo viên</b>`);
   if(DASH_FILTER.notActiveToday) parts.push(`<b>Chưa làm bài trong ngày</b>`);
+  if(DASH_FILTER.expiringSoon) parts.push(`<b>Sắp hết chu kỳ (≤10 ngày)</b>`);
   if(!parts.length){ bar.style.display = "none"; bar.innerHTML = ""; return; }
   bar.style.display = "flex";
   bar.innerHTML = `🔎 Đang lọc — ${parts.join(" · ")} <button class="btn-sm" id="dash-clear-filter" style="margin-left:auto;">Bỏ lọc tất cả</button>`;
@@ -1303,6 +1346,7 @@ function refreshStudentStats(){
   renderDonutChart(document.getElementById("dash-score-donut"), document.getElementById("dash-score-legend"), computeScoreBuckets(DASH_STUDENTS), { selectedKey: DASH_FILTER.scoreBucket, onSelect: setStudScoreFilter });
   renderIntensityChart(DASH_STUDENTS);
   renderDonutChart(document.getElementById("dash-lang-donut"), document.getElementById("dash-lang-legend"), computeLanguageBuckets(DASH_STUDENTS), { selectedKey: DASH_FILTER.language, onSelect: setStudLangFilter });
+  renderDonutChart(document.getElementById("dash-cycle-donut"), document.getElementById("dash-cycle-legend"), computeCycleBuckets(DASH_STUDENTS), { selectedKey: DASH_FILTER.cycleDuration, onSelect: setStudCycleFilter });
   renderRecencyChart(DASH_STUDENTS);
   renderDashTable();
   renderStudFilterBar();
@@ -1320,13 +1364,15 @@ async function loadDashboard(){
   }
 
   DASH_STUDENTS = students || [];
-  DASH_FILTER = { day:null, activityDay:null, scoreBucket:null, intensityBucket:null, language:null, recency:null, noParent:false, noTeacher:false, notActiveToday:false };
+  DASH_FILTER = { day:null, activityDay:null, scoreBucket:null, intensityBucket:null, language:null, recency:null, cycleDuration:null, noParent:false, noTeacher:false, notActiveToday:false, expiringSoon:false };
   refreshStudentStats();
 }
 
-// 3/5 thẻ (chưa có phụ huynh/giáo viên/chưa làm bài hôm nay) bấm được để lọc +
-// cuộn xuống bảng chi tiết cuối tab (setStudNoParentFilter()/setStudNoTeacherFilter()/
-// setStudNotActiveTodayFilter()) — viền teal khi đang là bộ lọc active.
+// 4/6 thẻ (chưa có phụ huynh/giáo viên/chưa làm bài hôm nay/sắp hết chu kỳ) bấm
+// được để lọc + cuộn xuống bảng chi tiết cuối tab (setStudNoParentFilter()/
+// setStudNoTeacherFilter()/setStudNotActiveTodayFilter()/setStudExpiringSoonFilter())
+// — viền teal khi đang là bộ lọc active. Thẻ "sắp hết chu kỳ" cố ý đặt CUỐI
+// cùng (mục 13.34) theo đúng yêu cầu.
 function renderDashCards(students){
   const total = students.length;
   const activeToday = students.filter(activeTodayOf).length;
@@ -1335,6 +1381,7 @@ function renderDashCards(students){
   const avgScore = withScores.length ? Math.round(withScores.reduce((sum,s)=>sum+Number(s.avg_score_pct),0) / withScores.length) : null;
   const noParent = students.filter(s => !s.parent_emails).length;
   const noTeacher = students.filter(s => !s.teacher_emails).length;
+  const expiringSoon = students.filter(expiringSoonOf).length;
 
   document.getElementById("dash-cards").innerHTML = `
     <div class="dash-card"><span class="label">Tổng học sinh</span><span class="num">${total}</span></div>
@@ -1342,10 +1389,12 @@ function renderDashCards(students){
     <div class="dash-card clickable${noParent>0?' warn':''}${DASH_FILTER.noParent?' active-filter':''}" id="kpi-no-parent"><span class="label">Học sinh chưa có phụ huynh</span><span class="num">${noParent}</span></div>
     <div class="dash-card clickable${noTeacher>0?' warn':''}${DASH_FILTER.noTeacher?' active-filter':''}" id="kpi-no-teacher"><span class="label">Học sinh chưa có giáo viên</span><span class="num">${noTeacher}</span></div>
     <div class="dash-card clickable${notActiveToday>0?' warn':''}${DASH_FILTER.notActiveToday?' active-filter':''}" id="kpi-not-active-today"><span class="label">Học sinh chưa làm bài trong ngày</span><span class="num">${notActiveToday}</span></div>
+    <div class="dash-card clickable${expiringSoon>0?' warn':''}${DASH_FILTER.expiringSoon?' active-filter':''}" id="kpi-expiring-soon"><span class="label">Sắp hết chu kỳ (≤10 ngày)</span><span class="num">${expiringSoon}</span></div>
   `;
   document.getElementById("kpi-no-parent").addEventListener("click", setStudNoParentFilter);
   document.getElementById("kpi-no-teacher").addEventListener("click", setStudNoTeacherFilter);
   document.getElementById("kpi-not-active-today").addEventListener("click", setStudNotActiveTodayFilter);
+  document.getElementById("kpi-expiring-soon").addEventListener("click", setStudExpiringSoonFilter);
 }
 
 // Biểu đồ cột SVG tự vẽ — số học sinh có HOẠT ĐỘNG GẦN NHẤT rơi vào từng ngày
@@ -1617,6 +1666,21 @@ function computeLanguageBuckets(students){
   return segs;
 }
 
+// Chu kỳ học (mục 13.34) — 4 mức thời hạn cố định, không xếp hạng tốt/xấu nên
+// dùng 4 màu trung tính khác nhau (không theo thang đỏ→xanh như các bucket
+// điểm/cường độ). Dùng cycleDurationKeyOf() — cùng hàm renderDashTable() lọc.
+function computeCycleBuckets(students){
+  const buckets = [
+    { key:"week", label:"1 tuần", color:"var(--steel)", value:0 },
+    { key:"month", label:"1 tháng", color:"var(--teal)", value:0 },
+    { key:"6months", label:"6 tháng", color:"var(--amber)", value:0 },
+    { key:"year", label:"1 năm", color:"var(--green)", value:0 }
+  ];
+  const byKey = Object.fromEntries(buckets.map(b=>[b.key,b]));
+  students.forEach(s=> byKey[cycleDurationKeyOf(s)].value++);
+  return buckets;
+}
+
 function renderDashTable(){
   const search = document.getElementById("dash-search").value.trim().toLowerCase();
   const idleDays = parseInt(document.getElementById("dash-idle-days").value, 10);
@@ -1629,9 +1693,11 @@ function renderDashTable(){
     if(DASH_FILTER.intensityBucket && intensityBucketKeyOf(s) !== DASH_FILTER.intensityBucket) return false;
     if(DASH_FILTER.language && languageKeyOf(s) !== DASH_FILTER.language) return false;
     if(DASH_FILTER.recency && recencyBucketKeyOf(s) !== DASH_FILTER.recency) return false;
+    if(DASH_FILTER.cycleDuration && cycleDurationKeyOf(s) !== DASH_FILTER.cycleDuration) return false;
     if(DASH_FILTER.noParent && s.parent_emails) return false;
     if(DASH_FILTER.noTeacher && s.teacher_emails) return false;
     if(DASH_FILTER.notActiveToday && activeTodayOf(s)) return false;
+    if(DASH_FILTER.expiringSoon && !expiringSoonOf(s)) return false;
     return true;
   });
 
@@ -1713,12 +1779,48 @@ async function openEditStudent(id){
       <div class="field-row"><label>Ngôn ngữ đang chọn</label><select data-f="selected_language">${langOptions}</select></div>
       <div class="field-row"><label>Phụ huynh</label><select id="es-parent">${personOptions(currentParentId)}</select></div>
       <div class="field-row"><label>Giáo viên phụ trách</label><select id="es-teacher">${personOptions(currentTeacherId)}</select></div>
+      <div class="field-row">
+        <label>Chu kỳ học</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <select data-f="cycle_duration" id="es-cycle-duration" style="width:auto;">
+            <option value="week" ${(s.cycle_duration||'month')==='week'?'selected':''}>1 tuần</option>
+            <option value="month" ${(s.cycle_duration||'month')==='month'?'selected':''}>1 tháng</option>
+            <option value="6months" ${(s.cycle_duration||'month')==='6months'?'selected':''}>6 tháng</option>
+            <option value="year" ${(s.cycle_duration||'month')==='year'?'selected':''}>1 năm</option>
+          </select>
+          <input type="date" data-f="cycle_start_date" id="es-cycle-start" value="${s.cycle_start_date || new Date(s.created_at).toISOString().slice(0,10)}" style="width:auto;">
+          <span>→</span>
+          <span id="es-cycle-end-display" style="font-weight:700;color:var(--navy2);"></span>
+          <button type="button" class="btn-sm" id="es-renew-today">Gia hạn từ hôm nay</button>
+        </div>
+        <input type="hidden" data-f="cycle_end_date" id="es-cycle-end">
+      </div>
       <div class="result-msg" id="edit-student-result"></div>
       <div class="modal-actions"><button type="button" class="btn btn-ghost" id="es-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Lưu</button></div>
     </form>`;
   document.getElementById("overlay").classList.add("show");
   document.getElementById("es-close").onclick = closeModal;
   document.getElementById("es-cancel").onclick = closeModal;
+
+  // Ngày cuối kỳ luôn TÍNH LẠI từ ngày đầu kỳ + chu kỳ chọn (không cho gõ tay
+  // trực tiếp) — tránh lệch giữa 2 ngày do sửa tay sai, đúng quy tắc "gia hạn =
+  // cập nhật lại ngày đầu kỳ và cuối kỳ" người dùng chốt.
+  const updateCycleEndDisplay = () => {
+    const start = document.getElementById("es-cycle-start").value;
+    const duration = document.getElementById("es-cycle-duration").value;
+    if(!start) return;
+    const end = computeCycleEndDate(start, duration);
+    document.getElementById("es-cycle-end").value = end;
+    document.getElementById("es-cycle-end-display").textContent = new Date(end+"T00:00:00").toLocaleDateString("vi-VN");
+  };
+  document.getElementById("es-cycle-start").addEventListener("change", updateCycleEndDisplay);
+  document.getElementById("es-cycle-duration").addEventListener("change", updateCycleEndDisplay);
+  document.getElementById("es-renew-today").addEventListener("click", ()=>{
+    document.getElementById("es-cycle-start").value = new Date().toISOString().slice(0,10);
+    updateCycleEndDisplay();
+  });
+  updateCycleEndDisplay();
+
   document.getElementById("edit-student-form").onsubmit = async (e)=>{
     e.preventDefault();
     const payload = {};

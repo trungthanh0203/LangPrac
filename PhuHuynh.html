@@ -308,7 +308,7 @@ async function buildStudentBlock(studentId, studentEmail, dateStr, onlyQuiz){
 
   // Khi "Chỉ xem kết quả làm bài tập" được tick, khỏi truy vấn activity_log
   // luôn — vừa nhẹ hơn (đỡ 1 query/học sinh) vừa đúng ý chỉ muốn xem điểm.
-  const [{ data: quizzes }, { data: dayQuizzes }, { data: dayActivity }, { data: levelStats }] = await Promise.all([
+  const [{ data: quizzes }, { data: dayQuizzes }, { data: dayActivity }, { data: levelStats, error: levelStatsError }] = await Promise.all([
     sb.from("quiz_results").select("*").eq("user_id", studentId).order("created_at", { ascending: false }).limit(20),
     sb.from("quiz_results").select("*").eq("user_id", studentId).gte("created_at", dayStart).lte("created_at", dayEnd),
     onlyQuiz
@@ -375,7 +375,16 @@ async function buildStudentBlock(studentId, studentEmail, dateStr, onlyQuiz){
       }).join("")
     : `<div class="empty-msg">${onlyQuiz ? "Không có bài kiểm tra nào trong ngày này." : "Không có hoạt động nào trong ngày này."}</div>`;
 
+  const levelPathBodyHtml = levelStatsError
+    ? `<div class="empty-msg">Không tải được dữ liệu tiến trình: ${escHtml(levelStatsError.message)} — đã chạy migration 39 trên Supabase chưa?</div>`
+    : buildLevelPathHtml(levelStats);
+
   return `
+    <div class="card">
+      <h2 style="font-size:14px;">Tiến trình học theo trình độ — ${studentLabel}</h2>
+      <div class="sub">Điểm trung bình và số bài đã làm ở mỗi trình độ (toàn bộ lịch sử)</div>
+      ${levelPathBodyHtml}
+    </div>
     <div class="card">
       <h2>${studentLabel}</h2>
       <div class="sub">Kết quả học tập (20 lần gần nhất)</div>
@@ -385,11 +394,6 @@ async function buildStudentBlock(studentId, studentEmail, dateStr, onlyQuiz){
         <div class="stats-summary-item"><b>${thisWeekCount}</b>bài tuần này</div>
       </div>
       <div class="stats-list">${quizRowsHtml}</div>
-    </div>
-    <div class="card">
-      <h2 style="font-size:14px;">Tiến trình học theo trình độ — ${studentLabel}</h2>
-      <div class="sub">Điểm trung bình và số bài đã làm ở mỗi trình độ (toàn bộ lịch sử)</div>
-      ${buildLevelPathHtml(levelStats)}
     </div>
     <div class="card">
       <h2 style="font-size:14px;">${onlyQuiz ? "Kết quả làm bài trong ngày" : "Hoạt động gần đây"} — ${studentLabel}</h2>
