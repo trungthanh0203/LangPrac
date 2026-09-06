@@ -572,7 +572,7 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
         <h3>Phụ huynh (<span id="parent-count">0</span>)</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Email</th><th>Số học sinh liên kết</th><th></th></tr></thead>
+            <thead><tr><th>Email</th><th>Điện thoại</th><th>Địa chỉ</th><th>Ngày đăng ký</th><th>Số học sinh liên kết</th><th></th></tr></thead>
             <tbody id="parent-list-body"></tbody>
           </table>
         </div>
@@ -581,7 +581,7 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
         <h3>Giáo viên (<span id="teacher-count">0</span>)</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Email</th><th>Số học sinh phụ trách</th><th></th></tr></thead>
+            <thead><tr><th>Email</th><th>Điện thoại</th><th>Địa chỉ</th><th>Ngày đăng ký</th><th>Số học sinh phụ trách</th><th></th></tr></thead>
             <tbody id="teacher-list-body"></tbody>
           </table>
         </div>
@@ -1939,9 +1939,9 @@ async function syncPersonLink(table, idCol, studentId, oldId, newId, role){
 // khoản đều TỰ đăng ký giống học sinh, admin chỉ chọn đúng tài khoản khi sửa.
 // ============================================================
 async function loadParents(){
-  const { data: allProfiles, error } = await sb.from("profiles").select("id,email,role,disabled").order("email");
+  const { data: allProfiles, error } = await sb.from("profiles").select("id,email,phone,address,created_at,role,disabled").order("email");
   if(error){
-    document.getElementById("parent-list-body").innerHTML = `<tr><td colspan="3">Lỗi tải dữ liệu: ${escHtmlAdmin(error.message)}</td></tr>`;
+    document.getElementById("parent-list-body").innerHTML = `<tr><td colspan="6">Lỗi tải dữ liệu: ${escHtmlAdmin(error.message)}</td></tr>`;
     return;
   }
   document.getElementById("linked-students-card").style.display = "none";
@@ -1960,10 +1960,13 @@ async function loadParents(){
   const renderList = (role, counts) => (allProfiles||[]).filter(p => p.role === role).map(p => `
     <tr>
       <td>${escHtmlAdmin(p.email||p.id)}${p.disabled ? ' <span style="color:var(--red);font-weight:700;">(Đã khoá)</span>' : ''}</td>
+      <td>${escHtmlAdmin(p.phone || "—")}</td>
+      <td>${escHtmlAdmin(p.address || "—")}</td>
+      <td>${p.created_at ? new Date(p.created_at).toLocaleDateString("vi-VN") : "—"}</td>
       <td><span class="link-count" data-show-linked="${role}" data-id="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">${counts[p.id] || 0}</span></td>
       <td>
+        <button class="btn-sm" data-edit-person="${p.id}">Sửa</button>
         <button class="btn-sm" data-reset-pw="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">Đổi mật khẩu</button>
-        <button class="btn-sm${p.disabled?'':' danger'}" data-toggle-disabled="${p.id}" data-disabled="${p.disabled?'1':'0'}">${p.disabled ? 'Mở khoá' : 'Khoá'}</button>
       </td>
     </tr>`).join("");
 
@@ -1971,8 +1974,8 @@ async function loadParents(){
   const teachers = (allProfiles||[]).filter(p => p.role === "teacher");
   document.getElementById("parent-count").textContent = parents.length;
   document.getElementById("teacher-count").textContent = teachers.length;
-  document.getElementById("parent-list-body").innerHTML = parents.length ? renderList("parent", parentCounts) : `<tr><td colspan="3">Chưa có phụ huynh nào.</td></tr>`;
-  document.getElementById("teacher-list-body").innerHTML = teachers.length ? renderList("teacher", teacherCounts) : `<tr><td colspan="3">Chưa có giáo viên nào.</td></tr>`;
+  document.getElementById("parent-list-body").innerHTML = parents.length ? renderList("parent", parentCounts) : `<tr><td colspan="6">Chưa có phụ huynh nào.</td></tr>`;
+  document.getElementById("teacher-list-body").innerHTML = teachers.length ? renderList("teacher", teacherCounts) : `<tr><td colspan="6">Chưa có giáo viên nào.</td></tr>`;
 
   document.querySelectorAll("[data-reset-pw]").forEach(btn=>{
     btn.addEventListener("click", ()=> openResetUserPassword(btn.dataset.resetPw, btn.dataset.email));
@@ -1980,15 +1983,44 @@ async function loadParents(){
   document.querySelectorAll("[data-show-linked]").forEach(el=>{
     el.addEventListener("click", ()=> showLinkedStudents(el.dataset.showLinked, el.dataset.id, el.dataset.email));
   });
-  document.querySelectorAll("[data-toggle-disabled]").forEach(btn=>{
-    btn.addEventListener("click", async ()=>{
-      const willDisable = btn.dataset.disabled === "0";
-      if(willDisable && !confirm("Khoá tài khoản này? Họ sẽ không đăng nhập được nữa cho tới khi được mở khoá lại.")) return;
-      const { error } = await sb.from("profiles").update({ disabled: willDisable }).eq("id", btn.dataset.toggleDisabled);
-      if(error){ alert("Lỗi: " + error.message); }
-      await loadParents();
-    });
+  document.querySelectorAll("[data-edit-person]").forEach(btn=>{
+    btn.addEventListener("click", ()=> openEditPerson(btn.dataset.editPerson));
   });
+}
+
+// Modal "Sửa" cho phụ huynh/giáo viên (mục 13.39) — điện thoại/địa chỉ/khoá tài
+// khoản, cùng khuôn mẫu với openEditAdmin()/openEditStudent() (chỉ khác không
+// có dropdown vai trò vì phụ huynh/giáo viên không đổi vai trò ở đây). Đổi mật
+// khẩu vẫn để RIÊNG (openResetUserPassword()) vì là hành động nhạy cảm khác
+// hẳn, giữ đúng như đã có.
+async function openEditPerson(userId){
+  const { data: profile } = await sb.from("profiles").select("id,email,phone,address,disabled").eq("id", userId).maybeSingle();
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Sửa hồ sơ — ${escHtmlAdmin((profile&&profile.email)||userId)}</h2><button class="modal-close" id="ep-close">&times;</button></div>
+    <form id="edit-person-form">
+      <div class="field-row"><label>Số điện thoại</label><input data-f="phone" value="${((profile&&profile.phone)||'').replace(/"/g,'&quot;')}"></div>
+      <div class="field-row"><label>Địa chỉ</label><input data-f="address" value="${((profile&&profile.address)||'').replace(/"/g,'&quot;')}"></div>
+      <div class="field-row">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
+          <input type="checkbox" data-f="disabled" ${(profile&&profile.disabled)?"checked":""} style="width:auto;">
+          Vô hiệu hoá tài khoản này (không cho đăng nhập)
+        </label>
+      </div>
+      <div class="result-msg" id="edit-person-result"></div>
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="ep-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Lưu</button></div>
+    </form>`;
+  document.getElementById("overlay").classList.add("show");
+  document.getElementById("ep-close").onclick = closeModal;
+  document.getElementById("ep-cancel").onclick = closeModal;
+  document.getElementById("edit-person-form").onsubmit = async (e)=>{
+    e.preventDefault();
+    const payload = {};
+    e.target.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.type === "checkbox" ? el.checked : el.value; });
+    const { error } = await sb.from("profiles").update(payload).eq("id", userId);
+    if(error){ document.getElementById("edit-person-result").textContent = "Lỗi: " + error.message; return; }
+    closeModal();
+    await loadParents();
+  };
 }
 
 // Hiện danh sách học sinh liên kết/phụ trách khi bấm vào số ở cột "Số học sinh
