@@ -183,6 +183,20 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
   </div>
 
   <div id="content-tab" style="display:none;">
+    <div class="card">
+      <h2 style="font-size:14px;">Thống kê nội dung đã đóng góp theo cấp độ</h2>
+      <div class="sub">Bấm vào 1 cột để xem chi tiết cấp độ đó theo kỹ năng ở biểu đồ bên dưới (bấm lại để bỏ chọn).</div>
+      <div id="content-stats-level-chart"><div class="loading-msg">Đang tải…</div></div>
+      <div style="display:flex;gap:16px;font-size:12px;color:var(--text-2);margin-top:10px;">
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:3px;background:#f2994a;display:inline-block;"></span>Chưa duyệt</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:3px;background:var(--green);display:inline-block;"></span>Đã duyệt</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2 style="font-size:14px;" id="content-stats-skill-title">Theo kỹ năng — tất cả cấp độ</h2>
+      <div id="content-stats-skill-chart"><div class="loading-msg">Đang tải…</div></div>
+    </div>
+
     <div class="teacher-nav">
       <button type="button" class="teacher-nav-btn active" data-content-nav="vocab">Từ vựng</button>
       <button type="button" class="teacher-nav-btn" data-content-nav="grammar">Ngữ pháp</button>
@@ -979,9 +993,118 @@ document.querySelectorAll(".teacher-nav-btn[data-nav]").forEach(btn=>{
     const nav = btn.dataset.nav;
     document.getElementById("students-tab").style.display = nav === "students" ? "block" : "none";
     document.getElementById("content-tab").style.display = nav === "content" ? "block" : "none";
-    if(nav === "content") loadMyVocab();
+    if(nav === "content"){ loadMyVocab(); loadContentStatsCharts(); }
   });
 });
+
+// ============================================================
+// Mục 13.48 — 2 biểu đồ tổng quan nội dung đã đóng góp, đặt ở ĐẦU tab "📝 Đóng
+// góp nội dung" (trên cả sub-nav, vì đây là tổng quan CẮT NGANG cả 5 loại nội
+// dung chứ không riêng loại nào). Vẽ tay bằng div/CSS (cột chồng, không dùng
+// thư viện — đúng quy ước cả dự án: mỗi trang tự chứa 1 <script>, không import
+// chung, các chart donut khác cũng tự vẽ tay tương tự).
+// Biểu đồ 1: mỗi cột = 1 (ngôn ngữ, trình độ) đã có nội dung gửi, chồng 2 màu
+// (Chưa duyệt/Đã duyệt). Bấm vào cột nào thì biểu đồ 2 lọc theo ĐÚNG cấp độ đó
+// (bấm lại để bỏ chọn, quay về xem tổng tất cả cấp độ).
+// Biểu đồ 2: chồng 2 màu tương tự nhưng theo 5 kỹ năng (loại nội dung).
+// ============================================================
+const SKILL_LABELS = { vocab: "Từ vựng", grammar: "Ngữ pháp", reading: "Đọc", listening: "Nghe", dialogue: "Hội thoại" };
+let CONTENT_STATS_ROWS = []; // {language, level, content_status, skill} — gộp từ cả 5 bảng
+let selectedStatsLevelKey = null; // "language|level" hoặc null = xem tất cả cấp độ
+
+async function loadContentStatsCharts(){
+  const [{ data: vocab }, { data: grammar }, { data: reading }, { data: listening }, { data: dialogues }] = await Promise.all([
+    sb.from("vocab_items").select("language,level,content_status").eq("created_by", CURRENT_TEACHER_ID),
+    sb.from("grammar_exercises").select("content_status, grammar_lessons(language,level)").eq("created_by", CURRENT_TEACHER_ID),
+    sb.from("reading_passages").select("language,level,content_status").eq("created_by", CURRENT_TEACHER_ID),
+    sb.from("listening_passages").select("language,level,content_status").eq("created_by", CURRENT_TEACHER_ID),
+    sb.from("dialogues").select("language,level,content_status").eq("created_by", CURRENT_TEACHER_ID)
+  ]);
+  CONTENT_STATS_ROWS = [
+    ...(vocab||[]).map(r=>({ language: r.language, level: r.level, content_status: r.content_status, skill: "vocab" })),
+    ...(grammar||[]).map(r=>({ language: r.grammar_lessons && r.grammar_lessons.language, level: r.grammar_lessons && r.grammar_lessons.level, content_status: r.content_status, skill: "grammar" })),
+    ...(reading||[]).map(r=>({ language: r.language, level: r.level, content_status: r.content_status, skill: "reading" })),
+    ...(listening||[]).map(r=>({ language: r.language, level: r.level, content_status: r.content_status, skill: "listening" })),
+    ...(dialogues||[]).map(r=>({ language: r.language, level: r.level, content_status: r.content_status, skill: "dialogue" }))
+  ].filter(r=>r.language && r.level); // phòng bài tập ngữ pháp mồ côi nếu bài học bị xoá
+  renderLevelStatusChart();
+  renderSkillChart();
+}
+
+// Cột chồng vẽ tay bằng div: categories = [{key,label,pending,approved}].
+// onClickCategory(key) không truyền (null) thì cột không bấm được (biểu đồ 2).
+function renderStackedBarChart(containerId, categories, onClickCategory, selectedKey){
+  const el = document.getElementById(containerId);
+  if(!categories.length){ el.innerHTML = `<div class="empty-msg">Chưa có dữ liệu.</div>`; return; }
+  const maxBarHeight = 160;
+  const maxTotal = Math.max(1, ...categories.map(c=>c.pending+c.approved));
+  el.innerHTML = `<div style="display:flex;align-items:flex-end;gap:12px;height:${maxBarHeight+34}px;padding:0 4px;overflow-x:auto;">${
+    categories.map(c=>{
+      const total = c.pending + c.approved;
+      const approvedH = total ? Math.round((c.approved/maxTotal)*maxBarHeight) : 0;
+      const pendingH = total ? Math.round((c.pending/maxTotal)*maxBarHeight) : 0;
+      const selected = onClickCategory && c.key === selectedKey;
+      return `
+      <div class="chart-bar-col" data-key="${c.key}" style="display:flex;flex-direction:column;align-items:center;flex:0 0 auto;min-width:54px;${onClickCategory?'cursor:pointer;':''}${selected?'outline:2px solid var(--navy2);border-radius:6px;background:var(--teal-light);':''}padding:2px 4px;">
+        <div style="font-size:11px;color:var(--text-2);margin-bottom:4px;">${total}</div>
+        <div style="width:40px;display:flex;flex-direction:column-reverse;height:${maxBarHeight}px;border-radius:4px 4px 0 0;overflow:hidden;background:var(--bg-page);">
+          <div style="height:${approvedH}px;background:var(--green);" title="Đã duyệt: ${c.approved}"></div>
+          <div style="height:${pendingH}px;background:#f2994a;" title="Chưa duyệt: ${c.pending}"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text-2);margin-top:6px;text-align:center;max-width:64px;">${escHtml(c.label)}</div>
+      </div>`;
+    }).join("")
+  }</div>`;
+  if(onClickCategory){
+    el.querySelectorAll("[data-key]").forEach(colEl=>{
+      colEl.addEventListener("click", ()=> onClickCategory(colEl.dataset.key));
+    });
+  }
+}
+
+function renderLevelStatusChart(){
+  const byLevel = {};
+  CONTENT_STATS_ROWS.forEach(r=>{
+    const key = `${r.language}|${r.level}`;
+    if(!byLevel[key]) byLevel[key] = { language: r.language, level: r.level, pending: 0, approved: 0 };
+    r.content_status === "pending" ? byLevel[key].pending++ : byLevel[key].approved++;
+  });
+  const langOrder = Object.keys(LANGS);
+  const categories = Object.entries(byLevel)
+    .sort((a,b)=>{
+      const langA = a[1].language, langB = b[1].language;
+      if(langA !== langB) return langOrder.indexOf(langA) - langOrder.indexOf(langB);
+      const levelsCfg = (LANGS[langA] && LANGS[langA].levels) || [];
+      return levelsCfg.findIndex(lv=>lv.code===a[1].level) - levelsCfg.findIndex(lv=>lv.code===b[1].level);
+    })
+    .map(([key,v])=>({
+      key,
+      label: `${(langLabel(v.language)||"").split(" ")[0]} ${v.level}`,
+      pending: v.pending, approved: v.approved
+    }));
+  renderStackedBarChart("content-stats-level-chart", categories, (key)=>{
+    selectedStatsLevelKey = selectedStatsLevelKey === key ? null : key; // bấm lại cột đang chọn -> bỏ chọn
+    renderLevelStatusChart();
+    renderSkillChart();
+  }, selectedStatsLevelKey);
+}
+
+function renderSkillChart(){
+  const rows = selectedStatsLevelKey
+    ? CONTENT_STATS_ROWS.filter(r=>`${r.language}|${r.level}` === selectedStatsLevelKey)
+    : CONTENT_STATS_ROWS;
+  const bySkill = {};
+  Object.keys(SKILL_LABELS).forEach(s=>{ bySkill[s] = { pending: 0, approved: 0 }; });
+  rows.forEach(r=>{
+    if(!bySkill[r.skill]) bySkill[r.skill] = { pending: 0, approved: 0 };
+    r.content_status === "pending" ? bySkill[r.skill].pending++ : bySkill[r.skill].approved++;
+  });
+  const categories = Object.entries(bySkill).map(([skill,v])=>({ key: skill, label: SKILL_LABELS[skill] || skill, pending: v.pending, approved: v.approved }));
+  document.getElementById("content-stats-skill-title").textContent = selectedStatsLevelKey
+    ? `Theo kỹ năng — ${selectedStatsLevelKey.split("|").join(" ")}`
+    : "Theo kỹ năng — tất cả cấp độ";
+  renderStackedBarChart("content-stats-skill-chart", categories, null, null);
+}
 
 // Sub-nav bên trong "📝 Đóng góp nội dung" — 5 loại nội dung, mỗi loại 1 pane
 // riêng (ẩn/hiện, không phá huỷ DOM). Tải dữ liệu MỚI mỗi lần chuyển sang 1
@@ -1083,6 +1206,7 @@ document.getElementById("vocab-submit-form").addEventListener("submit", async (e
 });
 
 async function loadMyVocab(){
+  loadContentStatsCharts(); // làm mới 2 biểu đồ tổng quan (mục 13.48) mỗi khi danh sách này tải lại
   const body = document.getElementById("my-vocab-body");
   body.innerHTML = `<tr><td colspan="6">Đang tải…</td></tr>`;
   const { data, error } = await sb.from("vocab_items").select("*").eq("created_by", CURRENT_TEACHER_ID).order("id", { ascending: false });
@@ -1228,6 +1352,7 @@ document.getElementById("grammar-exercise-form").addEventListener("submit", asyn
 });
 
 async function loadMyGrammar(){
+  loadContentStatsCharts();
   const body = document.getElementById("my-grammar-body");
   body.innerHTML = `<tr><td colspan="6">Đang tải…</td></tr>`;
   const { data, error } = await sb.from("grammar_exercises")
@@ -1366,6 +1491,7 @@ function initPassageContentManager(cfg){
   });
 
   async function loadMyPassages(){
+    loadContentStatsCharts();
     const body = document.getElementById(`${prefix}-my-passages-body`);
     body.innerHTML = `<tr><td colspan="6">Đang tải…</td></tr>`;
     const { data, error } = await sb.from(parentTable).select(`*, ${childTable}(count)`).eq("created_by", CURRENT_TEACHER_ID).order("id", { ascending: false });
@@ -1592,6 +1718,7 @@ document.getElementById("dialogue-form").addEventListener("submit", async (e)=>{
 });
 
 async function loadMyDialogues(){
+  loadContentStatsCharts();
   const body = document.getElementById("dialogue-my-list-body");
   body.innerHTML = `<tr><td colspan="6">Đang tải…</td></tr>`;
   const { data, error } = await sb.from("dialogues").select("*, dialogue_lines(count)").eq("created_by", CURRENT_TEACHER_ID).order("id", { ascending: false });
