@@ -55,6 +55,21 @@ header.top h1{font-size:18px;margin:0;font-weight:700;}
 .date-filter-bar input[type=date]{padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;}
 .day-total-strip{background:var(--teal-light);border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:12px;text-align:center;}
 .day-total-strip b{color:var(--navy2);}
+.level-path-lang{margin-bottom:18px;}
+.level-path-lang:last-child{margin-bottom:0;}
+.level-path-lang-title{font-weight:700;font-size:13.5px;margin-bottom:8px;}
+.level-path{display:flex;align-items:center;overflow-x:auto;padding-bottom:4px;}
+.level-node{flex:none;width:76px;text-align:center;padding:10px 6px;border-radius:10px;background:var(--bg-page);}
+.level-node-code{font-weight:800;font-size:13px;}
+.level-node-score{font-size:15px;font-weight:800;margin:4px 0 2px;color:var(--text-3);}
+.level-node-count{font-size:10.5px;color:var(--text-2);}
+.level-node.good{background:var(--green-light);}
+.level-node.good .level-node-score{color:var(--green);}
+.level-node.warn{background:#fdf1e6;}
+.level-node.warn .level-node-score{color:#b8722a;}
+.level-node.bad{background:var(--red-light);}
+.level-node.bad .level-node-score{color:var(--red);}
+.level-path-line{flex:none;width:18px;height:2px;background:var(--border);}
 </style>
 </head>
 <body>
@@ -293,12 +308,13 @@ async function buildStudentBlock(studentId, studentEmail, dateStr, onlyQuiz){
 
   // Khi "Chỉ xem kết quả làm bài tập" được tick, khỏi truy vấn activity_log
   // luôn — vừa nhẹ hơn (đỡ 1 query/học sinh) vừa đúng ý chỉ muốn xem điểm.
-  const [{ data: quizzes }, { data: dayQuizzes }, { data: dayActivity }] = await Promise.all([
+  const [{ data: quizzes }, { data: dayQuizzes }, { data: dayActivity }, { data: levelStats }] = await Promise.all([
     sb.from("quiz_results").select("*").eq("user_id", studentId).order("created_at", { ascending: false }).limit(20),
     sb.from("quiz_results").select("*").eq("user_id", studentId).gte("created_at", dayStart).lte("created_at", dayEnd),
     onlyQuiz
       ? Promise.resolve({ data: [] })
-      : sb.from("activity_log").select("*").eq("user_id", studentId).gte("created_at", dayStart).lte("created_at", dayEnd).order("created_at", { ascending: false }).limit(200) // chặn trần phòng khi 1 ngày có quá nhiều sự kiện
+      : sb.from("activity_log").select("*").eq("user_id", studentId).gte("created_at", dayStart).lte("created_at", dayEnd).order("created_at", { ascending: false }).limit(200), // chặn trần phòng khi 1 ngày có quá nhiều sự kiện
+    sb.rpc("student_level_stats", { p_student_id: studentId }) // mục 13.33 — gộp sẵn theo (ngôn ngữ, trình độ), tính trên TOÀN BỘ lịch sử chứ không giới hạn 20 lần gần nhất như quizzes ở trên
   ]);
 
   const studentLabel = escHtml(studentEmail);
@@ -371,12 +387,56 @@ async function buildStudentBlock(studentId, studentEmail, dateStr, onlyQuiz){
       <div class="stats-list">${quizRowsHtml}</div>
     </div>
     <div class="card">
+      <h2 style="font-size:14px;">Tiến trình học theo trình độ — ${studentLabel}</h2>
+      <div class="sub">Điểm trung bình và số bài đã làm ở mỗi trình độ (toàn bộ lịch sử)</div>
+      ${buildLevelPathHtml(levelStats)}
+    </div>
+    <div class="card">
       <h2 style="font-size:14px;">${onlyQuiz ? "Kết quả làm bài trong ngày" : "Hoạt động gần đây"} — ${studentLabel}</h2>
       <div class="sub">Ngày ${dateStr.split("-").reverse().join("/")}</div>
       ${dayTotalHtml}
       <div class="activity-list">${timelineHtml}</div>
     </div>
   `;
+}
+
+// "Tiến trình học theo trình độ" (mục 13.33) — với mỗi ngôn ngữ học sinh ĐÃ CÓ
+// bài làm, vẽ 1 chuỗi các trình độ theo ĐÚNG thứ tự trong languages.json (A1 →
+// A2 → B1...), mỗi trình độ hiện điểm TB + số bài; trình độ chưa làm bài nào
+// vẫn hiện (xám, "Chưa học") để thấy rõ đã đi tới đâu trong lộ trình — không
+// chỉ liệt kê mỗi trình độ đã có dữ liệu.
+function buildLevelPathHtml(levelStats){
+  const byLang = {};
+  (levelStats||[]).forEach(r=>{
+    if(!byLang[r.language]) byLang[r.language] = {};
+    byLang[r.language][r.level] = { count: r.quiz_count, avg: r.avg_score_pct };
+  });
+  const langCodesInOrder = Object.keys(LANGS);
+  const langsWithData = Object.keys(byLang).sort((a,b)=> langCodesInOrder.indexOf(a) - langCodesInOrder.indexOf(b));
+  if(!langsWithData.length) return `<div class="empty-msg">Học sinh chưa làm bài kiểm tra nào.</div>`;
+
+  return langsWithData.map(lang=>{
+    const cfg = LANGS[lang];
+    const levels = (cfg && cfg.levels) || Object.keys(byLang[lang]).map(l=>({ code: l, label: l }));
+    const nodesHtml = levels.map((lv, i)=>{
+      const stat = byLang[lang][lv.code];
+      const avg = stat ? Number(stat.avg) : null;
+      const count = stat ? stat.count : 0;
+      const cls = avg == null ? "" : (avg >= 75 ? "good" : (avg >= 50 ? "warn" : "bad"));
+      const scoreText = avg == null ? "—" : `${avg}%`;
+      const countText = count ? `${count} bài` : "Chưa học";
+      const lineHtml = i < levels.length - 1 ? `<div class="level-path-line"></div>` : "";
+      return `<div class="level-node ${cls}">
+        <div class="level-node-code">${escHtml(lv.code)}</div>
+        <div class="level-node-score">${scoreText}</div>
+        <div class="level-node-count">${escHtml(countText)}</div>
+      </div>${lineHtml}`;
+    }).join("");
+    return `<div class="level-path-lang">
+      <div class="level-path-lang-title">${escHtml(langLabel(lang))}</div>
+      <div class="level-path">${nodesHtml}</div>
+    </div>`;
+  }).join("");
 }
 </script>
 </body>
