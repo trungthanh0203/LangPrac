@@ -109,7 +109,7 @@ header.top h1{font-size:18px;margin:0;font-weight:700;}
 <div class="wrap" id="denied-screen" style="display:none;">
   <div class="denied-box">
     <h2>Không có quyền truy cập</h2>
-    <p style="color:var(--text-2);font-size:13.5px;">Tài khoản này không phải tài khoản phụ huynh, hoặc chưa được liên kết với học sinh nào. Liên hệ Mr.Thanh để được hỗ trợ.</p>
+    <p id="denied-message" style="color:var(--text-2);font-size:13.5px;">Tài khoản này không phải tài khoản phụ huynh, hoặc chưa được liên kết với học sinh nào. Liên hệ Mr.Thanh để được hỗ trợ.</p>
     <button class="btn" style="background:var(--navy2);color:#fff;" id="btn-logout-denied">Đăng xuất</button>
   </div>
 </div>
@@ -248,8 +248,21 @@ function todayLocalDateStr(){
 async function afterLogin(){
   const { data: { user } } = await sb.auth.getUser();
   if(!user){ showScreen("login"); return; }
-  const { data: profile } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
-  if(!profile || profile.role !== "parent"){ showScreen("denied"); return; }
+  const { data: profile } = await sb.from("profiles").select("role, disabled").eq("id", user.id).maybeSingle();
+  // Kiểm tra khoá tài khoản (mục 13.38) TRƯỚC kiểm tra vai trò — tài khoản bị
+  // khoá vẫn đăng nhập được ở tầng Supabase Auth nên phải tự signOut() ở đây
+  // (chặn Ở TẦNG ỨNG DỤNG, không phải tầng Auth).
+  if(profile && profile.disabled){
+    await sb.auth.signOut();
+    document.getElementById("denied-message").textContent = "Tài khoản của bạn đã bị vô hiệu hoá. Liên hệ quản trị viên để biết thêm chi tiết.";
+    showScreen("denied");
+    return;
+  }
+  if(!profile || profile.role !== "parent"){
+    document.getElementById("denied-message").textContent = "Tài khoản này không phải tài khoản phụ huynh, hoặc chưa được liên kết với học sinh nào. Liên hệ Mr.Thanh để được hỗ trợ.";
+    showScreen("denied");
+    return;
+  }
   showScreen("main");
   CURRENT_PARENT_ID = user.id;
   document.getElementById("parent-email-label").textContent = user.email || "";

@@ -469,6 +469,17 @@ async function boot(){
 
   const { data: { session } } = await sb.auth.getSession();
   if(session){
+    // Khoá tài khoản (mục 13.38) — kiểm tra TRƯỚC mọi vai trò, tài khoản bị
+    // khoá vẫn có session hợp lệ ở tầng Supabase Auth (email/mật khẩu đúng)
+    // nên phải tự signOut() ở đây (chặn Ở TẦNG ỨNG DỤNG, không phải tầng Auth).
+    if(await isAccountDisabled(session.user.id)){
+      await sb.auth.signOut();
+      showAuthScreen();
+      const msg = document.getElementById("login-msg");
+      msg.className = "auth-msg err";
+      msg.textContent = "Tài khoản của bạn đã bị vô hiệu hoá. Liên hệ quản trị viên để biết thêm chi tiết.";
+      return;
+    }
     if(await isAdminUser(session.user.id)){ window.location.href = "QuanLyTuVung.html"; return; }
     // Phụ huynh/giáo viên bấm "Xem giao diện học sinh" (mục 13.32) đặt cờ này
     // trước khi mở app.html — có cờ thì bỏ qua redirect về đúng dashboard của
@@ -491,6 +502,14 @@ async function boot(){
 async function isAdminUser(userId){
   const { data } = await sb.from("admins").select("user_id").eq("user_id", userId).limit(1);
   return !!(data && data.length);
+}
+
+// Mục 13.38 — dùng chung ở boot() (session sẵn có) VÀ login-submit handler
+// (vừa đăng nhập xong), áp dụng cho MỌI vai trò (học sinh/phụ huynh/giáo
+// viên/admin) vì cột disabled nằm trên profiles, chung cho mọi tài khoản.
+async function isAccountDisabled(userId){
+  const { data } = await sb.from("profiles").select("disabled").eq("id", userId).maybeSingle();
+  return !!(data && data.disabled);
 }
 
 async function isParentUser(userId){
@@ -581,6 +600,12 @@ document.getElementById("login-form").addEventListener("submit", async (e)=>{
   }
 
   btn.disabled = false; btn.textContent = "Đăng nhập";
+  if(await isAccountDisabled(data.user.id)){
+    await sb.auth.signOut();
+    msg.className = "auth-msg err";
+    msg.textContent = "Tài khoản của bạn đã bị vô hiệu hoá. Liên hệ quản trị viên để biết thêm chi tiết.";
+    return;
+  }
   if(await isAdminUser(data.user.id)){ window.location.href = "QuanLyTuVung.html"; return; }
   if(sessionStorage.getItem("viewAsStudent") !== "1"){
     if(await isParentUser(data.user.id)){ window.location.href = "PhuHuynh.html"; return; }

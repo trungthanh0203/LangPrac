@@ -148,7 +148,7 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
 <div class="wrap" id="denied-screen" style="display:none;">
   <div class="denied-box">
     <h2>Không có quyền truy cập</h2>
-    <p style="color:var(--text-2);font-size:13.5px;">Tài khoản của bạn chưa được cấp quyền quản trị. Liên hệ người phụ trách để được thêm vào danh sách quản trị viên.</p>
+    <p id="denied-message" style="color:var(--text-2);font-size:13.5px;">Tài khoản của bạn chưa được cấp quyền quản trị. Liên hệ người phụ trách để được thêm vào danh sách quản trị viên.</p>
     <button class="btn btn-ghost" id="btn-logout-denied">Đăng xuất</button>
   </div>
 </div>
@@ -881,8 +881,23 @@ async function doLogout(){ await sb.auth.signOut(); ME = null; showScreen("login
 async function afterLogin(){
   const { data: { user } } = await sb.auth.getUser();
   if(!user){ showScreen("login"); return; }
+  // Kiểm tra khoá tài khoản (mục 13.38) TRƯỚC cả kiểm tra quyền admin — 1 admin
+  // bị khoá vẫn phải bị chặn, không phân biệt vai trò. Tài khoản bị khoá vẫn
+  // đăng nhập được ở tầng Supabase Auth (email/mật khẩu đúng) nên phải tự
+  // signOut() ngay ở đây, đây là chặn Ở TẦNG ỨNG DỤNG, không phải tầng Auth.
+  const { data: profileRow } = await sb.from("profiles").select("disabled").eq("id", user.id).maybeSingle();
+  if(profileRow && profileRow.disabled){
+    await sb.auth.signOut();
+    document.getElementById("denied-message").textContent = "Tài khoản của bạn đã bị vô hiệu hoá. Liên hệ quản trị viên để biết thêm chi tiết.";
+    showScreen("denied");
+    return;
+  }
   const { data: adminRow } = await sb.from("admins").select("user_id, role").eq("user_id", user.id).limit(1);
-  if(!adminRow || !adminRow.length){ showScreen("denied"); return; }
+  if(!adminRow || !adminRow.length){
+    document.getElementById("denied-message").textContent = "Tài khoản của bạn chưa được cấp quyền quản trị. Liên hệ người phụ trách để được thêm vào danh sách quản trị viên.";
+    showScreen("denied");
+    return;
+  }
   CURRENT_ADMIN_ID = user.id;
   IS_SUPER_ADMIN = adminRow[0].role === "super_admin";
   document.getElementById("header-admin-email").textContent = user.email || "";
@@ -1774,7 +1789,7 @@ function renderDashTable(){
     return `
       <tr class="${idle?'dash-idle':''}">
         <td><button class="btn-sm" data-edit-student="${s.id}">Sửa</button></td>
-        <td>${escHtmlAdmin(s.email)}</td>
+        <td>${escHtmlAdmin(s.email)}${s.disabled ? ' <span style="color:var(--red);font-weight:700;">(Đã khoá)</span>' : ''}</td>
         <td>${escHtmlAdmin(langLabel)}</td>
         <td>${new Date(s.created_at).toLocaleDateString("vi-VN")}</td>
         <td>${lastActive}</td>
@@ -1856,6 +1871,12 @@ async function openEditStudent(id){
         </div>
         <input type="hidden" data-f="cycle_end_date" id="es-cycle-end">
       </div>
+      <div class="field-row">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
+          <input type="checkbox" data-f="disabled" ${s.disabled?"checked":""} style="width:auto;">
+          Vô hiệu hoá tài khoản này (không cho đăng nhập)
+        </label>
+      </div>
       <div class="result-msg" id="edit-student-result"></div>
       <div class="modal-actions"><button type="button" class="btn btn-ghost" id="es-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Lưu</button></div>
     </form>`;
@@ -1885,7 +1906,7 @@ async function openEditStudent(id){
   document.getElementById("edit-student-form").onsubmit = async (e)=>{
     e.preventDefault();
     const payload = {};
-    e.target.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+    e.target.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.type === "checkbox" ? el.checked : el.value; });
     const { error } = await sb.from("profiles").update(payload).eq("id", s.id);
     if(error){ document.getElementById("edit-student-result").textContent = "Lỗi: " + error.message; return; }
 
@@ -1918,7 +1939,7 @@ async function syncPersonLink(table, idCol, studentId, oldId, newId, role){
 // khoản đều TỰ đăng ký giống học sinh, admin chỉ chọn đúng tài khoản khi sửa.
 // ============================================================
 async function loadParents(){
-  const { data: allProfiles, error } = await sb.from("profiles").select("id,email,role").order("email");
+  const { data: allProfiles, error } = await sb.from("profiles").select("id,email,role,disabled").order("email");
   if(error){
     document.getElementById("parent-list-body").innerHTML = `<tr><td colspan="3">Lỗi tải dữ liệu: ${escHtmlAdmin(error.message)}</td></tr>`;
     return;
@@ -1938,9 +1959,12 @@ async function loadParents(){
 
   const renderList = (role, counts) => (allProfiles||[]).filter(p => p.role === role).map(p => `
     <tr>
-      <td>${escHtmlAdmin(p.email||p.id)}</td>
+      <td>${escHtmlAdmin(p.email||p.id)}${p.disabled ? ' <span style="color:var(--red);font-weight:700;">(Đã khoá)</span>' : ''}</td>
       <td><span class="link-count" data-show-linked="${role}" data-id="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">${counts[p.id] || 0}</span></td>
-      <td><button class="btn-sm" data-reset-pw="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">Đổi mật khẩu</button></td>
+      <td>
+        <button class="btn-sm" data-reset-pw="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">Đổi mật khẩu</button>
+        <button class="btn-sm${p.disabled?'':' danger'}" data-toggle-disabled="${p.id}" data-disabled="${p.disabled?'1':'0'}">${p.disabled ? 'Mở khoá' : 'Khoá'}</button>
+      </td>
     </tr>`).join("");
 
   const parents = (allProfiles||[]).filter(p => p.role === "parent");
@@ -1955,6 +1979,15 @@ async function loadParents(){
   });
   document.querySelectorAll("[data-show-linked]").forEach(el=>{
     el.addEventListener("click", ()=> showLinkedStudents(el.dataset.showLinked, el.dataset.id, el.dataset.email));
+  });
+  document.querySelectorAll("[data-toggle-disabled]").forEach(btn=>{
+    btn.addEventListener("click", async ()=>{
+      const willDisable = btn.dataset.disabled === "0";
+      if(willDisable && !confirm("Khoá tài khoản này? Họ sẽ không đăng nhập được nữa cho tới khi được mở khoá lại.")) return;
+      const { error } = await sb.from("profiles").update({ disabled: willDisable }).eq("id", btn.dataset.toggleDisabled);
+      if(error){ alert("Lỗi: " + error.message); }
+      await loadParents();
+    });
   });
 }
 
@@ -2084,7 +2117,7 @@ document.getElementById("btn-grant-admin").addEventListener("click", async ()=>{
 // nhập (không tự đổi quyền của mình), khớp giới hạn đã có ở bảng danh sách.
 async function openEditAdmin(userId){
   const [{ data: profile }, { data: adminRow }] = await Promise.all([
-    sb.from("profiles").select("id,email,phone,address").eq("id", userId).maybeSingle(),
+    sb.from("profiles").select("id,email,phone,address,disabled").eq("id", userId).maybeSingle(),
     sb.from("admins").select("role").eq("user_id", userId).maybeSingle()
   ]);
   const isSelf = userId === CURRENT_ADMIN_ID;
@@ -2102,6 +2135,12 @@ async function openEditAdmin(userId){
           <option value="super_admin" ${currentRole==="super_admin"?"selected":""}>Super Admin</option>
         </select>
       </div>
+      <div class="field-row">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
+          <input type="checkbox" data-f="disabled" ${(profile&&profile.disabled)?"checked":""} ${isSelf?"disabled title=\"Không thể tự khoá tài khoản của chính mình\"":""} style="width:auto;">
+          Vô hiệu hoá tài khoản này (không cho đăng nhập)
+        </label>
+      </div>
       <div class="result-msg" id="edit-admin-result"></div>
       <div class="modal-actions"><button type="button" class="btn btn-ghost" id="ea-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Lưu</button></div>
     </form>`;
@@ -2111,7 +2150,7 @@ async function openEditAdmin(userId){
   document.getElementById("edit-admin-form").onsubmit = async (e)=>{
     e.preventDefault();
     const payload = {};
-    e.target.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+    e.target.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.type === "checkbox" ? el.checked : el.value; });
     const { error } = await sb.from("profiles").update(payload).eq("id", userId);
     if(error){ document.getElementById("edit-admin-result").textContent = "Lỗi: " + error.message; return; }
 
