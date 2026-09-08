@@ -13,6 +13,7 @@
   --navy:#0a2472; --navy2:#c8102e; --amber:#f2994a; --amber-light:#fdf1e6;
   --bg-page:#f2f4f7; --bg-card:#ffffff; --border:#e1e5eb;
   --text-1:#1a2332; --text-2:#5b6472; --text-3:#8a92a0;
+  --score-good:#1e9e5f; --score-mid:#f2994a; --score-empty:#c9cfd8;
   --radius:14px; --shadow:0 1px 3px rgba(20,42,77,0.08);
 }
 *{box-sizing:border-box;}
@@ -107,6 +108,52 @@ section{padding:64px 0;}
 .role-feature p{margin:0;font-size:13px;color:var(--text-2);}
 .role-panel-cta{text-align:center;}
 .role-panel-note{text-align:center;font-size:13px;color:var(--text-3);font-style:italic;}
+
+/* Stat preview mockups (illustrative sample data, shown to demonstrate real dashboard charts) */
+.stat-preview{background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px 24px;max-width:620px;margin:0 auto 26px;}
+.stat-preview-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
+.stat-preview-label{font-size:13px;font-weight:800;color:var(--navy);}
+.stat-preview-tag{font-size:10.5px;font-weight:700;color:var(--text-3);background:var(--bg-page);border-radius:999px;padding:3px 10px;white-space:nowrap;}
+
+/* student: level path */
+.level-path{display:flex;align-items:flex-start;justify-content:center;flex-wrap:wrap;}
+.level-node{display:flex;flex-direction:column;align-items:center;gap:6px;width:58px;}
+.level-node .circle{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:800;color:#fff;}
+.level-node.good .circle{background:var(--score-good);}
+.level-node.mid .circle{background:var(--score-mid);}
+.level-node.empty .circle{background:var(--score-empty);color:#6b7280;}
+.level-node .pct{font-size:10.5px;color:var(--text-3);font-weight:700;}
+.level-line{flex:0 0 20px;height:3px;background:var(--border);margin-top:23px;}
+
+/* parent: stat tiles + weekly activity sparkline */
+.parent-stat-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:22px;}
+.parent-stat{background:var(--bg-page);border-radius:12px;padding:12px 18px;text-align:center;min-width:98px;}
+.parent-stat .v{font-size:19px;font-weight:800;color:var(--navy2);}
+.parent-stat .l{font-size:11px;color:var(--text-2);margin-top:3px;}
+.spark-row{display:flex;align-items:flex-end;gap:9px;justify-content:center;height:60px;}
+.spark-col{display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;}
+.spark-bar{width:18px;border-radius:5px 5px 0 0;background:var(--navy);}
+.spark-bar.today{background:var(--navy2);}
+.spark-day{font-size:9.5px;color:var(--text-3);font-weight:700;}
+
+/* teacher: contribution bars (sent vs approved) */
+.contrib-chart{display:flex;flex-direction:column;gap:13px;}
+.contrib-row{display:flex;align-items:center;gap:12px;}
+.contrib-row .name{width:80px;flex-shrink:0;font-size:12.5px;color:var(--text-2);font-weight:700;}
+.contrib-track{flex:1;background:var(--bg-page);border-radius:999px;height:14px;overflow:hidden;}
+.contrib-fill{height:100%;border-radius:999px;background:var(--score-good);}
+.contrib-row .num{width:52px;text-align:right;font-size:11.5px;color:var(--text-2);font-weight:700;}
+
+/* admin: content coverage matrix */
+.matrix-wrap{overflow-x:auto;}
+.matrix-preview{display:grid;grid-template-columns:70px repeat(5,1fr);gap:5px;min-width:420px;align-items:center;}
+.matrix-preview .mh{font-size:9.5px;font-weight:800;color:var(--text-2);text-align:center;padding:2px;}
+.matrix-preview .mrow-label{font-size:11px;font-weight:800;color:var(--navy);}
+.matrix-cell{background:var(--score-good);opacity:.82;border-radius:6px;height:26px;}
+.matrix-cell.zero{background:var(--navy2);opacity:.78;}
+.matrix-legend{display:flex;gap:18px;justify-content:center;margin-top:16px;font-size:11px;color:var(--text-2);}
+.matrix-legend span{display:inline-flex;align-items:center;gap:6px;}
+.matrix-legend i{width:12px;height:12px;border-radius:3px;display:inline-block;}
 
 /* Steps */
 .step-row{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
@@ -294,6 +341,21 @@ footer.site-footer a:hover{color:var(--navy2);text-decoration:underline;}
         <h3 data-i18n="roleStudentHead">Học có định hướng, không học lan man</h3>
         <p data-i18n="roleStudentSub">Biết chính xác mình đang ở đâu và cần luyện gì tiếp theo — không phải đoán.</p>
       </div>
+      <div class="stat-preview">
+        <div class="stat-preview-top">
+          <span class="stat-preview-label" data-i18n="studentStatLabel">📊 Tiến trình học của bạn — Tiếng Anh</span>
+          <span class="stat-preview-tag" data-i18n="statPreviewTag">Ảnh minh hoạ</span>
+        </div>
+        <div class="level-path">
+          <div class="level-node good"><div class="circle">A1</div><div class="pct">96%</div></div>
+          <div class="level-line"></div>
+          <div class="level-node good"><div class="circle">A2</div><div class="pct">88%</div></div>
+          <div class="level-line"></div>
+          <div class="level-node mid"><div class="circle">B1</div><div class="pct">67%</div></div>
+          <div class="level-line"></div>
+          <div class="level-node empty"><div class="circle">B2</div><div class="pct" data-i18n="levelNotStarted">Chưa học</div></div>
+        </div>
+      </div>
       <div class="role-feature-grid">
         <div class="role-feature"><div class="ic">🎤</div><div><h4 data-i18n="roleStudentF1Title">AI chấm phát âm tức thì</h4><p data-i18n="roleStudentF1Desc">Ghi âm ngay trong app khi học từ vựng hay luyện hội thoại, biết ngay mình đọc đúng hay sai — không cần giáo viên ngồi cạnh.</p></div></div>
         <div class="role-feature"><div class="ic">📊</div><div><h4 data-i18n="roleStudentF2Title">Thấy rõ lộ trình của chính mình</h4><p data-i18n="roleStudentF2Desc">Xem tiến trình từng trình độ A1→B2 (hay HSK1→6), trình độ nào đã vững, trình độ nào còn thiếu bài.</p></div></div>
@@ -307,6 +369,26 @@ footer.site-footer a:hover{color:var(--navy2);text-decoration:underline;}
       <div class="role-panel-head">
         <h3 data-i18n="roleParentHead">Biết con học thật, không cần hỏi lại mỗi ngày</h3>
         <p data-i18n="roleParentSub">Dashboard riêng cho phụ huynh — mọi con số đến từ dữ liệu học thật, không phải lời kể.</p>
+      </div>
+      <div class="stat-preview">
+        <div class="stat-preview-top">
+          <span class="stat-preview-label" data-i18n="parentStatLabel">👀 Bạn sẽ thấy gì trong Dashboard Phụ huynh</span>
+          <span class="stat-preview-tag" data-i18n="statPreviewTag">Ảnh minh hoạ</span>
+        </div>
+        <div class="parent-stat-row">
+          <div class="parent-stat"><div class="v">B1</div><div class="l" data-i18n="parentStatLevel">Trình độ hiện tại</div></div>
+          <div class="parent-stat"><div class="v">84%</div><div class="l" data-i18n="parentStatAvg">Điểm TB gần đây</div></div>
+          <div class="parent-stat"><div class="v" data-i18n="today">Hôm nay</div><div class="l" data-i18n="parentStatLast">Học lần cuối</div></div>
+        </div>
+        <div class="spark-row">
+          <div class="spark-col"><div class="spark-bar" style="height:22px;"></div><div class="spark-day" data-i18n="dayMon">T2</div></div>
+          <div class="spark-col"><div class="spark-bar" style="height:34px;"></div><div class="spark-day" data-i18n="dayTue">T3</div></div>
+          <div class="spark-col"><div class="spark-bar" style="height:14px;"></div><div class="spark-day" data-i18n="dayWed">T4</div></div>
+          <div class="spark-col"><div class="spark-bar" style="height:44px;"></div><div class="spark-day" data-i18n="dayThu">T5</div></div>
+          <div class="spark-col"><div class="spark-bar" style="height:28px;"></div><div class="spark-day" data-i18n="dayFri">T6</div></div>
+          <div class="spark-col"><div class="spark-bar" style="height:10px;"></div><div class="spark-day" data-i18n="daySat">T7</div></div>
+          <div class="spark-col"><div class="spark-bar today" style="height:50px;"></div><div class="spark-day" data-i18n="daySun">CN</div></div>
+        </div>
       </div>
       <div class="role-feature-grid">
         <div class="role-feature"><div class="ic">👀</div><div><h4 data-i18n="roleParentF1Title">Theo dõi tiến độ thời gian thực</h4><p data-i18n="roleParentF1Desc">Con đang học ngôn ngữ nào, trình độ nào, điểm bài kiểm tra ra sao, hoạt động gần đây nhất là khi nào.</p></div></div>
@@ -322,6 +404,18 @@ footer.site-footer a:hover{color:var(--navy2);text-decoration:underline;}
         <h3 data-i18n="roleTeacherHead">Kèm cả nhóm học sinh, đóng góp cả nội dung</h3>
         <p data-i18n="roleTeacherSub">Không chỉ theo dõi — giáo viên còn trực tiếp làm giàu kho bài học của iLapra.</p>
       </div>
+      <div class="stat-preview">
+        <div class="stat-preview-top">
+          <span class="stat-preview-label" data-i18n="teacherStatLabel">📈 Đóng góp của bạn được ghi nhận thế nào</span>
+          <span class="stat-preview-tag" data-i18n="statPreviewTag">Ảnh minh hoạ</span>
+        </div>
+        <div class="contrib-chart">
+          <div class="contrib-row"><div class="name" data-i18n="skillVocabName">Từ vựng</div><div class="contrib-track"><div class="contrib-fill" style="width:88%"></div></div><div class="num">38/42</div></div>
+          <div class="contrib-row"><div class="name" data-i18n="skillReadingName">Đọc hiểu</div><div class="contrib-track"><div class="contrib-fill" style="width:80%"></div></div><div class="num">12/15</div></div>
+          <div class="contrib-row"><div class="name" data-i18n="skillListeningName">Nghe hiểu</div><div class="contrib-track"><div class="contrib-fill" style="width:78%"></div></div><div class="num">7/9</div></div>
+          <div class="contrib-row"><div class="name" data-i18n="teacherStatDialogue">Hội thoại</div><div class="contrib-track"><div class="contrib-fill" style="width:100%"></div></div><div class="num">6/6</div></div>
+        </div>
+      </div>
       <div class="role-feature-grid">
         <div class="role-feature"><div class="ic">👥</div><div><h4 data-i18n="roleTeacherF1Title">Theo dõi cả nhóm học sinh phụ trách</h4><p data-i18n="roleTeacherF1Desc">Cùng cơ chế dashboard như phụ huynh, nhưng cho toàn bộ học sinh được phân công — không phải chỉ 1 em.</p></div></div>
         <div class="role-feature"><div class="ic">✍️</div><div><h4 data-i18n="roleTeacherF2Title">Đóng góp bài học trực tiếp</h4><p data-i18n="roleTeacherF2Desc">Gửi từ vựng, đoạn đọc, bài nghe, hội thoại mới ngay trong dashboard của mình — không cần chờ admin nhập hộ.</p></div></div>
@@ -335,6 +429,35 @@ footer.site-footer a:hover{color:var(--navy2);text-decoration:underline;}
       <div class="role-panel-head">
         <h3 data-i18n="roleAdminHead">Vận hành như 1 trung tâm ngoại ngữ thật sự</h3>
         <p data-i18n="roleAdminSub">Đủ công cụ để quản lý học sinh, nội dung và đội ngũ giáo viên — không cần thêm phần mềm nào khác.</p>
+      </div>
+      <div class="stat-preview" style="max-width:680px;">
+        <div class="stat-preview-top">
+          <span class="stat-preview-label" data-i18n="adminStatLabel">🧭 Nhìn thấy ngay chỗ nào đang thiếu nội dung</span>
+          <span class="stat-preview-tag" data-i18n="statPreviewTag">Ảnh minh hoạ</span>
+        </div>
+        <div class="matrix-wrap">
+          <div class="matrix-preview">
+            <div class="mh"></div>
+            <div class="mh" data-i18n="skillVocabName">Từ vựng</div>
+            <div class="mh" data-i18n="skillGrammarName">Ngữ pháp</div>
+            <div class="mh" data-i18n="skillReadingName">Đọc hiểu</div>
+            <div class="mh" data-i18n="skillListeningName">Nghe hiểu</div>
+            <div class="mh" data-i18n="teacherStatDialogue">Hội thoại</div>
+
+            <div class="mrow-label">DE · A1</div>
+            <div class="matrix-cell"></div><div class="matrix-cell"></div><div class="matrix-cell"></div><div class="matrix-cell zero"></div><div class="matrix-cell zero"></div>
+
+            <div class="mrow-label">EN · B1</div>
+            <div class="matrix-cell"></div><div class="matrix-cell"></div><div class="matrix-cell"></div><div class="matrix-cell"></div><div class="matrix-cell zero"></div>
+
+            <div class="mrow-label">ZH · HSK2</div>
+            <div class="matrix-cell"></div><div class="matrix-cell zero"></div><div class="matrix-cell"></div><div class="matrix-cell"></div><div class="matrix-cell"></div>
+          </div>
+        </div>
+        <div class="matrix-legend">
+          <span><i style="background:var(--score-good);"></i><span data-i18n="matrixLegendHave">Đã có nội dung</span></span>
+          <span><i style="background:var(--navy2);"></i><span data-i18n="matrixLegendMissing">Còn thiếu</span></span>
+        </div>
       </div>
       <div class="role-feature-grid">
         <div class="role-feature"><div class="ic">📊</div><div><h4 data-i18n="roleAdminF1Title">Dashboard học sinh toàn diện</h4><p data-i18n="roleAdminF1Desc">Biểu đồ hoạt động, điểm trung bình, cảnh báo học sinh "im ắng" lâu ngày chưa học — phát hiện sớm để can thiệp kịp thời.</p></div></div>
@@ -449,6 +572,17 @@ const I18N = {
     roleAdminF3Title: "Duyệt nội dung từ giáo viên", roleAdminF3Desc: "Xem trước, sửa lại nếu cần, rồi duyệt hoặc từ chối bài giáo viên gửi lên — kiểm soát chất lượng trước khi công khai cho học sinh.",
     roleAdminF4Title: "Phân quyền &amp; quản lý tài khoản linh hoạt", roleAdminF4Desc: "Cấp/thu hồi quyền Super Admin – Admin, gán phụ huynh/giáo viên cho từng học sinh, khoá tài khoản, quản lý chu kỳ học theo tuần/tháng/năm.",
     roleAdminNote: "Đang cân nhắc triển khai iLapra cho trung tâm của bạn? Liên hệ Mr.Thành để được tư vấn.",
+    statPreviewTag: "Ảnh minh hoạ",
+    studentStatLabel: "📊 Tiến trình học của bạn — Tiếng Anh",
+    levelNotStarted: "Chưa học",
+    parentStatLabel: "👀 Bạn sẽ thấy gì trong Dashboard Phụ huynh",
+    parentStatLevel: "Trình độ hiện tại", parentStatAvg: "Điểm TB gần đây", parentStatLast: "Học lần cuối",
+    today: "Hôm nay",
+    dayMon: "T2", dayTue: "T3", dayWed: "T4", dayThu: "T5", dayFri: "T6", daySat: "T7", daySun: "CN",
+    teacherStatLabel: "📈 Đóng góp của bạn được ghi nhận thế nào",
+    teacherStatDialogue: "Hội thoại",
+    adminStatLabel: "🧭 Nhìn thấy ngay chỗ nào đang thiếu nội dung",
+    matrixLegendHave: "Đã có nội dung", matrixLegendMissing: "Còn thiếu",
     howEyebrow: "BẮT ĐẦU TRONG 3 BƯỚC",
     howTitle: "Không cần hướng dẫn phức tạp",
     step1Title: "Tạo tài khoản", step1Desc: "Đăng ký bằng email, chỉ mất chưa đến 1 phút.",
@@ -525,6 +659,17 @@ const I18N = {
     roleAdminF3Title: "Review teacher-submitted content", roleAdminF3Desc: "Preview, edit if needed, then approve or reject what teachers send in — quality control before anything goes live for students.",
     roleAdminF4Title: "Flexible roles and account management", roleAdminF4Desc: "Grant or revoke Super Admin / Admin rights, assign parents and teachers to each student, lock accounts, and manage study cycles by week, month, or year.",
     roleAdminNote: "Considering iLapra for your center? Contact Mr.Thành for a walkthrough.",
+    statPreviewTag: "Sample preview",
+    studentStatLabel: "📊 Your learning progress — English",
+    levelNotStarted: "Not started",
+    parentStatLabel: "👀 What you'll see on the Parent Dashboard",
+    parentStatLevel: "Current level", parentStatAvg: "Recent average score", parentStatLast: "Last studied",
+    today: "Today",
+    dayMon: "Mon", dayTue: "Tue", dayWed: "Wed", dayThu: "Thu", dayFri: "Fri", daySat: "Sat", daySun: "Sun",
+    teacherStatLabel: "📈 How your contributions get recognized",
+    teacherStatDialogue: "Dialogues",
+    adminStatLabel: "🧭 Instantly spot where content is missing",
+    matrixLegendHave: "Content exists", matrixLegendMissing: "Still missing",
     howEyebrow: "GET STARTED IN 3 STEPS",
     howTitle: "No complicated setup",
     step1Title: "Create an account", step1Desc: "Sign up with email — takes less than a minute.",
