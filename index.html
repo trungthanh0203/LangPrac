@@ -90,6 +90,24 @@ section{padding:64px 0;}
 .diff-card p{margin:0;font-size:13.5px;color:#c6cee6;}
 .diff-card .new-badge{position:absolute;top:-10px;right:20px;background:var(--amber);color:#3a2408;border-radius:999px;padding:3px 10px;font-size:10.5px;font-weight:800;letter-spacing:.03em;}
 
+/* Role features */
+.role-tabs{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:34px;}
+.role-tab{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:999px;border:2px solid var(--border);background:#fff;color:var(--text-2);font-weight:700;font-size:13.5px;cursor:pointer;transition:background .15s,color .15s,border-color .15s;}
+.role-tab:hover{border-color:var(--navy2);}
+.role-tab.active{background:var(--navy);border-color:var(--navy);color:#fff;}
+.role-panel{display:none;}
+.role-panel.active{display:block;}
+.role-panel-head{text-align:center;margin:0 auto 26px;max-width:600px;}
+.role-panel-head h3{margin:0 0 8px;color:var(--navy);font-size:19px;}
+.role-panel-head p{margin:0;color:var(--text-2);font-size:14px;}
+.role-feature-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:28px;}
+.role-feature{display:flex;gap:14px;background:var(--bg-page);border-radius:var(--radius);padding:18px 20px;}
+.role-feature .ic{font-size:24px;flex-shrink:0;line-height:1;}
+.role-feature h4{margin:0 0 5px;font-size:14.5px;color:var(--navy);}
+.role-feature p{margin:0;font-size:13px;color:var(--text-2);}
+.role-panel-cta{text-align:center;}
+.role-panel-note{text-align:center;font-size:13px;color:var(--text-3);font-style:italic;}
+
 /* Steps */
 .step-row{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
 .step{text-align:center;position:relative;}
@@ -114,6 +132,7 @@ footer.site-footer a:hover{color:var(--navy2);text-decoration:underline;}
   .card-grid-3{grid-template-columns:1fr;}
   .skill-grid{grid-template-columns:repeat(2,1fr);}
   .diff-grid{grid-template-columns:1fr;}
+  .role-feature-grid{grid-template-columns:1fr;}
   .step-row{grid-template-columns:1fr;}
   .nav-cta .btn:not(.btn-primary){display:none;}
 }
@@ -255,6 +274,79 @@ footer.site-footer a:hover{color:var(--navy2);text-decoration:underline;}
   </div>
 </section>
 
+<section id="roles" style="background:var(--bg-card);">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow" data-i18n="rolesEyebrow">DÀNH CHO CẢ GIA ĐÌNH VÀ TRUNG TÂM</div>
+      <h2 data-i18n="rolesTitle">Mỗi người trong nhà đều có chỗ đứng riêng</h2>
+      <p data-i18n="rolesSub">Không chỉ là app học từ vựng — iLapra là hệ sinh thái cho Học sinh, Phụ huynh, Giáo viên và cả Trung tâm ngoại ngữ.</p>
+    </div>
+
+    <div class="role-tabs" role="tablist">
+      <button class="role-tab active" data-role-tab="student">🎓 <span data-i18n="roleTabStudent">Học sinh</span></button>
+      <button class="role-tab" data-role-tab="parent">👪 <span data-i18n="roleTabParent">Phụ huynh</span></button>
+      <button class="role-tab" data-role-tab="teacher">🧑‍🏫 <span data-i18n="roleTabTeacher">Giáo viên</span></button>
+      <button class="role-tab" data-role-tab="admin">🏫 <span data-i18n="roleTabAdmin">Admin / Trung tâm</span></button>
+    </div>
+
+    <div class="role-panel active" data-role-panel="student">
+      <div class="role-panel-head">
+        <h3 data-i18n="roleStudentHead">Học có định hướng, không học lan man</h3>
+        <p data-i18n="roleStudentSub">Biết chính xác mình đang ở đâu và cần luyện gì tiếp theo — không phải đoán.</p>
+      </div>
+      <div class="role-feature-grid">
+        <div class="role-feature"><div class="ic">🎤</div><div><h4 data-i18n="roleStudentF1Title">AI chấm phát âm tức thì</h4><p data-i18n="roleStudentF1Desc">Ghi âm ngay trong app khi học từ vựng hay luyện hội thoại, biết ngay mình đọc đúng hay sai — không cần giáo viên ngồi cạnh.</p></div></div>
+        <div class="role-feature"><div class="ic">📊</div><div><h4 data-i18n="roleStudentF2Title">Thấy rõ lộ trình của chính mình</h4><p data-i18n="roleStudentF2Desc">Xem tiến trình từng trình độ A1→B2 (hay HSK1→6), trình độ nào đã vững, trình độ nào còn thiếu bài.</p></div></div>
+        <div class="role-feature"><div class="ic">✍️</div><div><h4 data-i18n="roleStudentF3Title">5 kỹ năng, không chỉ flashcard</h4><p data-i18n="roleStudentF3Desc">Từ vựng, trò chơi, ngữ pháp, đọc, nghe, nói hội thoại — luyện đủ để dùng ngôn ngữ thật, không chỉ ghi nhớ từ đơn lẻ.</p></div></div>
+        <div class="role-feature"><div class="ic">🔔</div><div><h4 data-i18n="roleStudentF4Title">Nhắc học đúng lúc, không làm phiền</h4><p data-i18n="roleStudentF4Desc">Thông báo đẩy tận điện thoại, chỉ nhắc khi thật sự chưa học hôm đó — và cài thẳng thành app trên máy, không cần tải nặng.</p></div></div>
+      </div>
+      <div class="role-panel-cta"><a class="btn btn-primary" href="app.html" data-i18n="roleStudentCta">Bắt đầu học ngay</a></div>
+    </div>
+
+    <div class="role-panel" data-role-panel="parent">
+      <div class="role-panel-head">
+        <h3 data-i18n="roleParentHead">Biết con học thật, không cần hỏi lại mỗi ngày</h3>
+        <p data-i18n="roleParentSub">Dashboard riêng cho phụ huynh — mọi con số đến từ dữ liệu học thật, không phải lời kể.</p>
+      </div>
+      <div class="role-feature-grid">
+        <div class="role-feature"><div class="ic">👀</div><div><h4 data-i18n="roleParentF1Title">Theo dõi tiến độ thời gian thực</h4><p data-i18n="roleParentF1Desc">Con đang học ngôn ngữ nào, trình độ nào, điểm bài kiểm tra ra sao, hoạt động gần đây nhất là khi nào.</p></div></div>
+        <div class="role-feature"><div class="ic">📈</div><div><h4 data-i18n="roleParentF2Title">Chuỗi tiến trình theo từng trình độ</h4><p data-i18n="roleParentF2Desc">Nhìn ngay A1 → A2 → B1... con đang ở nấc nào, điểm trung bình mỗi nấc, tô màu rõ ràng để biết chỗ cần kèm thêm.</p></div></div>
+        <div class="role-feature"><div class="ic">🎓</div><div><h4 data-i18n="roleParentF3Title">Xem thử giao diện học sinh</h4><p data-i18n="roleParentF3Desc">Bấm 1 nút để tự trải nghiệm đúng những gì con đang học — hiểu app dạy gì bằng chính mắt mình.</p></div></div>
+        <div class="role-feature"><div class="ic">🔒</div><div><h4 data-i18n="roleParentF4Title">Tài khoản riêng, an toàn</h4><p data-i18n="roleParentF4Desc">Tự đăng ký tài khoản phụ huynh, được liên kết đúng với con qua quản trị viên — không xem lẫn dữ liệu của học sinh khác.</p></div></div>
+      </div>
+      <div class="role-panel-cta"><a class="btn btn-primary" href="PhuHuynh.html" data-i18n="roleParentCta">Vào Dashboard Phụ huynh</a></div>
+    </div>
+
+    <div class="role-panel" data-role-panel="teacher">
+      <div class="role-panel-head">
+        <h3 data-i18n="roleTeacherHead">Kèm cả nhóm học sinh, đóng góp cả nội dung</h3>
+        <p data-i18n="roleTeacherSub">Không chỉ theo dõi — giáo viên còn trực tiếp làm giàu kho bài học của iLapra.</p>
+      </div>
+      <div class="role-feature-grid">
+        <div class="role-feature"><div class="ic">👥</div><div><h4 data-i18n="roleTeacherF1Title">Theo dõi cả nhóm học sinh phụ trách</h4><p data-i18n="roleTeacherF1Desc">Cùng cơ chế dashboard như phụ huynh, nhưng cho toàn bộ học sinh được phân công — không phải chỉ 1 em.</p></div></div>
+        <div class="role-feature"><div class="ic">✍️</div><div><h4 data-i18n="roleTeacherF2Title">Đóng góp bài học trực tiếp</h4><p data-i18n="roleTeacherF2Desc">Gửi từ vựng, đoạn đọc, bài nghe, hội thoại mới ngay trong dashboard của mình — không cần chờ admin nhập hộ.</p></div></div>
+        <div class="role-feature"><div class="ic">✅</div><div><h4 data-i18n="roleTeacherF3Title">Nội dung được kiểm duyệt chặt chẽ</h4><p data-i18n="roleTeacherF3Desc">Mọi bài gửi chờ Admin duyệt trước khi học sinh thấy được — đảm bảo chất lượng, không nội dung sinh hàng loạt không ai kiểm tra.</p></div></div>
+        <div class="role-feature"><div class="ic">📊</div><div><h4 data-i18n="roleTeacherF4Title">Biểu đồ ghi nhận đóng góp</h4><p data-i18n="roleTeacherF4Desc">Xem ngay số bài đã gửi, số bài đã được duyệt — công sức đóng góp được ghi nhận rõ ràng.</p></div></div>
+      </div>
+      <div class="role-panel-cta"><a class="btn btn-primary" href="GiaoVien.html" data-i18n="roleTeacherCta">Vào Dashboard Giáo viên</a></div>
+    </div>
+
+    <div class="role-panel" data-role-panel="admin">
+      <div class="role-panel-head">
+        <h3 data-i18n="roleAdminHead">Vận hành như 1 trung tâm ngoại ngữ thật sự</h3>
+        <p data-i18n="roleAdminSub">Đủ công cụ để quản lý học sinh, nội dung và đội ngũ giáo viên — không cần thêm phần mềm nào khác.</p>
+      </div>
+      <div class="role-feature-grid">
+        <div class="role-feature"><div class="ic">📊</div><div><h4 data-i18n="roleAdminF1Title">Dashboard học sinh toàn diện</h4><p data-i18n="roleAdminF1Desc">Biểu đồ hoạt động, điểm trung bình, cảnh báo học sinh "im ắng" lâu ngày chưa học — phát hiện sớm để can thiệp kịp thời.</p></div></div>
+        <div class="role-feature"><div class="ic">📚</div><div><h4 data-i18n="roleAdminF2Title">Quản trị nội dung tập trung</h4><p data-i18n="roleAdminF2Desc">Soạn và nhập hàng loạt từ vựng, ngữ pháp, đọc, nghe, hội thoại, toán qua CSV — có chống trùng, có ma trận xem thiếu nội dung ở đâu.</p></div></div>
+        <div class="role-feature"><div class="ic">✅</div><div><h4 data-i18n="roleAdminF3Title">Duyệt nội dung từ giáo viên</h4><p data-i18n="roleAdminF3Desc">Xem trước, sửa lại nếu cần, rồi duyệt hoặc từ chối bài giáo viên gửi lên — kiểm soát chất lượng trước khi công khai cho học sinh.</p></div></div>
+        <div class="role-feature"><div class="ic">🔐</div><div><h4 data-i18n="roleAdminF4Title">Phân quyền &amp; quản lý tài khoản linh hoạt</h4><p data-i18n="roleAdminF4Desc">Cấp/thu hồi quyền Super Admin – Admin, gán phụ huynh/giáo viên cho từng học sinh, khoá tài khoản, quản lý chu kỳ học theo tuần/tháng/năm.</p></div></div>
+      </div>
+      <p class="role-panel-note" data-i18n="roleAdminNote">Đang cân nhắc triển khai iLapra cho trung tâm của bạn? Liên hệ Mr.Thành để được tư vấn.</p>
+    </div>
+  </div>
+</section>
+
 <section id="how">
   <div class="wrap">
     <div class="section-head">
@@ -325,6 +417,38 @@ const I18N = {
     diff3Title: "Nội dung do người dạy thật biên soạn", diff3Desc: "Mọi bài học, câu hỏi đều do đội ngũ iLapra trực tiếp biên soạn và kiểm duyệt — không phải nội dung tự sinh hàng loạt không ai kiểm tra.",
     diff4Title: "Dùng ngay trên điện thoại, không cần tải nặng", diff4Desc: "Cài thẳng từ trình duyệt như 1 app thật (thêm vào màn hình chính), không chiếm nhiều dung lượng máy.",
     diff5Title: "Nhắc học đúng giờ", diff5Desc: "Thông báo đẩy tận điện thoại/máy tính, không cần cài app riêng — chỉ nhắc khi thật sự chưa học hôm đó, không làm phiền học sinh đã chủ động học rồi.",
+    rolesEyebrow: "DÀNH CHO CẢ GIA ĐÌNH VÀ TRUNG TÂM",
+    rolesTitle: "Mỗi người trong nhà đều có chỗ đứng riêng",
+    rolesSub: "Không chỉ là app học từ vựng — iLapra là hệ sinh thái cho Học sinh, Phụ huynh, Giáo viên và cả Trung tâm ngoại ngữ.",
+    roleTabStudent: "Học sinh", roleTabParent: "Phụ huynh", roleTabTeacher: "Giáo viên", roleTabAdmin: "Admin / Trung tâm",
+    roleStudentHead: "Học có định hướng, không học lan man",
+    roleStudentSub: "Biết chính xác mình đang ở đâu và cần luyện gì tiếp theo — không phải đoán.",
+    roleStudentF1Title: "AI chấm phát âm tức thì", roleStudentF1Desc: "Ghi âm ngay trong app khi học từ vựng hay luyện hội thoại, biết ngay mình đọc đúng hay sai — không cần giáo viên ngồi cạnh.",
+    roleStudentF2Title: "Thấy rõ lộ trình của chính mình", roleStudentF2Desc: "Xem tiến trình từng trình độ A1→B2 (hay HSK1→6), trình độ nào đã vững, trình độ nào còn thiếu bài.",
+    roleStudentF3Title: "5 kỹ năng, không chỉ flashcard", roleStudentF3Desc: "Từ vựng, trò chơi, ngữ pháp, đọc, nghe, nói hội thoại — luyện đủ để dùng ngôn ngữ thật, không chỉ ghi nhớ từ đơn lẻ.",
+    roleStudentF4Title: "Nhắc học đúng lúc, không làm phiền", roleStudentF4Desc: "Thông báo đẩy tận điện thoại, chỉ nhắc khi thật sự chưa học hôm đó — và cài thẳng thành app trên máy, không cần tải nặng.",
+    roleStudentCta: "Bắt đầu học ngay",
+    roleParentHead: "Biết con học thật, không cần hỏi lại mỗi ngày",
+    roleParentSub: "Dashboard riêng cho phụ huynh — mọi con số đến từ dữ liệu học thật, không phải lời kể.",
+    roleParentF1Title: "Theo dõi tiến độ thời gian thực", roleParentF1Desc: "Con đang học ngôn ngữ nào, trình độ nào, điểm bài kiểm tra ra sao, hoạt động gần đây nhất là khi nào.",
+    roleParentF2Title: "Chuỗi tiến trình theo từng trình độ", roleParentF2Desc: "Nhìn ngay A1 → A2 → B1... con đang ở nấc nào, điểm trung bình mỗi nấc, tô màu rõ ràng để biết chỗ cần kèm thêm.",
+    roleParentF3Title: "Xem thử giao diện học sinh", roleParentF3Desc: "Bấm 1 nút để tự trải nghiệm đúng những gì con đang học — hiểu app dạy gì bằng chính mắt mình.",
+    roleParentF4Title: "Tài khoản riêng, an toàn", roleParentF4Desc: "Tự đăng ký tài khoản phụ huynh, được liên kết đúng với con qua quản trị viên — không xem lẫn dữ liệu của học sinh khác.",
+    roleParentCta: "Vào Dashboard Phụ huynh",
+    roleTeacherHead: "Kèm cả nhóm học sinh, đóng góp cả nội dung",
+    roleTeacherSub: "Không chỉ theo dõi — giáo viên còn trực tiếp làm giàu kho bài học của iLapra.",
+    roleTeacherF1Title: "Theo dõi cả nhóm học sinh phụ trách", roleTeacherF1Desc: "Cùng cơ chế dashboard như phụ huynh, nhưng cho toàn bộ học sinh được phân công — không phải chỉ 1 em.",
+    roleTeacherF2Title: "Đóng góp bài học trực tiếp", roleTeacherF2Desc: "Gửi từ vựng, đoạn đọc, bài nghe, hội thoại mới ngay trong dashboard của mình — không cần chờ admin nhập hộ.",
+    roleTeacherF3Title: "Nội dung được kiểm duyệt chặt chẽ", roleTeacherF3Desc: "Mọi bài gửi chờ Admin duyệt trước khi học sinh thấy được — đảm bảo chất lượng, không nội dung sinh hàng loạt không ai kiểm tra.",
+    roleTeacherF4Title: "Biểu đồ ghi nhận đóng góp", roleTeacherF4Desc: "Xem ngay số bài đã gửi, số bài đã được duyệt — công sức đóng góp được ghi nhận rõ ràng.",
+    roleTeacherCta: "Vào Dashboard Giáo viên",
+    roleAdminHead: "Vận hành như 1 trung tâm ngoại ngữ thật sự",
+    roleAdminSub: "Đủ công cụ để quản lý học sinh, nội dung và đội ngũ giáo viên — không cần thêm phần mềm nào khác.",
+    roleAdminF1Title: "Dashboard học sinh toàn diện", roleAdminF1Desc: 'Biểu đồ hoạt động, điểm trung bình, cảnh báo học sinh "im ắng" lâu ngày chưa học — phát hiện sớm để can thiệp kịp thời.',
+    roleAdminF2Title: "Quản trị nội dung tập trung", roleAdminF2Desc: "Soạn và nhập hàng loạt từ vựng, ngữ pháp, đọc, nghe, hội thoại, toán qua CSV — có chống trùng, có ma trận xem thiếu nội dung ở đâu.",
+    roleAdminF3Title: "Duyệt nội dung từ giáo viên", roleAdminF3Desc: "Xem trước, sửa lại nếu cần, rồi duyệt hoặc từ chối bài giáo viên gửi lên — kiểm soát chất lượng trước khi công khai cho học sinh.",
+    roleAdminF4Title: "Phân quyền &amp; quản lý tài khoản linh hoạt", roleAdminF4Desc: "Cấp/thu hồi quyền Super Admin – Admin, gán phụ huynh/giáo viên cho từng học sinh, khoá tài khoản, quản lý chu kỳ học theo tuần/tháng/năm.",
+    roleAdminNote: "Đang cân nhắc triển khai iLapra cho trung tâm của bạn? Liên hệ Mr.Thành để được tư vấn.",
     howEyebrow: "BẮT ĐẦU TRONG 3 BƯỚC",
     howTitle: "Không cần hướng dẫn phức tạp",
     step1Title: "Tạo tài khoản", step1Desc: "Đăng ký bằng email, chỉ mất chưa đến 1 phút.",
@@ -369,6 +493,38 @@ const I18N = {
     diff3Title: "Content built by real teachers", diff3Desc: "Every lesson and question is written and reviewed by the iLapra team — not mass-generated content nobody checked.",
     diff4Title: "Use it on your phone right away, no heavy install", diff4Desc: "Install straight from the browser like a real app (add to home screen) — takes up almost no storage.",
     diff5Title: "Timely study reminders", diff5Desc: "Push notifications straight to your phone or computer, no separate app needed — only sent if you genuinely haven't studied that day, so it never nags students who already have.",
+    rolesEyebrow: "FOR THE WHOLE FAMILY — AND CENTERS TOO",
+    rolesTitle: "Everyone in the household gets their own view",
+    rolesSub: "Not just a vocabulary app — iLapra is a full ecosystem for Students, Parents, Teachers, and language centers.",
+    roleTabStudent: "Student", roleTabParent: "Parent", roleTabTeacher: "Teacher", roleTabAdmin: "Admin / Center",
+    roleStudentHead: "Learn with direction, not guesswork",
+    roleStudentSub: "Know exactly where you stand and what to practice next — never a guess.",
+    roleStudentF1Title: "Instant AI pronunciation scoring", roleStudentF1Desc: "Record yourself right in the app while learning vocabulary or practicing dialogues, and know instantly whether you got it right — no teacher needed next to you.",
+    roleStudentF2Title: "See your own path clearly", roleStudentF2Desc: "Track progress level by level, A1→B2 (or HSK1→6), see which levels are solid and which still need more practice.",
+    roleStudentF3Title: "5 skills, not just flashcards", roleStudentF3Desc: "Vocabulary, games, grammar, reading, listening, speaking dialogues — trained enough to actually use the language, not just memorize isolated words.",
+    roleStudentF4Title: "Reminders at the right time, never annoying", roleStudentF4Desc: "Push notifications straight to your phone, only sent when you genuinely haven't studied yet that day — and install it as a real app, no heavy download.",
+    roleStudentCta: "Start learning now",
+    roleParentHead: "Know your child is really studying — no more asking every day",
+    roleParentSub: "A dedicated parent dashboard — every number comes from real study data, not what you're told.",
+    roleParentF1Title: "Real-time progress tracking", roleParentF1Desc: "Which language and level your child is on, quiz scores, and when they last studied.",
+    roleParentF2Title: "A progress chain across every level", roleParentF2Desc: "See at a glance A1 → A2 → B1... which rung your child is on, the average score at each one, color-coded to spot where they need more support.",
+    roleParentF3Title: "Preview the student view yourself", roleParentF3Desc: "One tap to experience exactly what your child is learning — see what the app teaches with your own eyes.",
+    roleParentF4Title: "A dedicated, secure account", roleParentF4Desc: "Self-register a parent account, linked correctly to your child by the administrator — never mixed up with another student's data.",
+    roleParentCta: "Go to Parent Dashboard",
+    roleTeacherHead: "Mentor a whole class, and help build the content too",
+    roleTeacherSub: "Not just tracking — teachers directly enrich iLapra's lesson library.",
+    roleTeacherF1Title: "Track every student in your class", roleTeacherF1Desc: "The same dashboard mechanics as parents, but for the whole group of students assigned to you — not just one.",
+    roleTeacherF2Title: "Contribute lessons directly", roleTeacherF2Desc: "Submit new vocabulary, reading passages, listening exercises, and dialogues right from your own dashboard — no waiting on an admin to type it in for you.",
+    roleTeacherF3Title: "Content goes through real review", roleTeacherF3Desc: "Everything you submit is held for Admin approval before students ever see it — quality control, not mass-generated content nobody checked.",
+    roleTeacherF4Title: "See your contributions add up", roleTeacherF4Desc: "Charts show exactly how many lessons you've submitted and how many were approved — your work is visibly recognized.",
+    roleTeacherCta: "Go to Teacher Dashboard",
+    roleAdminHead: "Run it like a real language center",
+    roleAdminSub: "Everything you need to manage students, content, and a teaching staff — no extra software required.",
+    roleAdminF1Title: "A full student dashboard", roleAdminF1Desc: 'Activity charts, average scores, and alerts for students who have gone quiet for too long — catch it early and step in.',
+    roleAdminF2Title: "Centralized content management", roleAdminF2Desc: "Author and bulk-import vocabulary, grammar, reading, listening, dialogues, and math via CSV — with duplicate protection and a matrix view showing exactly what's missing.",
+    roleAdminF3Title: "Review teacher-submitted content", roleAdminF3Desc: "Preview, edit if needed, then approve or reject what teachers send in — quality control before anything goes live for students.",
+    roleAdminF4Title: "Flexible roles and account management", roleAdminF4Desc: "Grant or revoke Super Admin / Admin rights, assign parents and teachers to each student, lock accounts, and manage study cycles by week, month, or year.",
+    roleAdminNote: "Considering iLapra for your center? Contact Mr.Thành for a walkthrough.",
     howEyebrow: "GET STARTED IN 3 STEPS",
     howTitle: "No complicated setup",
     step1Title: "Create an account", step1Desc: "Sign up with email — takes less than a minute.",
@@ -400,6 +556,14 @@ applyLang(initialLang);
 
 document.getElementById("btn-lang-vi").addEventListener("click", ()=> applyLang("vi"));
 document.getElementById("btn-lang-en").addEventListener("click", ()=> applyLang("en"));
+
+document.querySelectorAll(".role-tab").forEach(tab=>{
+  tab.addEventListener("click", ()=>{
+    const role = tab.dataset.roleTab;
+    document.querySelectorAll(".role-tab").forEach(t=> t.classList.toggle("active", t === tab));
+    document.querySelectorAll(".role-panel").forEach(p=> p.classList.toggle("active", p.dataset.rolePanel === role));
+  });
+});
 </script>
 
 </body>
