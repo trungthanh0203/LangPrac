@@ -78,7 +78,10 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
 .landing-group summary{padding:14px 0;font-weight:700;font-size:14px;color:var(--navy2);cursor:pointer;}
 .landing-group-body{padding:4px 0 16px;}
 .landing-row{padding:12px 0;border-top:1px solid var(--border);}
-.landing-row-label{font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;}
+.landing-row-label{font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+.landing-custom-badge{display:none;font-size:10px;font-weight:700;color:var(--green);background:var(--green-light);border-radius:999px;padding:2px 9px;}
+.landing-reset-btn{margin-left:auto;background:none;border:none;color:var(--text-3);font-size:11px;font-weight:600;cursor:pointer;padding:2px 4px;}
+.landing-reset-btn:hover{color:var(--navy2);}
 .landing-row-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .landing-field-lang{font-size:10.5px;font-weight:700;color:var(--text-3);margin-bottom:3px;}
 .landing-row-fields textarea{width:100%;min-height:56px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:12.5px;font-family:inherit;}
@@ -4812,7 +4815,8 @@ const LANDING_GROUPS = [
 
 // Dựng khung accordion 1 lần (không phụ thuộc dữ liệu) — loadLandingContent()
 // chỉ cần điền giá trị vào các textarea đã có sẵn id cố định landing-vi-<key>/
-// landing-en-<key>.
+// landing-en-<key>. Mỗi dòng có thêm badge "Đã tuỳ chỉnh" + nút "↺" để khôi
+// phục đúng dòng đó về nội dung mặc định (không cần xoá tay từng chữ).
 function renderLandingGroups(){
   const wrap = document.getElementById("landing-groups");
   wrap.innerHTML = LANDING_GROUPS.map((g, gi) => `
@@ -4821,40 +4825,79 @@ function renderLandingGroups(){
       <div class="landing-group-body">
         ${g.keys.map(k => `
           <div class="landing-row">
-            <div class="landing-row-label">${k.label}</div>
+            <div class="landing-row-label">${k.label} <span class="landing-custom-badge" id="landing-badge-${k.key}">Đã tuỳ chỉnh</span>
+              <button type="button" class="landing-reset-btn" id="landing-reset-${k.key}" title="Khôi phục mục này về nội dung mặc định">↺ Mặc định</button>
+            </div>
             <div class="landing-row-fields">
-              <div><div class="landing-field-lang">VI</div><textarea id="landing-vi-${k.key}" placeholder="(đang dùng nội dung mặc định trong code)"></textarea></div>
-              <div><div class="landing-field-lang">EN</div><textarea id="landing-en-${k.key}" placeholder="(đang dùng nội dung mặc định trong code)"></textarea></div>
+              <div><div class="landing-field-lang">VI</div><textarea id="landing-vi-${k.key}" placeholder="(đang tải nội dung mặc định…)"></textarea></div>
+              <div><div class="landing-field-lang">EN</div><textarea id="landing-en-${k.key}" placeholder="(đang tải nội dung mặc định…)"></textarea></div>
             </div>
           </div>
         `).join("")}
       </div>
     </details>
   `).join("");
+  LANDING_GROUPS.forEach(g => g.keys.forEach(k => {
+    document.getElementById(`landing-reset-${k.key}`).addEventListener("click", ()=> resetLandingField(k.key));
+  }));
 }
 renderLandingGroups();
 
-let LANDING_ROWS = {}; // key -> {vi,en} — dòng đang có trong landing_content, dùng để biết key nào cần xoá khi admin xoá trắng nội dung tuỳ chỉnh
+let LANDING_ROWS = {}; // key -> {vi,en} — dòng đang có trong landing_content (ghi đè)
+// Nội dung MẶC ĐỊNH thật đang chạy trên trang — lấy trực tiếp từ index.html
+// (không chép tay 1 bản riêng ở đây để tránh lệch nhau khi Claude Code sửa
+// index.html). fetch 1 lần, cache lại cho các lần vào tab sau.
+let DEFAULT_CONTENT = { vi: {}, en: {} };
+let defaultContentPromise = null;
+function loadDefaultContentFromIndex(){
+  if(!defaultContentPromise) defaultContentPromise = (async () => {
+    try{
+      const res = await fetch("index.html");
+      const html = await res.text();
+      const m = html.match(/const I18N = (\{[\s\S]*?\n\})\s*;/);
+      if(m) DEFAULT_CONTENT = new Function("return " + m[1])();
+    }catch(e){
+      console.warn("Không tải được nội dung mặc định từ index.html:", e);
+    }
+  })();
+  return defaultContentPromise;
+}
+
+function fillLandingField(key){
+  const row = LANDING_ROWS[key];
+  const defVi = (DEFAULT_CONTENT.vi && DEFAULT_CONTENT.vi[key]) || "";
+  const defEn = (DEFAULT_CONTENT.en && DEFAULT_CONTENT.en[key]) || "";
+  const viEl = document.getElementById(`landing-vi-${key}`);
+  const enEl = document.getElementById(`landing-en-${key}`);
+  if(viEl) viEl.value = (row && row.vi) || defVi;
+  if(enEl) enEl.value = (row && row.en) || defEn;
+  const badge = document.getElementById(`landing-badge-${key}`);
+  if(badge) badge.style.display = row ? "inline-block" : "none";
+}
+
+function resetLandingField(key){
+  const defVi = (DEFAULT_CONTENT.vi && DEFAULT_CONTENT.vi[key]) || "";
+  const defEn = (DEFAULT_CONTENT.en && DEFAULT_CONTENT.en[key]) || "";
+  document.getElementById(`landing-vi-${key}`).value = defVi;
+  document.getElementById(`landing-en-${key}`).value = defEn;
+}
 
 async function loadLandingContent(){
   const statusEl = document.getElementById("landing-status");
   statusEl.textContent = "Đang tải...";
-  const { data, error } = await sb.from("landing_content").select("key,vi,en");
+  const [{ data, error }] = await Promise.all([
+    sb.from("landing_content").select("key,vi,en"),
+    loadDefaultContentFromIndex(),
+  ]);
   if(error){
     statusEl.textContent = "Lỗi tải dữ liệu: " + error.message + " (có thể chưa chạy migration 48_migration_add_landing_content.sql trên Supabase — xem hướng dẫn trong file migration).";
     return;
   }
   LANDING_ROWS = {};
   (data || []).forEach(r => { LANDING_ROWS[r.key] = r; });
-  LANDING_GROUPS.forEach(g => g.keys.forEach(k => {
-    const row = LANDING_ROWS[k.key];
-    const viEl = document.getElementById(`landing-vi-${k.key}`);
-    const enEl = document.getElementById(`landing-en-${k.key}`);
-    if(viEl) viEl.value = (row && row.vi) || "";
-    if(enEl) enEl.value = (row && row.en) || "";
-  }));
+  LANDING_GROUPS.forEach(g => g.keys.forEach(k => fillLandingField(k.key)));
   const customCount = Object.keys(LANDING_ROWS).length;
-  statusEl.textContent = customCount ? `Đang có ${customCount} mục đã tuỳ chỉnh khác nội dung mặc định.` : "Chưa có mục nào được tuỳ chỉnh — toàn bộ đang dùng nội dung mặc định trong code.";
+  statusEl.textContent = customCount ? `Đang có ${customCount} mục đã tuỳ chỉnh khác nội dung mặc định.` : "Chưa có mục nào được tuỳ chỉnh — toàn bộ đang hiện nội dung mặc định (có thể sửa trực tiếp trong các ô bên dưới).";
 }
 
 document.getElementById("btn-save-landing").addEventListener("click", async ()=>{
@@ -4864,11 +4907,15 @@ document.getElementById("btn-save-landing").addEventListener("click", async ()=>
   LANDING_GROUPS.forEach(g => g.keys.forEach(k => {
     const vi = document.getElementById(`landing-vi-${k.key}`).value.trim();
     const en = document.getElementById(`landing-en-${k.key}`).value.trim();
+    const defVi = ((DEFAULT_CONTENT.vi && DEFAULT_CONTENT.vi[k.key]) || "").trim();
+    const defEn = ((DEFAULT_CONTENT.en && DEFAULT_CONTENT.en[k.key]) || "").trim();
+    const isCustomVi = vi !== defVi;
+    const isCustomEn = en !== defEn;
     const hadRow = !!LANDING_ROWS[k.key];
-    if(!vi && !en){
+    if(!isCustomVi && !isCustomEn){
       if(hadRow) deleteKeys.push(k.key);
     } else {
-      upserts.push({ key: k.key, vi: vi || null, en: en || null, updated_at: new Date().toISOString(), updated_by: CURRENT_ADMIN_ID });
+      upserts.push({ key: k.key, vi: isCustomVi ? vi : null, en: isCustomEn ? en : null, updated_at: new Date().toISOString(), updated_by: CURRENT_ADMIN_ID });
     }
   }));
   if(!upserts.length && !deleteKeys.length){
