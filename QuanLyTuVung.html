@@ -72,6 +72,17 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
 .result-msg{font-size:12.5px;margin-top:10px;padding:10px 12px;border-radius:8px;display:none;}
 .result-msg.ok{background:var(--green-light);color:var(--green);display:block;}
 .result-msg.err{background:var(--red-light);color:var(--red);display:block;white-space:pre-wrap;}
+.landing-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:var(--gap);}
+.landing-hint{font-size:12px;color:var(--text-2);flex:1;min-width:220px;}
+.landing-group{background:var(--bg-card);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:12px;padding:4px 20px;}
+.landing-group summary{padding:14px 0;font-weight:700;font-size:14px;color:var(--navy2);cursor:pointer;}
+.landing-group-body{padding:4px 0 16px;}
+.landing-row{padding:12px 0;border-top:1px solid var(--border);}
+.landing-row-label{font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;}
+.landing-row-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.landing-field-lang{font-size:10.5px;font-weight:700;color:var(--text-3);margin-bottom:3px;}
+.landing-row-fields textarea{width:100%;min-height:56px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:12.5px;font-family:inherit;}
+@media (max-width:720px){ .landing-row-fields{grid-template-columns:1fr;} }
 .config-warning{max-width:600px;margin:60px auto;background:var(--amber-light);color:#8a5a15;padding:20px 24px;border-radius:10px;font-size:13px;line-height:1.6;}
 .dash-group-tabs{display:flex;gap:10px;margin-bottom:10px;}
 .dash-group-tabs button{flex:1;padding:10px;border-radius:10px;border:2px solid var(--navy2);background:#fff;font-size:14px;font-weight:800;color:var(--navy2);cursor:pointer;}
@@ -196,6 +207,7 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
       <button id="sec-listening" data-group="content" style="display:none;">🎧 Nghe</button>
       <button id="sec-dialogue" data-group="content" style="display:none;">🗣️ Hội thoại</button>
       <button id="sec-math" data-group="content" style="display:none;">🔢 Toán</button>
+      <button id="sec-landing" data-group="content" style="display:none;">🏠 Trang giới thiệu</button>
     </div>
 
     <div id="content-dash-section" style="display:none;">
@@ -597,6 +609,21 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
         <div style="margin-top:10px;"><button class="btn btn-primary" id="btn-import-math">Nhập vào hệ thống</button></div>
         <div class="result-msg" id="math-import-result"></div>
       </div>
+    </div>
+
+    <div id="landing-section" style="display:none;">
+      <div class="landing-toolbar">
+        <div class="landing-hint">
+          Sửa nội dung trang giới thiệu (index.html) — thay đổi hiện NGAY trên
+          trang công khai sau khi Lưu, không cần chờ deploy lại code. Để trống
+          cả 2 ô (VI/EN) của 1 mục nghĩa là dùng lại nội dung mặc định có sẵn
+          trong code.
+        </div>
+        <a class="btn btn-ghost" href="index.html" target="_blank" rel="noopener" style="text-decoration:none;display:inline-block;">🔗 Xem trang giới thiệu</a>
+        <button class="btn btn-primary" id="btn-save-landing">💾 Lưu tất cả thay đổi</button>
+      </div>
+      <div id="landing-status" style="font-size:12.5px;color:var(--text-2);margin-bottom:var(--gap);"></div>
+      <div id="landing-groups"></div>
     </div>
 
     <div id="parents-section" style="display:none;">
@@ -1665,12 +1692,12 @@ document.getElementById("btn-import").addEventListener("click", async ()=>{
 // ============================================================
 // Chuyển đổi giữa 4 khu vực quản trị: Từ vựng / Ngữ pháp / Đọc / Hội thoại
 // ============================================================
-const ALL_SECTIONS = ["dashboard", "vocab", "grammar", "reading", "listening", "dialogue", "math", "parents", "admins", "content-dash"];
+const ALL_SECTIONS = ["dashboard", "vocab", "grammar", "reading", "listening", "dialogue", "math", "landing", "parents", "admins", "content-dash"];
 // Nhóm dashboard lớn (2 cấp điều hướng): "users" = Quản trị người dùng (Học sinh,
 // Phụ huynh & Giáo viên, Quản trị viên — mục 13.36), "content" = Quản trị nội
 // dung (dashboard tổng quan + 6 tab soạn bài cũ, giữ nguyên logic bên trong,
 // chỉ gom lại 1 nhóm cho gọn).
-const SECTION_GROUP = { dashboard: "users", parents: "users", admins: "users", "content-dash": "content", vocab: "content", grammar: "content", reading: "content", listening: "content", dialogue: "content", math: "content" };
+const SECTION_GROUP = { dashboard: "users", parents: "users", admins: "users", "content-dash": "content", vocab: "content", grammar: "content", reading: "content", listening: "content", dialogue: "content", math: "content", landing: "content" };
 // true khi tài khoản đang đăng nhập là super_admin — gán trong afterLogin()
 // (mục 13.36). Tab "🛡️ Quản trị viên" chỉ hiện khi cờ này bật; kiểm tra lại 1
 // lần nữa ở loadAdmins() phòng khi bị vào thẳng qua devtools, và RLS phía
@@ -1702,6 +1729,7 @@ function switchSection(active){
   else if(active === "listening") loadLiPassages();
   else if(active === "dialogue") loadDialogues();
   else if(active === "math") loadMath();
+  else if(active === "landing") loadLandingContent();
   else if(active === "parents") loadParents();
   else if(active === "admins") loadAdmins();
 }
@@ -4691,6 +4719,172 @@ document.getElementById("btn-import-line").addEventListener("click", async ()=>{
   } finally {
     btn.disabled = false; btn.textContent = "Nhập vào hệ thống";
   }
+});
+
+// ============================================================
+// Tab "🏠 Trang giới thiệu" — sửa nội dung index.html qua bảng landing_content
+// (mục CMS nhẹ, xem migration 48). Mỗi key trong LANDING_GROUPS phải khớp
+// ĐÚNG tên key data-i18n trong site/LangPrac/index.html — chỉ những key liệt
+// kê ở đây mới sửa được qua UI này (label/nav/footer/mockup minh hoạ vẫn
+// code-only, có chủ đích, xem plan lúc thêm tính năng này).
+// ============================================================
+const LANDING_GROUPS = [
+  { section: "Hero (đầu trang)", keys: [
+    {key:"heroKicker", label:"Dòng nhỏ phía trên tiêu đề"},
+    {key:"heroTitle", label:"Tiêu đề chính (có thể dùng thẻ <em>...</em> để in nghiêng nhấn mạnh 1 đoạn)"},
+    {key:"heroDek", label:"Đoạn mô tả dưới tiêu đề"},
+    {key:"heroCtaPrimary", label:"Nút chính (vd: Bắt đầu học ngay)"},
+    {key:"heroCtaSecondary", label:"Nút phụ (vd: Xem app dạy gì)"},
+  ]},
+  { section: "3 Ngôn ngữ", keys: [
+    {key:"langEyebrow", label:"Nhãn nhỏ phía trên"},
+    {key:"langTitle", label:"Tiêu đề mục"},
+    {key:"langSub", label:"Mô tả mục"},
+    {key:"cardDeDesc", label:"Mô tả thẻ Tiếng Đức"},
+    {key:"cardEnDesc", label:"Mô tả thẻ Tiếng Anh"},
+    {key:"cardEnBadge", label:"Nhãn badge Tiếng Anh (vd: A1 – B2 + SAT)"},
+    {key:"cardZhDesc", label:"Mô tả thẻ Tiếng Trung"},
+  ]},
+  { section: "5 Kỹ năng", keys: [
+    {key:"skillEyebrow", label:"Nhãn nhỏ phía trên"},
+    {key:"skillTitle", label:"Tiêu đề mục"},
+    {key:"skillSub", label:"Mô tả mục"},
+    {key:"skillVocabDesc", label:"Mô tả — Từ vựng"},
+    {key:"skillGrammarDesc", label:"Mô tả — Ngữ pháp"},
+    {key:"skillReadingDesc", label:"Mô tả — Đọc hiểu"},
+    {key:"skillListeningDesc", label:"Mô tả — Nghe hiểu"},
+    {key:"skillSpeakingDesc", label:"Mô tả — Nói"},
+  ]},
+  { section: "Vì sao chọn iLapra", keys: [
+    {key:"diffEyebrow", label:"Nhãn nhỏ phía trên"},
+    {key:"diffTitle", label:"Tiêu đề mục"},
+    {key:"diffSub", label:"Mô tả mục"},
+    {key:"diff0Title", label:"Thẻ 1 (AI chấm phát âm) — Tiêu đề"}, {key:"diff0Desc", label:"Thẻ 1 — Mô tả"},
+    {key:"diff1Title", label:"Thẻ 2 (Phụ huynh theo dõi) — Tiêu đề"}, {key:"diff1Desc", label:"Thẻ 2 — Mô tả"},
+    {key:"diff2Title", label:"Thẻ 3 (Luyện thi SAT) — Tiêu đề"}, {key:"diff2Desc", label:"Thẻ 3 — Mô tả"},
+    {key:"diff3Title", label:"Thẻ 4 (Nội dung người dạy thật) — Tiêu đề"}, {key:"diff3Desc", label:"Thẻ 4 — Mô tả"},
+    {key:"diff4Title", label:"Thẻ 5 (Dùng trên điện thoại) — Tiêu đề"}, {key:"diff4Desc", label:"Thẻ 5 — Mô tả"},
+    {key:"diff5Title", label:"Thẻ 6 (Nhắc học đúng giờ) — Tiêu đề"}, {key:"diff5Desc", label:"Thẻ 6 — Mô tả"},
+  ]},
+  { section: "Vai trò — Học sinh", keys: [
+    {key:"roleStudentHead", label:"Tiêu đề panel"}, {key:"roleStudentSub", label:"Mô tả panel"},
+    {key:"roleStudentF1Title", label:"Tính năng 1 — Tiêu đề"}, {key:"roleStudentF1Desc", label:"Tính năng 1 — Mô tả"},
+    {key:"roleStudentF2Title", label:"Tính năng 2 — Tiêu đề"}, {key:"roleStudentF2Desc", label:"Tính năng 2 — Mô tả"},
+    {key:"roleStudentF3Title", label:"Tính năng 3 — Tiêu đề"}, {key:"roleStudentF3Desc", label:"Tính năng 3 — Mô tả"},
+    {key:"roleStudentF4Title", label:"Tính năng 4 — Tiêu đề"}, {key:"roleStudentF4Desc", label:"Tính năng 4 — Mô tả"},
+    {key:"roleStudentCta", label:"Nút CTA"},
+  ]},
+  { section: "Vai trò — Phụ huynh", keys: [
+    {key:"roleParentHead", label:"Tiêu đề panel"}, {key:"roleParentSub", label:"Mô tả panel"},
+    {key:"roleParentF1Title", label:"Tính năng 1 — Tiêu đề"}, {key:"roleParentF1Desc", label:"Tính năng 1 — Mô tả"},
+    {key:"roleParentF2Title", label:"Tính năng 2 — Tiêu đề"}, {key:"roleParentF2Desc", label:"Tính năng 2 — Mô tả"},
+    {key:"roleParentF3Title", label:"Tính năng 3 — Tiêu đề"}, {key:"roleParentF3Desc", label:"Tính năng 3 — Mô tả"},
+    {key:"roleParentF4Title", label:"Tính năng 4 — Tiêu đề"}, {key:"roleParentF4Desc", label:"Tính năng 4 — Mô tả"},
+    {key:"roleParentCta", label:"Nút CTA"},
+  ]},
+  { section: "Vai trò — Giáo viên", keys: [
+    {key:"roleTeacherHead", label:"Tiêu đề panel"}, {key:"roleTeacherSub", label:"Mô tả panel"},
+    {key:"roleTeacherF1Title", label:"Tính năng 1 — Tiêu đề"}, {key:"roleTeacherF1Desc", label:"Tính năng 1 — Mô tả"},
+    {key:"roleTeacherF2Title", label:"Tính năng 2 — Tiêu đề"}, {key:"roleTeacherF2Desc", label:"Tính năng 2 — Mô tả"},
+    {key:"roleTeacherF3Title", label:"Tính năng 3 — Tiêu đề"}, {key:"roleTeacherF3Desc", label:"Tính năng 3 — Mô tả"},
+    {key:"roleTeacherF4Title", label:"Tính năng 4 — Tiêu đề"}, {key:"roleTeacherF4Desc", label:"Tính năng 4 — Mô tả"},
+    {key:"roleTeacherCta", label:"Nút CTA"},
+  ]},
+  { section: "Vai trò — Admin / Trung tâm", keys: [
+    {key:"roleAdminHead", label:"Tiêu đề panel"}, {key:"roleAdminSub", label:"Mô tả panel"},
+    {key:"roleAdminF1Title", label:"Tính năng 1 — Tiêu đề"}, {key:"roleAdminF1Desc", label:"Tính năng 1 — Mô tả"},
+    {key:"roleAdminF2Title", label:"Tính năng 2 — Tiêu đề"}, {key:"roleAdminF2Desc", label:"Tính năng 2 — Mô tả"},
+    {key:"roleAdminF3Title", label:"Tính năng 3 — Tiêu đề"}, {key:"roleAdminF3Desc", label:"Tính năng 3 — Mô tả"},
+    {key:"roleAdminF4Title", label:"Tính năng 4 — Tiêu đề"}, {key:"roleAdminF4Desc", label:"Tính năng 4 — Mô tả"},
+    {key:"roleAdminNote", label:"Ghi chú liên hệ (không có nút CTA riêng)"},
+  ]},
+  { section: "Bắt đầu trong 3 bước", keys: [
+    {key:"howEyebrow", label:"Nhãn nhỏ phía trên"}, {key:"howTitle", label:"Tiêu đề mục"},
+    {key:"step1Title", label:"Bước 1 — Tiêu đề"}, {key:"step1Desc", label:"Bước 1 — Mô tả"},
+    {key:"step2Title", label:"Bước 2 — Tiêu đề"}, {key:"step2Desc", label:"Bước 2 — Mô tả"},
+    {key:"step3Title", label:"Bước 3 — Tiêu đề"}, {key:"step3Desc", label:"Bước 3 — Mô tả"},
+  ]},
+  { section: "CTA cuối trang", keys: [
+    {key:"finalTitle", label:"Tiêu đề"}, {key:"finalDesc", label:"Mô tả"}, {key:"finalCta", label:"Nút CTA"},
+  ]},
+];
+
+// Dựng khung accordion 1 lần (không phụ thuộc dữ liệu) — loadLandingContent()
+// chỉ cần điền giá trị vào các textarea đã có sẵn id cố định landing-vi-<key>/
+// landing-en-<key>.
+function renderLandingGroups(){
+  const wrap = document.getElementById("landing-groups");
+  wrap.innerHTML = LANDING_GROUPS.map((g, gi) => `
+    <details class="landing-group"${gi === 0 ? " open" : ""}>
+      <summary>${g.section}</summary>
+      <div class="landing-group-body">
+        ${g.keys.map(k => `
+          <div class="landing-row">
+            <div class="landing-row-label">${k.label}</div>
+            <div class="landing-row-fields">
+              <div><div class="landing-field-lang">VI</div><textarea id="landing-vi-${k.key}" placeholder="(đang dùng nội dung mặc định trong code)"></textarea></div>
+              <div><div class="landing-field-lang">EN</div><textarea id="landing-en-${k.key}" placeholder="(đang dùng nội dung mặc định trong code)"></textarea></div>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    </details>
+  `).join("");
+}
+renderLandingGroups();
+
+let LANDING_ROWS = {}; // key -> {vi,en} — dòng đang có trong landing_content, dùng để biết key nào cần xoá khi admin xoá trắng nội dung tuỳ chỉnh
+
+async function loadLandingContent(){
+  const statusEl = document.getElementById("landing-status");
+  statusEl.textContent = "Đang tải...";
+  const { data, error } = await sb.from("landing_content").select("key,vi,en");
+  if(error){
+    statusEl.textContent = "Lỗi tải dữ liệu: " + error.message + " (có thể chưa chạy migration 48_migration_add_landing_content.sql trên Supabase — xem hướng dẫn trong file migration).";
+    return;
+  }
+  LANDING_ROWS = {};
+  (data || []).forEach(r => { LANDING_ROWS[r.key] = r; });
+  LANDING_GROUPS.forEach(g => g.keys.forEach(k => {
+    const row = LANDING_ROWS[k.key];
+    const viEl = document.getElementById(`landing-vi-${k.key}`);
+    const enEl = document.getElementById(`landing-en-${k.key}`);
+    if(viEl) viEl.value = (row && row.vi) || "";
+    if(enEl) enEl.value = (row && row.en) || "";
+  }));
+  const customCount = Object.keys(LANDING_ROWS).length;
+  statusEl.textContent = customCount ? `Đang có ${customCount} mục đã tuỳ chỉnh khác nội dung mặc định.` : "Chưa có mục nào được tuỳ chỉnh — toàn bộ đang dùng nội dung mặc định trong code.";
+}
+
+document.getElementById("btn-save-landing").addEventListener("click", async ()=>{
+  const statusEl = document.getElementById("landing-status");
+  const upserts = [];
+  const deleteKeys = [];
+  LANDING_GROUPS.forEach(g => g.keys.forEach(k => {
+    const vi = document.getElementById(`landing-vi-${k.key}`).value.trim();
+    const en = document.getElementById(`landing-en-${k.key}`).value.trim();
+    const hadRow = !!LANDING_ROWS[k.key];
+    if(!vi && !en){
+      if(hadRow) deleteKeys.push(k.key);
+    } else {
+      upserts.push({ key: k.key, vi: vi || null, en: en || null, updated_at: new Date().toISOString(), updated_by: CURRENT_ADMIN_ID });
+    }
+  }));
+  if(!upserts.length && !deleteKeys.length){
+    statusEl.textContent = "Không có thay đổi nào để lưu.";
+    return;
+  }
+  statusEl.textContent = "Đang lưu...";
+  if(upserts.length){
+    const { error } = await sb.from("landing_content").upsert(upserts, { onConflict: "key" });
+    if(error){ statusEl.textContent = "Lỗi khi lưu: " + error.message; return; }
+  }
+  if(deleteKeys.length){
+    const { error } = await sb.from("landing_content").delete().in("key", deleteKeys);
+    if(error){ statusEl.textContent = "Lỗi khi khôi phục mặc định: " + error.message; return; }
+  }
+  statusEl.textContent = `Đã lưu ${upserts.length} mục tuỳ chỉnh` + (deleteKeys.length ? `, khôi phục mặc định ${deleteKeys.length} mục` : "") + ". Mở lại trang giới thiệu để xem ngay.";
+  await loadLandingContent();
 });
 </script>
 </body>

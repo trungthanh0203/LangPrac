@@ -502,6 +502,7 @@ footer.site-footer a:hover{color:var(--navy2);text-decoration:underline;}
   </div>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 const I18N = {
   vi: {
@@ -709,6 +710,26 @@ document.querySelectorAll(".role-tab").forEach(tab=>{
     document.querySelectorAll(".role-panel").forEach(p=> p.classList.toggle("active", p.dataset.rolePanel === role));
   });
 });
+
+// Lớp ghi đè nội dung tuỳ chỉnh (bảng landing_content, sửa qua QuanLyTuVung.html
+// tab "🏠 Trang giới thiệu") — CHỈ override key đã có sẵn trong I18N.vi/en ở
+// trên, key lạ/gõ sai bị bỏ qua an toàn. Nếu bảng rỗng hoặc lỗi mạng/RLS, trang
+// vẫn giữ nguyên nội dung mặc định đã render ở applyLang(initialLang) phía
+// trên — không có gì vỡ, không "nháy trắng" chờ mạng.
+const SUPABASE_URL = "https://vuykuqmebmainyhiotfx.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_8Ro-jEFQqFh7EfbXPfzWaw_V1xrkoyU";
+(async () => {
+  try{
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data, error } = await sb.from("landing_content").select("key,vi,en");
+    if(error || !data || !data.length) return;
+    data.forEach(row=>{
+      if(row.vi && (row.key in I18N.vi)) I18N.vi[row.key] = row.vi;
+      if(row.en && (row.key in I18N.en)) I18N.en[row.key] = row.en;
+    });
+    applyLang(document.documentElement.lang); // áp lại đúng ngôn ngữ đang hiện
+  }catch(e){ /* im lặng — giữ nguyên nội dung mặc định */ }
+})();
 </script>
 
 </body>
