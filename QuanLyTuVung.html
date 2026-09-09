@@ -669,7 +669,7 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
         <h3>Giáo viên (<span id="teacher-count">0</span>)</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Email</th><th>Điện thoại</th><th>Địa chỉ</th><th>Ngày đăng ký</th><th>HS phụ trách</th><th>Đề cần duyệt</th><th>Đề đã duyệt</th><th></th></tr></thead>
+            <thead><tr><th>Email</th><th>Điện thoại</th><th>HS phụ trách</th><th>Đề cần duyệt</th><th>Đề đã duyệt</th><th>Đã trả lời</th><th>Chưa trả lời</th><th></th></tr></thead>
             <tbody id="teacher-list-body"></tbody>
           </table>
         </div>
@@ -691,6 +691,16 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
           <table>
             <thead><tr><th>Loại</th><th>Ngôn ngữ</th><th>Trình độ</th><th>Nội dung</th><th></th></tr></thead>
             <tbody id="pending-content-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" id="questions-list-card" style="display:none;">
+        <h3 id="questions-list-title">Câu hỏi học sinh</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Học sinh</th><th>Tiêu đề</th><th>Kỹ năng</th><th>Mức độ</th><th>Trạng thái</th><th>Ngày gửi</th></tr></thead>
+            <tbody id="questions-list-body"></tbody>
           </table>
         </div>
       </div>
@@ -2478,16 +2488,18 @@ async function loadParents(){
 }
 
 async function loadTeachers(){
-  const { data: profiles, error } = await sb.from("profiles").select("id,email,phone,address,created_at,disabled").eq("role", "teacher").order("email");
+  const { data: profiles, error } = await sb.from("profiles").select("id,email,phone,disabled").eq("role", "teacher").order("email");
   if(error){
     document.getElementById("teacher-list-body").innerHTML = `<tr><td colspan="8">Lỗi tải dữ liệu: ${escHtmlAdmin(error.message)}</td></tr>`;
     return;
   }
   document.getElementById("linked-students-card-teachers").style.display = "none";
   document.getElementById("pending-content-card").style.display = "none";
+  document.getElementById("questions-list-card").style.display = "none";
   const [{ data: teacherLinks },
          { data: pendingVocab }, { data: pendingGrammar }, { data: pendingReading }, { data: pendingListening }, { data: pendingDialogues },
-         { data: approvedVocab }, { data: approvedGrammar }, { data: approvedReading }, { data: approvedListening }, { data: approvedDialogues }] = await Promise.all([
+         { data: approvedVocab }, { data: approvedGrammar }, { data: approvedReading }, { data: approvedListening }, { data: approvedDialogues },
+         { data: questionRows }] = await Promise.all([
     sb.from("teacher_links").select("teacher_id"),
     sb.from("vocab_items").select("created_by").eq("content_status", "pending"),
     sb.from("grammar_exercises").select("created_by").eq("content_status", "pending"),
@@ -2501,7 +2513,11 @@ async function loadTeachers(){
     sb.from("grammar_exercises").select("created_by").eq("content_status", "approved").not("created_by", "is", null),
     sb.from("reading_passages").select("created_by").eq("content_status", "approved").not("created_by", "is", null),
     sb.from("listening_passages").select("created_by").eq("content_status", "approved").not("created_by", "is", null),
-    sb.from("dialogues").select("created_by").eq("content_status", "approved").not("created_by", "is", null)
+    sb.from("dialogues").select("created_by").eq("content_status", "approved").not("created_by", "is", null),
+    // Hỏi–đáp học sinh (migration 51) — "Đã trả lời" = status='answered',
+    // "Chưa trả lời" = gộp CẢ 'pending' (chưa xem) lẫn 'viewed' (đã xem,
+    // chưa trả lời), đúng yêu cầu người dùng.
+    sb.from("student_questions").select("teacher_id,status")
   ]);
   const counts = countBy(teacherLinks, "teacher_id");
   // Tổng đề đang chờ duyệt / đã duyệt do giáo viên gửi, gộp cả 5 loại nội dung
@@ -2510,17 +2526,19 @@ async function loadTeachers(){
   // tiết từng loại).
   const pendingCounts = countBy([...(pendingVocab||[]), ...(pendingGrammar||[]), ...(pendingReading||[]), ...(pendingListening||[]), ...(pendingDialogues||[])], "created_by");
   const approvedCounts = countBy([...(approvedVocab||[]), ...(approvedGrammar||[]), ...(approvedReading||[]), ...(approvedListening||[]), ...(approvedDialogues||[])], "created_by");
+  const answeredCounts = countBy((questionRows||[]).filter(q => q.status === "answered"), "teacher_id");
+  const unansweredCounts = countBy((questionRows||[]).filter(q => q.status !== "answered"), "teacher_id");
 
   document.getElementById("teacher-count").textContent = profiles.length;
   document.getElementById("teacher-list-body").innerHTML = profiles.length ? profiles.map(p => `
     <tr>
       <td>${escHtmlAdmin(p.email||p.id)}${p.disabled ? ' <span style="color:var(--red);font-weight:700;">(Đã khoá)</span>' : ''}</td>
       <td>${escHtmlAdmin(p.phone || "—")}</td>
-      <td>${escHtmlAdmin(p.address || "—")}</td>
-      <td>${p.created_at ? new Date(p.created_at).toLocaleDateString("vi-VN") : "—"}</td>
       <td><span class="link-count" data-show-linked="teacher" data-id="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">${counts[p.id] || 0}</span></td>
       <td><span class="link-count" data-show-pending="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}" style="${pendingCounts[p.id] ? 'color:var(--red);' : ''}">${pendingCounts[p.id] || 0}</span></td>
       <td><span class="link-count" data-show-approved="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}" style="${approvedCounts[p.id] ? 'color:var(--green);' : ''}">${approvedCounts[p.id] || 0}</span></td>
+      <td><span class="link-count" data-show-answered-q="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}" style="color:var(--green);">${answeredCounts[p.id] || 0}</span></td>
+      <td><span class="link-count" data-show-unanswered-q="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}" style="${unansweredCounts[p.id] ? 'color:var(--red);' : ''}">${unansweredCounts[p.id] || 0}</span></td>
       <td>
         <button class="btn-sm" data-edit-person="${p.id}">Sửa</button>
         <button class="btn-sm" data-reset-pw="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">Đổi mật khẩu</button>
@@ -2538,6 +2556,12 @@ async function loadTeachers(){
   });
   document.querySelectorAll("#teacher-list-body [data-show-approved]").forEach(el=>{
     el.addEventListener("click", ()=> showTeacherContent(el.dataset.showApproved, el.dataset.email, "approved"));
+  });
+  document.querySelectorAll("#teacher-list-body [data-show-answered-q]").forEach(el=>{
+    el.addEventListener("click", ()=> showTeacherQuestions(el.dataset.showAnsweredQ, el.dataset.email, "answered"));
+  });
+  document.querySelectorAll("#teacher-list-body [data-show-unanswered-q]").forEach(el=>{
+    el.addEventListener("click", ()=> showTeacherQuestions(el.dataset.showUnansweredQ, el.dataset.email, "unanswered"));
   });
   document.querySelectorAll("#teacher-list-body [data-edit-person]").forEach(btn=>{
     btn.addEventListener("click", ()=> openEditPerson(btn.dataset.editPerson));
@@ -2692,6 +2716,54 @@ async function showTeacherContent(teacherId, teacherEmail, status){
     const [t, id] = btn.dataset.rejectPending.split(":");
     btn.addEventListener("click", ()=> rejectContent(t, Number(id), reload));
   });
+}
+
+const QA_SKILL_LABELS_ADMIN = { vocab: "Từ vựng", grammar: "Ngữ pháp", reading: "Đọc", listening: "Nghe", speaking: "Nói" };
+function qaStatusBadgeAdmin(status){
+  const map = {
+    pending: ["🕒 Chưa xem", "color:#8a5a1f;background:#fdf1e6;"],
+    viewed: ["👁 Đã xem", "color:var(--navy);background:var(--teal-light);"],
+    answered: ["✅ Đã trả lời", "color:var(--green);background:var(--green-light);"],
+  };
+  const [label, style] = map[status] || [status, ""];
+  return `<span class="badge" style="${style}">${label}</span>`;
+}
+
+// Hiện danh sách câu hỏi học sinh gửi cho 1 giáo viên, lọc theo "Đã trả lời"
+// hay "Chưa trả lời" (gộp cả pending + viewed) — khi bấm vào số ở 2 cột tương
+// ứng trong bảng Giáo viên. Chỉ XEM (đúng tinh thần admin không can thiệp vào
+// nội dung hỏi–đáp riêng của học sinh/giáo viên, mục 13.51) — trả lời/xem
+// thread đầy đủ vẫn làm ở GiaoVien.html, không lặp lại ở đây.
+async function showTeacherQuestions(teacherId, teacherEmail, filter){
+  const card = document.getElementById("questions-list-card");
+  const body = document.getElementById("questions-list-body");
+  const label = filter === "answered" ? "đã trả lời" : "chưa trả lời";
+  document.getElementById("questions-list-title").textContent = `Câu hỏi ${label} của giáo viên ${teacherEmail}`;
+  card.style.display = "block";
+  body.innerHTML = `<tr><td colspan="6">Đang tải...</td></tr>`;
+  card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+  let query = sb.from("student_questions").select("id,title,skill,urgency,status,created_at,student_id").eq("teacher_id", teacherId);
+  query = filter === "answered" ? query.eq("status", "answered") : query.neq("status", "answered");
+  const { data: questions, error } = await query.order("created_at", { ascending: false });
+  if(error){ body.innerHTML = `<tr><td colspan="6">Lỗi tải dữ liệu: ${escHtmlAdmin(error.message)}</td></tr>`; return; }
+
+  const studentIds = [...new Set((questions||[]).map(q => q.student_id))];
+  let studentMap = {};
+  if(studentIds.length){
+    const { data: studentProfiles } = await sb.from("profiles").select("id,email").in("id", studentIds);
+    (studentProfiles||[]).forEach(s => { studentMap[s.id] = s.email; });
+  }
+
+  body.innerHTML = (questions||[]).length ? questions.map(q => `
+    <tr>
+      <td>${escHtmlAdmin(studentMap[q.student_id] || q.student_id)}</td>
+      <td>${escHtmlAdmin(q.title)}</td>
+      <td>${QA_SKILL_LABELS_ADMIN[q.skill] || escHtmlAdmin(q.skill)}</td>
+      <td>${q.urgency === "urgent" ? '<span style="color:var(--red);font-weight:700;">🔴 Gấp</span>' : "Bình thường"}</td>
+      <td>${qaStatusBadgeAdmin(q.status)}</td>
+      <td>${q.created_at ? new Date(q.created_at).toLocaleDateString("vi-VN") : "—"}</td>
+    </tr>`).join("") : `<tr><td colspan="6">Không có câu hỏi nào ${label}.</td></tr>`;
 }
 
 // ============================================================
