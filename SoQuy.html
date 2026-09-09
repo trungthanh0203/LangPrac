@@ -65,37 +65,18 @@ body{
   color:var(--ink-faint);margin:0 0 12px;
 }
 
-/* ---------- Contribution strip ---------- */
-.contrib-card{
+/* ---------- Contribution table ---------- */
+.contrib-banner{
+  display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;
   background:var(--paper-raised);border:1px solid var(--rule);border-radius:12px;
-  padding:20px 22px;box-shadow:var(--shadow);
+  padding:16px 20px;margin-bottom:14px;box-shadow:var(--shadow);
 }
-.contrib-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px;}
-.contrib-tile{background:var(--paper);border:1px solid var(--rule);border-radius:9px;padding:12px 14px;}
-.contrib-tile .name{font-size:12.5px;font-weight:600;color:var(--ink-soft);margin-bottom:6px;}
-.contrib-tile .amt{
-  font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:500;
+.contrib-banner .label{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-faint);}
+.contrib-grand-total{
+  font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:600;
   font-variant-numeric:tabular-nums;color:var(--ink);
 }
-.contrib-tile input{
-  width:100%;border:1px solid var(--rule-strong);border-radius:6px;background:var(--paper-raised);
-  font-family:'IBM Plex Mono',monospace;font-size:15px;font-variant-numeric:tabular-nums;
-  color:var(--ink);padding:6px 8px;
-}
-.contrib-tile input:focus{outline:2px solid var(--accent);outline-offset:1px;}
-.contrib-formula{
-  display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;
-  font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-soft);
-  padding-top:14px;border-top:1px dashed var(--rule);
-}
-.contrib-formula b{color:var(--ink);font-weight:600;}
-.contrib-formula .eq{color:var(--ink-faint);}
-.contrib-total{
-  font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:600;
-  font-variant-numeric:tabular-nums;color:var(--ink);
-}
-.contrib-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;flex-wrap:wrap;}
-.unsaved-note{font-size:12px;color:var(--accent);font-weight:500;}
+table.ledger th .pct{font-weight:400;color:var(--ink-faint);text-transform:none;letter-spacing:0;}
 
 /* ---------- Balance hero ---------- */
 .balance-card{
@@ -204,12 +185,39 @@ tfoot td{
 
   <section class="section">
     <div class="section-label">Đóng góp</div>
-    <div class="contrib-card">
-      <div class="contrib-grid" id="contribGrid"><!-- 4 tiles injected --></div>
-      <div class="contrib-formula" id="contribFormula"><!-- formula injected --></div>
-      <div class="contrib-actions" id="contribActions" style="display:none;">
-        <span class="unsaved-note" id="unsavedNote" style="visibility:hidden;">Có thay đổi chưa lưu</span>
-        <button class="btn btn-primary" id="btnCalcTotal">🧮 Tính tổng đóng góp</button>
+    <div class="contrib-banner">
+      <div class="label">Tổng tiền đóng góp (mọi giai đoạn)</div>
+      <div class="contrib-grand-total" id="contribGrandTotal">0 ₫</div>
+    </div>
+    <div class="ledger-table-wrap">
+      <div class="ledger-table-scroll">
+        <table class="ledger" id="contribTable">
+          <thead>
+            <tr>
+              <th style="width:110px;">Giai đoạn</th>
+              <th class="num">Thành <span class="pct">(18,75%)</span></th>
+              <th class="num">Út <span class="pct">(31,25%)</span></th>
+              <th class="num">Điền <span class="pct">(25%)</span></th>
+              <th class="num">Quang <span class="pct">(25%)</span></th>
+              <th class="gutter" id="contribGutterHead" style="display:none;"></th>
+            </tr>
+          </thead>
+          <tbody id="contribBody"><!-- rows injected --></tbody>
+          <tfoot>
+            <tr>
+              <td>Tổng</td>
+              <td class="num" id="contribSum-thanh">0 ₫</td>
+              <td class="num" id="contribSum-ut">0 ₫</td>
+              <td class="num" id="contribSum-dien">0 ₫</td>
+              <td class="num" id="contribSum-quang">0 ₫</td>
+              <td id="contribGutterFoot" style="display:none;"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div class="empty-state" id="contribEmpty" style="display:none;">Chưa có giai đoạn đóng góp nào.</div>
+      <div class="add-row-bar" id="addPhaseBar" style="display:none;">
+        <button class="btn btn-ghost" id="btnAddPhase">+ Thêm giai đoạn</button>
       </div>
     </div>
   </section>
@@ -220,7 +228,7 @@ tfoot td{
       <div>
         <div class="label">Tổng tiền còn</div>
         <div class="figure" id="balanceFigure">0 ₫</div>
-        <div class="balance-formula" id="balanceFormula">Tổng đóng góp − Tổng chi</div>
+        <div class="balance-formula" id="balanceFormula">Tổng đóng góp (các giai đoạn) − Tổng chi</div>
       </div>
       <button class="btn btn-on-dark" id="btnCalcBalance" style="display:none;">🧮 Tính số dư còn lại</button>
     </div>
@@ -292,9 +300,8 @@ const fmt = (n) => (Number(n) || 0).toLocaleString("vi-VN") + " ₫";
 
 let isEditor = false;
 let currentUserId = null;
-let contribData = { thanh: 0, ut: 0, dien: 0, quang: 0 };
+let phaseRows = [];   // [{id, thanh, ut, dien, quang, created_at}]
 let expenseRows = []; // [{id, date, desc, amount}]
-let contribDirty = false;
 
 function renderModeBadge(){
   const el = document.getElementById("modeBadge");
@@ -310,57 +317,103 @@ function renderModeBadge(){
   document.getElementById("linkLogout").style.display = isEditor ? "inline" : "none";
 }
 
-function contribTotal(fromInputs){
-  let sum = 0;
-  PEOPLE.forEach(p => { sum += Number(fromInputs ? readContribInput(p.key) : contribData[p.key]) || 0; });
-  return sum;
-}
-function readContribInput(key){
-  const el = document.getElementById("in-" + key);
-  return el ? (parseFloat(el.value) || 0) : (contribData[key] || 0);
-}
-function expenseTotal(){
-  return expenseRows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
-}
-
-function renderContribGrid(){
-  const grid = document.getElementById("contribGrid");
-  grid.innerHTML = PEOPLE.map(p => `
-    <div class="contrib-tile">
-      <div class="name">${p.name}</div>
-      ${isEditor
-        ? `<input class="amt" id="in-${p.key}" type="number" min="0" step="1000" value="${contribData[p.key] || 0}">`
-        : `<div class="amt">${fmt(contribData[p.key])}</div>`
-      }
-    </div>
-  `).join("");
-  if(isEditor){
-    PEOPLE.forEach(p => {
-      document.getElementById("in-" + p.key).addEventListener("input", () => {
-        contribDirty = true;
-        renderContribFormula(true);
-        document.getElementById("unsavedNote").style.visibility = "visible";
-      });
-    });
-  }
-  document.getElementById("contribActions").style.display = isEditor ? "flex" : "none";
+function applyEditorVisibility(){
   document.getElementById("btnCalcBalance").style.display = isEditor ? "inline-flex" : "none";
+  document.getElementById("contribGutterHead").style.display = isEditor ? "" : "none";
+  document.getElementById("contribGutterFoot").style.display = isEditor ? "" : "none";
+  document.getElementById("addPhaseBar").style.display = isEditor ? "block" : "none";
   document.getElementById("gutterHead").style.display = isEditor ? "" : "none";
   document.getElementById("gutterFoot").style.display = isEditor ? "" : "none";
   document.getElementById("addRowBar").style.display = isEditor ? "block" : "none";
 }
 
-function renderContribFormula(fromInputs){
-  const parts = PEOPLE.map(p => `<b>${p.name}</b> ${fmt(fromInputs ? readContribInput(p.key) : contribData[p.key])}`);
-  const total = contribTotal(fromInputs);
-  document.getElementById("contribFormula").innerHTML =
-    parts.join(' <span class="eq">+</span> ') +
-    ` <span class="eq">=</span> <span class="contrib-total">${fmt(total)}</span>`;
-  return total;
+function personTotal(key){
+  return phaseRows.reduce((s, r) => s + (Number(r[key]) || 0), 0);
+}
+function contribGrandTotal(){
+  return PEOPLE.reduce((s, p) => s + personTotal(p.key), 0);
+}
+function expenseTotal(){
+  return expenseRows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+}
+
+function renderContribTable(){
+  const body = document.getElementById("contribBody");
+  const empty = document.getElementById("contribEmpty");
+  if(!phaseRows.length){
+    body.innerHTML = "";
+    empty.style.display = "block";
+  } else {
+    empty.style.display = "none";
+    const sorted = [...phaseRows].sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""));
+    body.innerHTML = sorted.map((r, idx) => isEditor ? `
+      <tr data-id="${r.id}">
+        <td>Giai đoạn ${idx + 1}</td>
+        ${PEOPLE.map(p => `<td class="num"><input class="cell-input num-input" type="number" min="0" step="1000" value="${r[p.key] || 0}" data-field="${p.key}"></td>`).join("")}
+        <td class="gutter"><button class="row-del" data-id="${r.id}">✕</button></td>
+      </tr>
+    ` : `
+      <tr>
+        <td>Giai đoạn ${idx + 1}</td>
+        ${PEOPLE.map(p => `<td class="num">${fmt(r[p.key])}</td>`).join("")}
+      </tr>
+    `).join("");
+    if(isEditor) wireContribRowEvents();
+  }
+  PEOPLE.forEach(p => { document.getElementById("contribSum-" + p.key).textContent = fmt(personTotal(p.key)); });
+  document.getElementById("contribGrandTotal").textContent = fmt(contribGrandTotal());
+  renderBalance();
+}
+
+function wireContribRowEvents(){
+  document.querySelectorAll("#contribBody tr").forEach(tr => {
+    const id = tr.dataset.id;
+    tr.querySelectorAll("input[data-field]").forEach(input => {
+      input.addEventListener("change", async () => {
+        const field = input.dataset.field;
+        const value = parseFloat(input.value) || 0;
+        const row = phaseRows.find(r => r.id === id);
+        if(row) row[field] = value;
+        renderContribTable();
+        const { error } = await sb.from("shared_fund_phases")
+          .update({ [field]: value, updated_at: new Date().toISOString(), updated_by: currentUserId })
+          .eq("id", id);
+        if(error) console.warn("Không lưu được:", error.message);
+      });
+    });
+    const delBtn = tr.querySelector(".row-del");
+    delBtn.addEventListener("click", async () => {
+      if(!delBtn.classList.contains("confirming")){
+        delBtn.classList.add("confirming");
+        delBtn.textContent = "Xoá?";
+        setTimeout(() => {
+          if(delBtn.classList.contains("confirming")){
+            delBtn.classList.remove("confirming");
+            delBtn.textContent = "✕";
+          }
+        }, 3000);
+        return;
+      }
+      const { error } = await sb.from("shared_fund_phases").delete().eq("id", id);
+      if(!error){
+        phaseRows = phaseRows.filter(r => r.id !== id);
+        renderContribTable();
+      }
+    });
+  });
+}
+
+async function addPhase(){
+  const { data, error } = await sb.from("shared_fund_phases")
+    .insert({ thanh: 0, ut: 0, dien: 0, quang: 0, updated_by: currentUserId })
+    .select().single();
+  if(error){ console.warn(error.message); return; }
+  phaseRows.push({ id: data.id, thanh: 0, ut: 0, dien: 0, quang: 0, created_at: data.created_at });
+  renderContribTable();
 }
 
 function renderBalance(){
-  const total = contribTotal(false);
+  const total = contribGrandTotal();
   const spent = expenseTotal();
   const remain = total - spent;
   const fig = document.getElementById("balanceFigure");
@@ -452,18 +505,6 @@ function wireRowEvents(){
   });
 }
 
-async function saveContrib(){
-  const rows = PEOPLE.map(p => ({
-    person: p.key, name: p.name, amount: readContribInput(p.key),
-    updated_at: new Date().toISOString(), updated_by: currentUserId,
-  }));
-  const { error } = await sb.from("shared_fund_contributors").upsert(rows, { onConflict: "person" });
-  if(error){ console.warn("Không lưu được tổng đóng góp:", error.message); return; }
-  rows.forEach(r => { contribData[r.person] = r.amount; });
-  contribDirty = false;
-  document.getElementById("unsavedNote").style.visibility = "hidden";
-}
-
 async function addRow(){
   const today = new Date().toISOString().slice(0, 10);
   const { data, error } = await sb.from("shared_fund_expenses")
@@ -475,14 +516,14 @@ async function addRow(){
 }
 
 async function loadData(){
-  const [{ data: contribs }, { data: expenses }] = await Promise.all([
-    sb.from("shared_fund_contributors").select("*"),
+  const [{ data: phases }, { data: expenses }] = await Promise.all([
+    sb.from("shared_fund_phases").select("*"),
     sb.from("shared_fund_expenses").select("*"),
   ]);
-  (contribs || []).forEach(r => { contribData[r.person] = Number(r.amount) || 0; });
+  phaseRows = (phases || []).map(r => ({ id: r.id, thanh: r.thanh, ut: r.ut, dien: r.dien, quang: r.quang, created_at: r.created_at }));
   expenseRows = (expenses || []).map(r => ({ id: r.id, date: r.expense_date, desc: r.description, amount: r.amount }));
-  renderContribGrid();
-  renderContribFormula(false);
+  applyEditorVisibility();
+  renderContribTable();
   renderExpenseRows();
 }
 
@@ -544,17 +585,11 @@ let editorButtonsWired = false;
 function wireEditorButtonsOnce(){
   if(editorButtonsWired) return;
   editorButtonsWired = true;
-  document.getElementById("btnCalcTotal").addEventListener("click", async () => {
-    renderContribFormula(true);
-    await saveContrib();
-    renderContribGrid();
-    renderContribFormula(false);
-    renderBalance();
-  });
   document.getElementById("btnCalcBalance").addEventListener("click", () => {
     renderBalance();
     pulseBalance();
   });
+  document.getElementById("btnAddPhase").addEventListener("click", addPhase);
   document.getElementById("btnAddRow").addEventListener("click", addRow);
 }
 
