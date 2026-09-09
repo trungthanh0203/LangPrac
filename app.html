@@ -99,6 +99,52 @@ header.top{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#ff
 .selectors{display:flex;gap:10px;margin-bottom:var(--gap);flex-wrap:wrap;justify-content:center;}
 .selectors select{padding:9px 14px;border-radius:8px;border:1px solid var(--border);font-size:13.5px;background:#fff;}
 
+/* ---------- Hỏi giáo viên ---------- */
+.ask-teacher-row{display:flex;justify-content:center;width:100%;margin-top:2px;}
+.ask-teacher-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;border:2px solid var(--border);background:var(--bg-card);font-size:18px;cursor:pointer;}
+.ask-teacher-btn:hover{border-color:var(--navy2);}
+.ask-teacher-badge{position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--navy2);color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1;}
+
+.overlay{display:none;position:fixed;inset:0;background:rgba(20,30,48,0.55);z-index:50;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px;}
+.overlay.show{display:flex;}
+.modal{background:#fff;border-radius:12px;width:100%;max-width:700px;padding:24px 28px;box-shadow:0 12px 40px rgba(0,0,0,.25);}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.modal-head h3{margin:0;font-size:17px;color:var(--navy2);}
+.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-3);}
+
+.q-field{margin-bottom:12px;}
+.q-field label{display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;}
+.q-field input,.q-field select,.q-field textarea{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;font-family:inherit;}
+.q-field textarea{min-height:80px;resize:vertical;}
+.q-radio-row{display:flex;gap:16px;}
+.q-radio-row label{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:400;color:var(--text-1);}
+.q-teacher-static{padding:9px 11px;background:var(--teal-light);border-radius:8px;font-size:13.5px;color:var(--navy2);font-weight:600;}
+.q-no-teacher{padding:12px;background:var(--amber-light);border-radius:8px;font-size:13px;color:#8a5a1f;}
+.q-actions{display:flex;gap:10px;margin-top:6px;}
+.q-actions button{flex:1;}
+.q-status-msg{font-size:12.5px;color:var(--text-2);margin-top:8px;min-height:16px;}
+
+.q-table-wrap{margin-top:22px;overflow-x:auto;}
+table.q-table{width:100%;border-collapse:collapse;font-size:13px;}
+table.q-table th{text-align:left;padding:8px 10px;border-bottom:2px solid var(--border);color:var(--text-2);font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
+table.q-table td{padding:9px 10px;border-bottom:1px solid var(--border);cursor:pointer;}
+table.q-table tr:hover td{background:var(--bg-page);}
+.q-badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap;}
+.q-badge.pending{background:var(--amber-light);color:#8a5a1f;}
+.q-badge.viewed{background:var(--teal-light);color:var(--navy);}
+.q-badge.answered{background:var(--green-light);color:var(--green);}
+.q-urgent{color:var(--red);font-weight:700;}
+
+.q-detail-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.q-back-link{background:none;border:none;color:var(--navy2);font-weight:700;font-size:13px;cursor:pointer;padding:0;}
+.q-thread{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;max-height:340px;overflow-y:auto;padding-right:4px;}
+.q-bubble{max-width:82%;padding:10px 14px;border-radius:12px;font-size:13.5px;line-height:1.5;}
+.q-bubble .who{font-size:11px;font-weight:700;margin-bottom:3px;opacity:.7;}
+.q-bubble.student{align-self:flex-start;background:var(--bg-page);border:1px solid var(--border);}
+.q-bubble.teacher{align-self:flex-end;background:var(--teal-light);}
+.q-detail-actions{border-top:1px solid var(--border);padding-top:14px;}
+.q-del-btn{background:none;border:1px solid var(--red);color:var(--red);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;}
+
 .card{background:var(--bg-card);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);}
 .loading-msg{text-align:center;padding:60px 20px;color:var(--text-3);}
 
@@ -383,11 +429,18 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
         <option id="opt-kind-speaking-dialogue" value="speaking_dialogue"></option>
         <option id="opt-kind-math" value="math" style="display:none;"></option>
       </select>
+      <div class="ask-teacher-row">
+        <button type="button" class="ask-teacher-btn" id="btn-ask-teacher">🙋<span class="ask-teacher-badge">?</span></button>
+      </div>
     </div>
   </div>
 
   <div class="card" id="content-area">
     <div class="loading-msg">…</div>
+  </div>
+
+  <div class="overlay" id="q-overlay">
+    <div class="modal" id="q-modal"></div>
   </div>
 
   <div class="reminder-setting hidden" id="reminder-setting">
@@ -764,6 +817,7 @@ function applyLanguageUI(){
   document.getElementById("opt-kind-listening").textContent = u.kindListening;
   document.getElementById("opt-kind-speaking-dialogue").textContent = u.kindSpeakingDialogue;
   document.getElementById("opt-kind-math").textContent = u.kindMath;
+  document.getElementById("btn-ask-teacher").title = u.askTeacherTitle;
   document.getElementById("footer-text").innerHTML = u.footer;
 
   const levelSel = document.getElementById("sel-level");
@@ -2204,6 +2258,277 @@ async function saveDialoguePronunciationResult(){
     type_breakdown: dialoguePronunciationScores
   });
   if(error) console.warn("Lưu quiz_results (speaking_dialogue) thất bại:", error.message);
+}
+
+// ============================================================
+// Hỏi–đáp với giáo viên phụ trách (icon 🙋 dưới tab Luyện tập, migration 51).
+// Modal đầu tiên trong app.html — copy khung .overlay/.modal từ QuanLyTuVung.html.
+// 2 view trong cùng 1 modal: "list" (form gửi/sửa + bảng câu hỏi của tôi) và
+// "detail" (thread hỏi-đáp + Sửa/Xoá hoặc Phản hồi thêm tuỳ trạng thái).
+// ============================================================
+let QA_TEACHERS = [];     // [{id, email}] giáo viên phụ trách của học sinh này
+let QA_QUESTIONS = [];    // câu hỏi của chính học sinh này (cache để mở nhanh detail)
+let QA_EDITING_ID = null; // đang sửa câu hỏi nào (null = đang tạo mới)
+
+function qU(){ return L().ui; }
+
+function openQOverlay(){ document.getElementById("q-overlay").classList.add("show"); }
+function closeQOverlay(){ document.getElementById("q-overlay").classList.remove("show"); }
+document.getElementById("q-overlay").addEventListener("click", (e)=>{ if(e.target.id === "q-overlay") closeQOverlay(); });
+
+document.getElementById("btn-ask-teacher").addEventListener("click", async ()=>{
+  openQOverlay();
+  renderQListView();
+  await Promise.all([loadQaTeachers(), loadQaQuestions()]);
+  renderQTeacherField();
+  renderQTable();
+});
+
+async function loadQaTeachers(){
+  if(!CURRENT_USER) return;
+  const { data: links } = await sb.from("teacher_links").select("teacher_id").eq("student_id", CURRENT_USER.id);
+  const teacherIds = (links || []).map(l => l.teacher_id);
+  if(!teacherIds.length){ QA_TEACHERS = []; return; }
+  const { data: profs } = await sb.from("profiles").select("id,email").in("id", teacherIds);
+  QA_TEACHERS = profs || [];
+}
+
+async function loadQaQuestions(){
+  if(!CURRENT_USER) return;
+  const { data } = await sb.from("student_questions").select("*").eq("student_id", CURRENT_USER.id).order("created_at", { ascending: false });
+  QA_QUESTIONS = data || [];
+}
+
+function skillLabel(skill){
+  const u = qU();
+  return { vocab: u.qSkillVocab, grammar: u.qSkillGrammar, reading: u.qSkillReading, listening: u.qSkillListening, speaking: u.qSkillSpeaking }[skill] || skill;
+}
+function statusBadge(status){
+  const u = qU();
+  const map = { pending: ["pending", u.qStatusPending], viewed: ["viewed", u.qStatusViewed], answered: ["answered", u.qStatusAnswered] };
+  const [cls, label] = map[status] || ["pending", status];
+  return `<span class="q-badge ${cls}">${label}</span>`;
+}
+function formatQDate(iso){
+  if(!iso) return "";
+  try{ return new Date(iso).toLocaleDateString("vi-VN"); }catch(e){ return ""; }
+}
+
+function renderQListView(){
+  const u = qU();
+  document.getElementById("q-modal").innerHTML = `
+    <div class="modal-head">
+      <h3>${u.askTeacherModalTitle}</h3>
+      <button type="button" class="modal-close" id="q-close">&times;</button>
+    </div>
+    <form id="q-form">
+      <div class="q-field"><label>${u.qTitleLabel}</label><input type="text" id="q-title" required></div>
+      <div class="q-field"><label>${u.qSkillLabel}</label>
+        <select id="q-skill">
+          <option value="vocab">${u.qSkillVocab}</option>
+          <option value="grammar">${u.qSkillGrammar}</option>
+          <option value="reading">${u.qSkillReading}</option>
+          <option value="listening">${u.qSkillListening}</option>
+          <option value="speaking">${u.qSkillSpeaking}</option>
+        </select>
+      </div>
+      <div class="q-field"><label>${u.qTeacherLabel}</label><div id="q-teacher-area"></div></div>
+      <div class="q-field"><label>${u.qContentLabel}</label><textarea id="q-content" required></textarea></div>
+      <div class="q-field"><label>${u.qUrgencyLabel}</label>
+        <div class="q-radio-row">
+          <label><input type="radio" name="q-urgency" value="normal" checked> ${u.qUrgencyNormal}</label>
+          <label><input type="radio" name="q-urgency" value="urgent"> ${u.qUrgencyUrgent}</label>
+        </div>
+      </div>
+      <div class="q-actions">
+        <button type="button" class="q-back-link" id="q-cancel-edit" style="display:none;">${u.qCancelEditBtn}</button>
+        <button type="submit" class="btn" id="q-submit">${u.qSubmitBtn}</button>
+      </div>
+      <div class="q-status-msg" id="q-status-msg"></div>
+    </form>
+    <div class="q-table-wrap">
+      <div style="font-weight:700;color:var(--navy2);margin-bottom:8px;font-size:14px;">${u.qMyQuestionsTitle}</div>
+      <table class="q-table">
+        <thead><tr><th>${u.qColTitle}</th><th>${u.qColSkill}</th><th>${u.qColStatus}</th><th>${u.qColDate}</th></tr></thead>
+        <tbody id="q-table-body"></tbody>
+      </table>
+      <div id="q-empty" style="display:none;padding:20px;text-align:center;color:var(--text-3);font-size:13px;">${u.qEmptyList}</div>
+    </div>
+  `;
+  document.getElementById("q-close").addEventListener("click", closeQOverlay);
+  document.getElementById("q-form").addEventListener("submit", (e)=>{ e.preventDefault(); submitQaForm(); });
+  document.getElementById("q-cancel-edit").addEventListener("click", resetQaForm);
+  resetQaForm();
+}
+
+function renderQTeacherField(){
+  const area = document.getElementById("q-teacher-area");
+  const u = qU();
+  if(!area) return;
+  const submitBtn = document.getElementById("q-submit");
+  if(!QA_TEACHERS.length){
+    area.innerHTML = `<div class="q-no-teacher">${u.qNoTeacherMsg}</div>`;
+    if(submitBtn) submitBtn.disabled = true;
+  } else if(QA_TEACHERS.length === 1){
+    area.innerHTML = `<div class="q-teacher-static">${escHtml(QA_TEACHERS[0].email)}</div><input type="hidden" id="q-teacher-id" value="${QA_TEACHERS[0].id}">`;
+    if(submitBtn) submitBtn.disabled = false;
+  } else {
+    area.innerHTML = `<select id="q-teacher-id">${QA_TEACHERS.map(t => `<option value="${t.id}">${escHtml(t.email)}</option>`).join("")}</select>`;
+    if(submitBtn) submitBtn.disabled = false;
+  }
+}
+
+function renderQTable(){
+  const body = document.getElementById("q-table-body");
+  const empty = document.getElementById("q-empty");
+  if(!body) return;
+  if(!QA_QUESTIONS.length){
+    body.innerHTML = "";
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+  body.innerHTML = QA_QUESTIONS.map(q => `
+    <tr data-id="${q.id}">
+      <td>${q.urgency === "urgent" ? '<span class="q-urgent">●</span> ' : ""}${escHtml(q.title)}</td>
+      <td>${skillLabel(q.skill)}</td>
+      <td>${statusBadge(q.status)}</td>
+      <td>${formatQDate(q.created_at)}</td>
+    </tr>
+  `).join("");
+  body.querySelectorAll("tr").forEach(tr => {
+    tr.addEventListener("click", () => openQDetail(tr.dataset.id));
+  });
+}
+
+function resetQaForm(){
+  QA_EDITING_ID = null;
+  const titleEl = document.getElementById("q-title");
+  if(!titleEl) return;
+  titleEl.value = "";
+  document.getElementById("q-skill").value = "vocab";
+  document.getElementById("q-content").value = "";
+  document.querySelector('input[name="q-urgency"][value="normal"]').checked = true;
+  document.getElementById("q-submit").textContent = qU().qSubmitBtn;
+  document.getElementById("q-cancel-edit").style.display = "none";
+  document.getElementById("q-status-msg").textContent = "";
+}
+
+async function submitQaForm(){
+  const statusEl = document.getElementById("q-status-msg");
+  const title = document.getElementById("q-title").value.trim();
+  const skill = document.getElementById("q-skill").value;
+  const content = document.getElementById("q-content").value.trim();
+  const urgency = document.querySelector('input[name="q-urgency"]:checked').value;
+  const teacherEl = document.getElementById("q-teacher-id");
+  const teacherId = teacherEl ? teacherEl.value : null;
+  if(!teacherId) return;
+  const btn = document.getElementById("q-submit");
+  btn.disabled = true;
+  const result = QA_EDITING_ID
+    ? await sb.from("student_questions").update({ title, skill, content, urgency }).eq("id", QA_EDITING_ID)
+    : await sb.from("student_questions").insert({ student_id: CURRENT_USER.id, teacher_id: teacherId, title, skill, content, urgency });
+  btn.disabled = false;
+  if(result.error){ statusEl.textContent = result.error.message; return; }
+  await loadQaQuestions();
+  renderQTable();
+  resetQaForm();
+}
+
+function startEditQaQuestion(q){
+  QA_EDITING_ID = q.id;
+  document.getElementById("q-title").value = q.title;
+  document.getElementById("q-skill").value = q.skill;
+  document.getElementById("q-content").value = q.content;
+  document.querySelector(`input[name="q-urgency"][value="${q.urgency}"]`).checked = true;
+  renderQTeacherField();
+  const teacherEl = document.getElementById("q-teacher-id");
+  if(teacherEl) teacherEl.value = q.teacher_id;
+  document.getElementById("q-submit").textContent = qU().qUpdateBtn;
+  document.getElementById("q-cancel-edit").style.display = "inline-block";
+}
+
+async function openQDetail(id){
+  const q = QA_QUESTIONS.find(r => r.id === id);
+  if(!q) return;
+  const { data: messages } = await sb.from("student_question_messages").select("*").eq("question_id", id).order("created_at", { ascending: true });
+  renderQDetailView(q, messages || []);
+}
+
+function renderQDetailView(q, messages){
+  const u = qU();
+  const bubbles = [
+    `<div class="q-bubble student"><div class="who">${u.qYouLabel}</div>${escHtml(q.content)}</div>`,
+    ...messages.map(m => `<div class="q-bubble ${m.sender_role === "teacher" ? "teacher" : "student"}"><div class="who">${m.sender_role === "teacher" ? u.qTeacherAnswerLabel : u.qYouLabel}</div>${escHtml(m.content)}</div>`),
+  ].join("");
+  const actionsHtml = q.status === "answered" ? `
+    <div class="q-field"><label>${u.qReplyLabel}</label><textarea id="q-reply-text"></textarea></div>
+    <button type="button" class="btn" id="q-reply-btn">${u.qReplyBtn}</button>
+    <div class="q-status-msg" id="q-reply-status"></div>
+  ` : `
+    <button type="button" class="btn" id="q-edit-btn">${u.qEditBtn}</button>
+    <button type="button" class="q-del-btn" id="q-del-btn" style="margin-left:10px;">${u.qDeleteBtn}</button>
+  `;
+  document.getElementById("q-modal").innerHTML = `
+    <div class="modal-head">
+      <h3>${escHtml(q.title)}</h3>
+      <button type="button" class="modal-close" id="q-close">&times;</button>
+    </div>
+    <div class="q-detail-head">
+      <button type="button" class="q-back-link" id="q-back">${u.qBackToList}</button>
+      ${statusBadge(q.status)}
+    </div>
+    <div class="q-thread">${bubbles}</div>
+    <div class="q-detail-actions">${actionsHtml}</div>
+  `;
+  document.getElementById("q-close").addEventListener("click", closeQOverlay);
+  document.getElementById("q-back").addEventListener("click", () => {
+    renderQListView();
+    renderQTeacherField();
+    renderQTable();
+  });
+  if(q.status === "answered"){
+    document.getElementById("q-reply-btn").addEventListener("click", () => sendQaFollowUp(q.id));
+  } else {
+    document.getElementById("q-edit-btn").addEventListener("click", () => {
+      renderQListView();
+      renderQTable();
+      startEditQaQuestion(q);
+    });
+    const delBtn = document.getElementById("q-del-btn");
+    delBtn.addEventListener("click", async () => {
+      if(!delBtn.classList.contains("confirming")){
+        delBtn.classList.add("confirming");
+        delBtn.textContent = u.qDeleteConfirmBtn;
+        setTimeout(() => {
+          if(delBtn.classList.contains("confirming")){
+            delBtn.classList.remove("confirming");
+            delBtn.textContent = u.qDeleteBtn;
+          }
+        }, 3000);
+        return;
+      }
+      const { error } = await sb.from("student_questions").delete().eq("id", q.id);
+      if(!error){
+        await loadQaQuestions();
+        renderQListView();
+        renderQTeacherField();
+        renderQTable();
+      }
+    });
+  }
+}
+
+async function sendQaFollowUp(questionId){
+  const textEl = document.getElementById("q-reply-text");
+  const statusEl = document.getElementById("q-reply-status");
+  const content = textEl.value.trim();
+  if(!content) return;
+  const { error } = await sb.from("student_question_messages").insert({
+    question_id: questionId, sender_role: "student", sender_id: CURRENT_USER.id, content,
+  });
+  if(error){ statusEl.textContent = error.message; return; }
+  await openQDetail(questionId);
 }
 
 boot();

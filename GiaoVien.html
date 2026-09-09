@@ -89,6 +89,26 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
 .field-row{margin-bottom:12px;}
 .field-row label{display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px;}
 .field-row input,.field-row select{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;}
+.field-row textarea{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;min-height:80px;resize:vertical;}
+
+/* ---------- Câu hỏi học sinh ---------- */
+.overlay{display:none;position:fixed;inset:0;background:rgba(20,30,48,0.55);z-index:50;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px;}
+.overlay.show{display:flex;}
+.modal{background:#fff;border-radius:12px;width:100%;max-width:640px;padding:24px 28px;box-shadow:0 12px 40px rgba(0,0,0,.25);}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.modal-head h3{margin:0;font-size:16px;color:var(--navy2);}
+.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-3);}
+.q-badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap;}
+.q-badge.pending{background:#fdf1e6;color:#b8722a;}
+.q-badge.viewed{background:var(--teal-light);color:var(--navy);}
+.q-badge.answered{background:var(--green-light);color:var(--green);}
+.q-urgent-badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:700;background:var(--red-light);color:var(--red);}
+.q-thread{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;max-height:360px;overflow-y:auto;padding-right:4px;}
+.q-bubble{max-width:82%;padding:10px 14px;border-radius:12px;font-size:13.5px;line-height:1.5;}
+.q-bubble .who{font-size:11px;font-weight:700;margin-bottom:3px;opacity:.7;}
+.q-bubble.student{align-self:flex-start;background:var(--bg-page);border:1px solid var(--border);}
+.q-bubble.teacher{align-self:flex-end;background:var(--teal-light);}
+.q-meta{font-size:12px;color:var(--text-2);margin-bottom:14px;}
 </style>
 </head>
 <body>
@@ -145,6 +165,7 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
   <div class="teacher-nav">
     <button type="button" class="teacher-nav-btn active" data-nav="students">📊 Học sinh phụ trách</button>
     <button type="button" class="teacher-nav-btn" data-nav="content">📝 Đóng góp nội dung</button>
+    <button type="button" class="teacher-nav-btn" data-nav="questions">❓ Câu hỏi học sinh<span id="questions-unanswered-count"></span></button>
   </div>
 
   <div id="students-tab">
@@ -445,6 +466,23 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
       </div>
     </div>
   </div>
+
+  <div id="questions-tab" style="display:none;">
+    <div class="card">
+      <h2 style="font-size:14px;">Câu hỏi học sinh gửi</h2>
+      <div class="sub">Bấm 1 dòng để xem chi tiết và trả lời. Mở ra là tự đánh dấu "Đã xem".</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Học sinh</th><th>Tiêu đề</th><th>Kỹ năng</th><th>Mức độ</th><th>Trạng thái</th><th>Ngày gửi</th></tr></thead>
+          <tbody id="questions-list-body"><tr><td colspan="6">Đang tải…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="q-overlay">
+    <div class="modal" id="q-modal"></div>
+  </div>
 </div>
 
 <script>
@@ -582,6 +620,7 @@ async function afterLogin(){
   document.getElementById("activity-date-filter").addEventListener("change", loadStudentDetail);
   document.getElementById("only-quiz-filter").addEventListener("change", loadStudentDetail);
   loadOverview(user.id);
+  updateQuestionsBadgeCount();
   initVocabForm();
   initGrammarForm();
   readingManager.initForm();
@@ -995,7 +1034,9 @@ document.querySelectorAll(".teacher-nav-btn[data-nav]").forEach(btn=>{
     const nav = btn.dataset.nav;
     document.getElementById("students-tab").style.display = nav === "students" ? "block" : "none";
     document.getElementById("content-tab").style.display = nav === "content" ? "block" : "none";
+    document.getElementById("questions-tab").style.display = nav === "questions" ? "block" : "none";
     if(nav === "content"){ loadMyVocab(); loadContentStatsCharts(); }
+    else if(nav === "questions"){ loadQuestions(); }
   });
 });
 
@@ -1880,6 +1921,130 @@ document.getElementById("dialogue-line-form").addEventListener("submit", async (
   loadLines();
   loadMyDialogues();
 });
+
+// ============================================================
+// Câu hỏi học sinh (migration 51) — học sinh gửi qua app.html (icon 🙋 dưới
+// tab Luyện tập), giáo viên xem/trả lời ở đây. Mở modal 1 câu hỏi → tự chuyển
+// "pending" thành "viewed"; gửi câu trả lời → trigger DB tự chuyển "answered",
+// JS chỉ cần tải lại thread. Modal đầu tiên trong GiaoVien.html — copy khung
+// .overlay/.modal từ QuanLyTuVung.html (đúng như app.html đã làm).
+// ============================================================
+let QUESTIONS = [];
+
+function closeQModal(){ document.getElementById("q-overlay").classList.remove("show"); }
+document.getElementById("q-overlay").addEventListener("click", (e)=>{ if(e.target.id === "q-overlay") closeQModal(); });
+
+function skillLabelVi(skill){
+  return { vocab:"Từ vựng", grammar:"Ngữ pháp", reading:"Đọc", listening:"Nghe", speaking:"Nói" }[skill] || skill;
+}
+function statusBadgeVi(status){
+  const map = { pending:["pending","🕒 Chưa xem"], viewed:["viewed","👁 Đã xem"], answered:["answered","✅ Đã trả lời"] };
+  const [cls,label] = map[status] || ["pending", status];
+  return `<span class="q-badge ${cls}">${label}</span>`;
+}
+function formatQDateVi(iso){
+  if(!iso) return "";
+  try{ return new Date(iso).toLocaleDateString("vi-VN"); }catch(e){ return ""; }
+}
+
+async function updateQuestionsBadgeCount(){
+  const { count } = await sb.from("student_questions").select("id", { count: "exact", head: true })
+    .eq("teacher_id", CURRENT_TEACHER_ID).neq("status", "answered");
+  const el = document.getElementById("questions-unanswered-count");
+  el.textContent = count ? ` (${count})` : "";
+}
+
+async function loadQuestions(){
+  const body = document.getElementById("questions-list-body");
+  body.innerHTML = `<tr><td colspan="6">Đang tải…</td></tr>`;
+  const { data, error } = await sb.from("student_questions").select("*").eq("teacher_id", CURRENT_TEACHER_ID);
+  if(error){ body.innerHTML = `<tr><td colspan="6">Lỗi tải dữ liệu: ${escHtml(error.message)}</td></tr>`; return; }
+  const rows = data || [];
+  const studentIds = [...new Set(rows.map(r => r.student_id))];
+  let studentMap = {};
+  if(studentIds.length){
+    const { data: profiles } = await sb.from("profiles").select("id,email").in("id", studentIds);
+    (profiles||[]).forEach(p => { studentMap[p.id] = p.email; });
+  }
+  // Chưa trả lời lên trước (pending/viewed), trong đó Gấp lên trước, rồi theo ngày gần nhất.
+  QUESTIONS = rows.map(r => ({ ...r, studentEmail: studentMap[r.student_id] || r.student_id })).sort((a,b) => {
+    const unansweredA = a.status !== "answered" ? 0 : 1;
+    const unansweredB = b.status !== "answered" ? 0 : 1;
+    if(unansweredA !== unansweredB) return unansweredA - unansweredB;
+    const urgentA = a.urgency === "urgent" ? 0 : 1;
+    const urgentB = b.urgency === "urgent" ? 0 : 1;
+    if(urgentA !== urgentB) return urgentA - urgentB;
+    return new Date(b.created_at) - new Date(a.created_at);
+  });
+  if(!QUESTIONS.length){
+    body.innerHTML = `<tr><td colspan="6">Chưa có học sinh nào gửi câu hỏi.</td></tr>`;
+    return;
+  }
+  body.innerHTML = QUESTIONS.map(q => `
+    <tr data-id="${q.id}" style="cursor:pointer;">
+      <td>${escHtml(q.studentEmail)}</td>
+      <td>${escHtml(q.title)}</td>
+      <td>${skillLabelVi(q.skill)}</td>
+      <td>${q.urgency === "urgent" ? '<span class="q-urgent-badge">🔴 Gấp</span>' : "Bình thường"}</td>
+      <td>${statusBadgeVi(q.status)}</td>
+      <td>${formatQDateVi(q.created_at)}</td>
+    </tr>
+  `).join("");
+  body.querySelectorAll("tr[data-id]").forEach(tr => {
+    tr.addEventListener("click", () => openQuestionDetail(tr.dataset.id));
+  });
+}
+
+async function openQuestionDetail(id){
+  const q = QUESTIONS.find(r => r.id === id);
+  if(!q) return;
+  if(q.status === "pending"){
+    const { error } = await sb.from("student_questions").update({ status: "viewed" }).eq("id", id);
+    if(!error) q.status = "viewed";
+  }
+  const { data: messages } = await sb.from("student_question_messages").select("*").eq("question_id", id).order("created_at", { ascending: true });
+  renderQuestionModal(q, messages || []);
+  document.getElementById("q-overlay").classList.add("show");
+  loadQuestions();
+  updateQuestionsBadgeCount();
+}
+
+function renderQuestionModal(q, messages){
+  const bubbles = [
+    `<div class="q-bubble student"><div class="who">${escHtml(q.studentEmail)}</div>${escHtml(q.content)}</div>`,
+    ...messages.map(m => `<div class="q-bubble ${m.sender_role === "teacher" ? "teacher" : "student"}"><div class="who">${m.sender_role === "teacher" ? "Bạn (giáo viên)" : escHtml(q.studentEmail)}</div>${escHtml(m.content)}</div>`),
+  ].join("");
+  document.getElementById("q-modal").innerHTML = `
+    <div class="modal-head">
+      <h3>${escHtml(q.title)}</h3>
+      <button type="button" class="modal-close" id="q-close">&times;</button>
+    </div>
+    <div class="q-meta">
+      ${escHtml(q.studentEmail)} · ${skillLabelVi(q.skill)} · ${q.urgency === "urgent" ? '<span class="q-urgent-badge">🔴 Gấp</span>' : "Bình thường"} · ${statusBadgeVi(q.status)}
+    </div>
+    <div class="q-thread">${bubbles}</div>
+    <div class="field-row"><label>Trả lời</label><textarea id="q-teacher-reply"></textarea></div>
+    <button type="button" class="btn btn-primary" id="q-teacher-send" style="width:auto;margin-top:0;padding:9px 18px;">Gửi câu trả lời</button>
+    <div class="login-error" id="q-teacher-reply-error" style="margin-top:10px;"></div>
+  `;
+  document.getElementById("q-close").addEventListener("click", closeQModal);
+  document.getElementById("q-teacher-send").addEventListener("click", () => sendTeacherReply(q.id));
+}
+
+async function sendTeacherReply(questionId){
+  const textEl = document.getElementById("q-teacher-reply");
+  const errEl = document.getElementById("q-teacher-reply-error");
+  const content = textEl.value.trim();
+  if(!content) return;
+  const btn = document.getElementById("q-teacher-send");
+  btn.disabled = true;
+  const { error } = await sb.from("student_question_messages").insert({
+    question_id: questionId, sender_role: "teacher", sender_id: CURRENT_TEACHER_ID, content,
+  });
+  btn.disabled = false;
+  if(error){ errEl.textContent = error.message; errEl.style.display = "block"; return; }
+  await openQuestionDetail(questionId);
+}
 </script>
 </body>
 </html>
