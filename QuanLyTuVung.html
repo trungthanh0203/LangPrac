@@ -669,7 +669,7 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
         <h3>Giáo viên (<span id="teacher-count">0</span>)</h3>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Email</th><th>Điện thoại</th><th>HS phụ trách</th><th>Đề cần duyệt</th><th>Đề đã duyệt</th><th>Đã trả lời</th><th>Chưa trả lời</th><th></th></tr></thead>
+            <thead><tr><th>Email</th><th>Điện thoại</th><th>HS phụ trách</th><th>Đã trả lời</th><th>Chưa trả lời</th><th>Đề cần duyệt</th><th>Đề đã duyệt</th><th></th></tr></thead>
             <tbody id="teacher-list-body"></tbody>
           </table>
         </div>
@@ -2535,10 +2535,10 @@ async function loadTeachers(){
       <td>${escHtmlAdmin(p.email||p.id)}${p.disabled ? ' <span style="color:var(--red);font-weight:700;">(Đã khoá)</span>' : ''}</td>
       <td>${escHtmlAdmin(p.phone || "—")}</td>
       <td><span class="link-count" data-show-linked="teacher" data-id="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">${counts[p.id] || 0}</span></td>
-      <td><span class="link-count" data-show-pending="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}" style="${pendingCounts[p.id] ? 'color:var(--red);' : ''}">${pendingCounts[p.id] || 0}</span></td>
-      <td><span class="link-count" data-show-approved="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}" style="${approvedCounts[p.id] ? 'color:var(--green);' : ''}">${approvedCounts[p.id] || 0}</span></td>
       <td><span class="link-count" data-show-answered-q="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}" style="color:var(--green);">${answeredCounts[p.id] || 0}</span></td>
       <td><span class="link-count" data-show-unanswered-q="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}" style="${unansweredCounts[p.id] ? 'color:var(--red);' : ''}">${unansweredCounts[p.id] || 0}</span></td>
+      <td><span class="link-count" data-show-pending="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}" style="${pendingCounts[p.id] ? 'color:var(--red);' : ''}">${pendingCounts[p.id] || 0}</span></td>
+      <td><span class="link-count" data-show-approved="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}" style="${approvedCounts[p.id] ? 'color:var(--green);' : ''}">${approvedCounts[p.id] || 0}</span></td>
       <td>
         <button class="btn-sm" data-edit-person="${p.id}">Sửa</button>
         <button class="btn-sm" data-reset-pw="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">Đổi mật khẩu</button>

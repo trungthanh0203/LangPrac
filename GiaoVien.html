@@ -91,6 +91,10 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
 .field-row input,.field-row select{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;}
 .field-row textarea{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;min-height:80px;resize:vertical;}
 
+/* ---------- Legend biểu đồ (dùng cho chart trạng thái câu hỏi) ---------- */
+.content-legend-item{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:6px;font-size:12.5px;}
+.content-legend-dot{width:11px;height:11px;border-radius:3px;flex:none;}
+
 /* ---------- Câu hỏi học sinh ---------- */
 .overlay{display:none;position:fixed;inset:0;background:rgba(20,30,48,0.55);z-index:50;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px;}
 .overlay.show{display:flex;}
@@ -468,6 +472,19 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
   </div>
 
   <div id="questions-tab" style="display:none;">
+    <div style="display:flex;gap:var(--gap);flex-wrap:wrap;">
+      <div class="card" style="flex:1;min-width:260px;">
+        <h2 style="font-size:14px;">Theo trạng thái</h2>
+        <div class="sub">Tỉ lệ câu hỏi theo từng trạng thái.</div>
+        <div id="questions-status-chart"><div class="loading-msg">Đang tải…</div></div>
+        <div id="questions-status-legend" style="margin-top:10px;"></div>
+      </div>
+      <div class="card" style="flex:1;min-width:260px;">
+        <h2 style="font-size:14px;">Theo mức độ</h2>
+        <div class="sub">So sánh số câu Gấp và Bình thường.</div>
+        <div id="questions-urgency-chart"><div class="loading-msg">Đang tải…</div></div>
+      </div>
+    </div>
     <div class="card">
       <h2 style="font-size:14px;">Câu hỏi học sinh gửi</h2>
       <div class="sub">Bấm 1 dòng để xem chi tiết và trả lời. Mở ra là tự đánh dấu "Đã xem".</div>
@@ -1976,6 +1993,7 @@ async function loadQuestions(){
     if(urgentA !== urgentB) return urgentA - urgentB;
     return new Date(b.created_at) - new Date(a.created_at);
   });
+  renderQuestionsCharts();
   if(!QUESTIONS.length){
     body.innerHTML = `<tr><td colspan="6">Chưa có học sinh nào gửi câu hỏi.</td></tr>`;
     return;
@@ -1993,6 +2011,87 @@ async function loadQuestions(){
   body.querySelectorAll("tr[data-id]").forEach(tr => {
     tr.addEventListener("click", () => openQuestionDetail(tr.dataset.id));
   });
+}
+
+// 2 biểu đồ thống kê câu hỏi học sinh — chọn loại biểu đồ theo ĐÚNG hình dạng
+// dữ liệu của từng tiêu chí: "Trạng thái" (3 nhóm, thể hiện tỉ lệ trên tổng số
+// câu hỏi) → biểu đồ tròn (donut), đúng kỹ thuật SVG tự vẽ đã dùng ở
+// QuanLyTuVung.html (renderDonutChart(), mục 13.28) — không dùng thư viện
+// ngoài. "Mức độ" chỉ có 2 nhóm (Gấp/Bình thường) — donut 2 lát khó so sánh
+// trực quan bằng biểu đồ cột ngang, nên dùng cột ngang thay vì tròn.
+function renderQuestionsCharts(){
+  renderStatusDonutChart();
+  renderUrgencyBarChart();
+}
+
+function renderStatusDonutChart(){
+  const el = document.getElementById("questions-status-chart");
+  const legendEl = document.getElementById("questions-status-legend");
+  const counts = { pending: 0, viewed: 0, answered: 0 };
+  QUESTIONS.forEach(q => { if(counts[q.status] !== undefined) counts[q.status]++; });
+  const segments = [
+    { key: "pending", label: "🕒 Chưa xem", value: counts.pending, color: "#f2994a" },
+    { key: "viewed", label: "👁 Đã xem", value: counts.viewed, color: "var(--navy)" },
+    { key: "answered", label: "✅ Đã trả lời", value: counts.answered, color: "var(--green)" },
+  ];
+  const total = segments.reduce((s, seg) => s + seg.value, 0);
+  if(!total){
+    el.innerHTML = `<p style="color:var(--text-2);font-size:12.5px;">Chưa có dữ liệu.</p>`;
+    legendEl.innerHTML = "";
+    return;
+  }
+  const R = 70, C = 2*Math.PI*R, cx = 100, cy = 100, strokeW = 30;
+  let offset = 0;
+  const arcs = segments.filter(seg => seg.value > 0).map(seg => {
+    const len = (seg.value/total) * C;
+    const pct = Math.round(seg.value/total*100);
+    const html = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${seg.color}" stroke-width="${strokeW}" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-offset}"><title>${escHtml(seg.label)}: ${seg.value} (${pct}%)</title></circle>`;
+    offset += len;
+    return html;
+  }).join("");
+  el.innerHTML = `<div style="position:relative;width:200px;height:200px;margin:0 auto;">
+    <svg viewBox="0 0 200 200" width="200" height="200" style="transform:rotate(-90deg);">${arcs}</svg>
+    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
+      <div style="font-size:22px;font-weight:800;color:var(--navy2);">${total}</div>
+      <div style="font-size:11px;color:var(--text-2);">câu hỏi</div>
+    </div>
+  </div>`;
+  legendEl.innerHTML = segments.map(seg => {
+    const pct = Math.round(seg.value/total*100);
+    return `<div class="content-legend-item">
+      <span class="content-legend-dot" style="background:${seg.color};"></span>
+      <span style="flex:1;">${seg.label}</span>
+      <b>${seg.value}</b>&nbsp;<span style="color:var(--text-2);">(${pct}%)</span>
+    </div>`;
+  }).join("");
+}
+
+function renderUrgencyBarChart(){
+  const el = document.getElementById("questions-urgency-chart");
+  if(!QUESTIONS.length){
+    el.innerHTML = `<p style="color:var(--text-2);font-size:12.5px;">Chưa có dữ liệu.</p>`;
+    return;
+  }
+  const urgentCount = QUESTIONS.filter(q => q.urgency === "urgent").length;
+  const normalCount = QUESTIONS.length - urgentCount;
+  const bars = [
+    { label: "🔴 Gấp", value: urgentCount, color: "var(--red)" },
+    { label: "Bình thường", value: normalCount, color: "var(--navy)" },
+  ];
+  const maxVal = Math.max(1, ...bars.map(b => b.value));
+  const barH = 34, gapY = 20, chartW = 320, leftPad = 90, rightPad = 40;
+  const barAreaW = chartW - leftPad - rightPad;
+  const svgH = bars.length * (barH+gapY) + gapY;
+  const rows = bars.map((b, i) => {
+    const w = Math.round((b.value/maxVal) * barAreaW);
+    const y = gapY + i*(barH+gapY);
+    return `
+      <text x="${leftPad-10}" y="${y+barH/2+5}" font-size="12.5" fill="var(--text-1)" text-anchor="end">${b.label}</text>
+      <rect x="${leftPad}" y="${y}" width="${Math.max(w,2)}" height="${barH}" fill="${b.color}" rx="6"><title>${b.label}: ${b.value}</title></rect>
+      <text x="${leftPad+Math.max(w,2)+10}" y="${y+barH/2+5}" font-size="13" font-weight="700" fill="var(--navy2)">${b.value}</text>
+    `;
+  }).join("");
+  el.innerHTML = `<svg viewBox="0 0 ${chartW} ${svgH}" width="100%" style="max-width:360px;display:block;margin:0 auto;">${rows}</svg>`;
 }
 
 async function openQuestionDetail(id){
