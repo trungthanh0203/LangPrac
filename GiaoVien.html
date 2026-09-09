@@ -475,19 +475,21 @@ tbody td{padding:8px 12px;border-bottom:1px solid var(--border);}
     <div style="display:flex;gap:var(--gap);flex-wrap:wrap;">
       <div class="card" style="flex:1;min-width:260px;">
         <h2 style="font-size:14px;">Theo trạng thái</h2>
-        <div class="sub">Tỉ lệ câu hỏi theo từng trạng thái.</div>
+        <div class="sub">Bấm vào 1 phần để lọc bảng bên dưới, bấm lại để bỏ lọc.</div>
         <div id="questions-status-chart"><div class="loading-msg">Đang tải…</div></div>
         <div id="questions-status-legend" style="margin-top:10px;"></div>
       </div>
       <div class="card" style="flex:1;min-width:260px;">
         <h2 style="font-size:14px;">Theo mức độ</h2>
-        <div class="sub">So sánh số câu Gấp và Bình thường.</div>
+        <div class="sub">Bấm vào 1 phần để lọc bảng bên dưới, bấm lại để bỏ lọc.</div>
         <div id="questions-urgency-chart"><div class="loading-msg">Đang tải…</div></div>
+        <div id="questions-urgency-legend" style="margin-top:10px;"></div>
       </div>
     </div>
     <div class="card">
       <h2 style="font-size:14px;">Câu hỏi học sinh gửi</h2>
       <div class="sub">Bấm 1 dòng để xem chi tiết và trả lời. Mở ra là tự đánh dấu "Đã xem".</div>
+      <div id="questions-filter-bar" style="display:none;font-size:12.5px;color:var(--text-2);margin-bottom:10px;"></div>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Học sinh</th><th>Tiêu đề</th><th>Kỹ năng</th><th>Mức độ</th><th>Trạng thái</th><th>Ngày gửi</th></tr></thead>
@@ -1947,6 +1949,12 @@ document.getElementById("dialogue-line-form").addEventListener("submit", async (
 // .overlay/.modal từ QuanLyTuVung.html (đúng như app.html đã làm).
 // ============================================================
 let QUESTIONS = [];
+// Bộ lọc đang chọn từ 1 trong 2 biểu đồ (bấm 1 phần donut) — type: "status"|
+// "urgency"|null, value: khoá tương ứng ("pending"/"viewed"/"answered" hoặc
+// "urgent"/"normal"). Chỉ 1 bộ lọc hoạt động cùng lúc (chọn ở chart này tự bỏ
+// chọn ở chart kia) — giữ đơn giản, đúng UX donut lọc đã dùng ở
+// QuanLyTuVung.html (mục 13.28: bấm lại đúng phần đang chọn để bỏ lọc).
+let QA_CHART_FILTER = { type: null, value: null };
 
 function closeQModal(){ document.getElementById("q-overlay").classList.remove("show"); }
 document.getElementById("q-overlay").addEventListener("click", (e)=>{ if(e.target.id === "q-overlay") closeQModal(); });
@@ -1994,11 +2002,42 @@ async function loadQuestions(){
     return new Date(b.created_at) - new Date(a.created_at);
   });
   renderQuestionsCharts();
-  if(!QUESTIONS.length){
-    body.innerHTML = `<tr><td colspan="6">Chưa có học sinh nào gửi câu hỏi.</td></tr>`;
+  renderQuestionsTable();
+}
+
+// Bảng dưới 2 biểu đồ — tách riêng khỏi loadQuestions() để chỉ RENDER LẠI
+// (không gọi mạng lại) mỗi khi đổi bộ lọc từ biểu đồ.
+function renderQuestionsTable(){
+  const body = document.getElementById("questions-list-body");
+  const filterBar = document.getElementById("questions-filter-bar");
+
+  if(QA_CHART_FILTER.type){
+    const filterLabel = QA_CHART_FILTER.type === "status"
+      ? { pending: "🕒 Chưa xem", viewed: "👁 Đã xem", answered: "✅ Đã trả lời" }[QA_CHART_FILTER.value]
+      : { urgent: "🔴 Gấp", normal: "Bình thường" }[QA_CHART_FILTER.value];
+    filterBar.style.display = "block";
+    filterBar.innerHTML = `Đang lọc: <b>${filterLabel}</b> <button type="button" class="btn-sm" id="questions-clear-filter">Bỏ lọc ✕</button>`;
+    document.getElementById("questions-clear-filter").addEventListener("click", () => {
+      QA_CHART_FILTER = { type: null, value: null };
+      renderQuestionsCharts();
+      renderQuestionsTable();
+    });
+  } else {
+    filterBar.style.display = "none";
+    filterBar.innerHTML = "";
+  }
+
+  const filtered = QUESTIONS.filter(q => {
+    if(QA_CHART_FILTER.type === "status") return q.status === QA_CHART_FILTER.value;
+    if(QA_CHART_FILTER.type === "urgency") return q.urgency === QA_CHART_FILTER.value;
+    return true;
+  });
+
+  if(!filtered.length){
+    body.innerHTML = `<tr><td colspan="6">${QUESTIONS.length ? "Không có câu hỏi nào khớp bộ lọc." : "Chưa có học sinh nào gửi câu hỏi."}</td></tr>`;
     return;
   }
-  body.innerHTML = QUESTIONS.map(q => `
+  body.innerHTML = filtered.map(q => `
     <tr data-id="${q.id}" style="cursor:pointer;">
       <td>${escHtml(q.studentEmail)}</td>
       <td>${escHtml(q.title)}</td>
@@ -2013,39 +2052,63 @@ async function loadQuestions(){
   });
 }
 
-// 2 biểu đồ thống kê câu hỏi học sinh — chọn loại biểu đồ theo ĐÚNG hình dạng
-// dữ liệu của từng tiêu chí: "Trạng thái" (3 nhóm, thể hiện tỉ lệ trên tổng số
-// câu hỏi) → biểu đồ tròn (donut), đúng kỹ thuật SVG tự vẽ đã dùng ở
-// QuanLyTuVung.html (renderDonutChart(), mục 13.28) — không dùng thư viện
-// ngoài. "Mức độ" chỉ có 2 nhóm (Gấp/Bình thường) — donut 2 lát khó so sánh
-// trực quan bằng biểu đồ cột ngang, nên dùng cột ngang thay vì tròn.
+// 2 biểu đồ thống kê câu hỏi học sinh — CẢ HAI đều donut (đồng bộ hình dạng
+// theo yêu cầu), dùng chung 1 hàm vẽ renderQADonut(), khác nhau ở tập segment.
+// Cả 2 bấm được để lọc bảng "Câu hỏi học sinh gửi" bên dưới — bấm lại đúng
+// phần đang chọn (hoặc bấm "Bỏ lọc ✕") để bỏ lọc. Chỉ 1 bộ lọc hoạt động cùng
+// lúc: chọn ở chart này tự bỏ chọn ở chart kia (QA_CHART_FILTER dùng chung).
 function renderQuestionsCharts(){
   renderStatusDonutChart();
-  renderUrgencyBarChart();
+  renderUrgencyDonutChart();
 }
 
 function renderStatusDonutChart(){
-  const el = document.getElementById("questions-status-chart");
-  const legendEl = document.getElementById("questions-status-legend");
   const counts = { pending: 0, viewed: 0, answered: 0 };
   QUESTIONS.forEach(q => { if(counts[q.status] !== undefined) counts[q.status]++; });
-  const segments = [
+  renderQADonut("questions-status-chart", "questions-status-legend", [
     { key: "pending", label: "🕒 Chưa xem", value: counts.pending, color: "#f2994a" },
     { key: "viewed", label: "👁 Đã xem", value: counts.viewed, color: "var(--navy)" },
     { key: "answered", label: "✅ Đã trả lời", value: counts.answered, color: "var(--green)" },
-  ];
+  ], "status");
+}
+
+function renderUrgencyDonutChart(){
+  const urgentCount = QUESTIONS.filter(q => q.urgency === "urgent").length;
+  const normalCount = QUESTIONS.length - urgentCount;
+  renderQADonut("questions-urgency-chart", "questions-urgency-legend", [
+    { key: "urgent", label: "🔴 Gấp", value: urgentCount, color: "var(--red)" },
+    { key: "normal", label: "Bình thường", value: normalCount, color: "var(--navy)" },
+  ], "urgency");
+}
+
+// Donut SVG tự vẽ dùng chung cho cả 2 biểu đồ — đúng kỹ thuật đã có ở
+// QuanLyTuVung.html (renderDonutChart(), mục 13.28), thêm phần bấm-để-lọc nối
+// vào QA_CHART_FILTER (biểu đồ ở QuanLyTuVung.html vốn đã hỗ trợ bấm lọc tương
+// tự, chỉ đổi state đích cho phù hợp tính năng câu hỏi ở đây).
+function renderQADonut(containerId, legendId, segments, filterType){
+  const el = document.getElementById(containerId);
+  const legendEl = document.getElementById(legendId);
   const total = segments.reduce((s, seg) => s + seg.value, 0);
   if(!total){
     el.innerHTML = `<p style="color:var(--text-2);font-size:12.5px;">Chưa có dữ liệu.</p>`;
     legendEl.innerHTML = "";
     return;
   }
+  const selectedKey = QA_CHART_FILTER.type === filterType ? QA_CHART_FILTER.value : null;
+  const onClick = (key) => {
+    QA_CHART_FILTER = (QA_CHART_FILTER.type === filterType && QA_CHART_FILTER.value === key)
+      ? { type: null, value: null }
+      : { type: filterType, value: key };
+    renderQuestionsCharts();
+    renderQuestionsTable();
+  };
   const R = 70, C = 2*Math.PI*R, cx = 100, cy = 100, strokeW = 30;
   let offset = 0;
   const arcs = segments.filter(seg => seg.value > 0).map(seg => {
     const len = (seg.value/total) * C;
     const pct = Math.round(seg.value/total*100);
-    const html = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${seg.color}" stroke-width="${strokeW}" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-offset}"><title>${escHtml(seg.label)}: ${seg.value} (${pct}%)</title></circle>`;
+    const isDim = selectedKey && selectedKey !== seg.key;
+    const html = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${seg.color}" stroke-width="${strokeW}" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-offset}" data-key="${seg.key}" style="cursor:pointer;opacity:${isDim?0.3:1};transition:opacity .15s;"><title>${escHtml(seg.label)}: ${seg.value} (${pct}%)</title></circle>`;
     offset += len;
     return html;
   }).join("");
@@ -2056,42 +2119,17 @@ function renderStatusDonutChart(){
       <div style="font-size:11px;color:var(--text-2);">câu hỏi</div>
     </div>
   </div>`;
+  el.querySelectorAll("[data-key]").forEach(node => node.addEventListener("click", () => onClick(node.dataset.key)));
   legendEl.innerHTML = segments.map(seg => {
     const pct = Math.round(seg.value/total*100);
-    return `<div class="content-legend-item">
+    const isDim = selectedKey && selectedKey !== seg.key;
+    return `<div class="content-legend-item" data-key="${seg.key}" style="cursor:pointer;opacity:${isDim?0.4:1};">
       <span class="content-legend-dot" style="background:${seg.color};"></span>
       <span style="flex:1;">${seg.label}</span>
       <b>${seg.value}</b>&nbsp;<span style="color:var(--text-2);">(${pct}%)</span>
     </div>`;
   }).join("");
-}
-
-function renderUrgencyBarChart(){
-  const el = document.getElementById("questions-urgency-chart");
-  if(!QUESTIONS.length){
-    el.innerHTML = `<p style="color:var(--text-2);font-size:12.5px;">Chưa có dữ liệu.</p>`;
-    return;
-  }
-  const urgentCount = QUESTIONS.filter(q => q.urgency === "urgent").length;
-  const normalCount = QUESTIONS.length - urgentCount;
-  const bars = [
-    { label: "🔴 Gấp", value: urgentCount, color: "var(--red)" },
-    { label: "Bình thường", value: normalCount, color: "var(--navy)" },
-  ];
-  const maxVal = Math.max(1, ...bars.map(b => b.value));
-  const barH = 34, gapY = 20, chartW = 320, leftPad = 90, rightPad = 40;
-  const barAreaW = chartW - leftPad - rightPad;
-  const svgH = bars.length * (barH+gapY) + gapY;
-  const rows = bars.map((b, i) => {
-    const w = Math.round((b.value/maxVal) * barAreaW);
-    const y = gapY + i*(barH+gapY);
-    return `
-      <text x="${leftPad-10}" y="${y+barH/2+5}" font-size="12.5" fill="var(--text-1)" text-anchor="end">${b.label}</text>
-      <rect x="${leftPad}" y="${y}" width="${Math.max(w,2)}" height="${barH}" fill="${b.color}" rx="6"><title>${b.label}: ${b.value}</title></rect>
-      <text x="${leftPad+Math.max(w,2)+10}" y="${y+barH/2+5}" font-size="13" font-weight="700" fill="var(--navy2)">${b.value}</text>
-    `;
-  }).join("");
-  el.innerHTML = `<svg viewBox="0 0 ${chartW} ${svgH}" width="100%" style="max-width:360px;display:block;margin:0 auto;">${rows}</svg>`;
+  legendEl.querySelectorAll("[data-key]").forEach(node => node.addEventListener("click", () => onClick(node.dataset.key)));
 }
 
 async function openQuestionDetail(id){
