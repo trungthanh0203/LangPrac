@@ -201,7 +201,8 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
     </div>
     <div class="section-tabs">
       <button id="sec-dashboard" data-group="users" class="active">🎓 Học sinh</button>
-      <button id="sec-parents" data-group="users">👪 Phụ huynh &amp; Giáo viên</button>
+      <button id="sec-parents" data-group="users">👪 Phụ huynh</button>
+      <button id="sec-teachers" data-group="users">🧑‍🏫 Giáo viên</button>
       <button id="sec-admins" data-group="users" style="display:none;">🛡️ Quản trị viên</button>
       <button id="sec-content-dash" data-group="content" style="display:none;">📊 Nội dung</button>
       <button id="sec-vocab" data-group="content" style="display:none;">📚 Từ vựng</button>
@@ -631,11 +632,10 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
 
     <div id="parents-section" style="display:none;">
       <div style="font-size:12px;color:var(--text-2);margin-bottom:var(--gap);">
-        Gán phụ huynh/giáo viên cho học sinh ngay trong modal "Sửa" ở tab
-        <b>🎓 Học sinh</b> — cả hai đều TỰ đăng ký tài khoản giống học sinh (qua
-        màn hình đăng ký bình thường của app), admin chỉ cần chọn đúng tài khoản
-        đã đăng ký đó khi sửa hồ sơ học sinh. Ở đây chỉ để xem tổng quan + đổi
-        mật khẩu khi cần.
+        Gán phụ huynh cho học sinh ngay trong modal "Sửa" ở tab <b>🎓 Học sinh</b>
+        — phụ huynh TỰ đăng ký tài khoản giống học sinh (qua màn hình đăng ký
+        bình thường của app), admin chỉ cần chọn đúng tài khoản đã đăng ký đó
+        khi sửa hồ sơ học sinh. Ở đây chỉ để xem tổng quan + đổi mật khẩu khi cần.
       </div>
       <div class="card" id="parent-table-card">
         <h3>Phụ huynh (<span id="parent-count">0</span>)</h3>
@@ -645,6 +645,25 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
             <tbody id="parent-list-body"></tbody>
           </table>
         </div>
+      </div>
+
+      <div class="card" id="linked-students-card-parents" style="display:none;">
+        <h3 class="linked-students-title">Học sinh liên kết</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Email</th><th>Ngôn ngữ</th><th>Ngày đăng ký</th><th>Hoạt động gần nhất</th><th>Số bài đã làm</th><th>Điểm TB</th></tr></thead>
+            <tbody class="linked-students-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="teachers-section" style="display:none;">
+      <div style="font-size:12px;color:var(--text-2);margin-bottom:var(--gap);">
+        Gán giáo viên phụ trách cho học sinh ngay trong modal "Sửa" ở tab
+        <b>🎓 Học sinh</b> — giáo viên TỰ đăng ký tài khoản giống học sinh, admin
+        chỉ cần chọn đúng tài khoản đã đăng ký đó khi sửa hồ sơ học sinh. Ở đây
+        xem tổng quan, theo dõi số đề đã gửi/đã duyệt, và đổi mật khẩu khi cần.
       </div>
       <div class="card" id="teacher-table-card">
         <h3>Giáo viên (<span id="teacher-count">0</span>)</h3>
@@ -656,12 +675,12 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
         </div>
       </div>
 
-      <div class="card" id="linked-students-card" style="display:none;">
-        <h3 id="linked-students-title">Học sinh liên kết</h3>
+      <div class="card" id="linked-students-card-teachers" style="display:none;">
+        <h3 class="linked-students-title">Học sinh liên kết</h3>
         <div class="table-wrap">
           <table>
             <thead><tr><th>Email</th><th>Ngôn ngữ</th><th>Ngày đăng ký</th><th>Hoạt động gần nhất</th><th>Số bài đã làm</th><th>Điểm TB</th></tr></thead>
-            <tbody id="linked-students-body"></tbody>
+            <tbody class="linked-students-body"></tbody>
           </table>
         </div>
       </div>
@@ -1695,12 +1714,12 @@ document.getElementById("btn-import").addEventListener("click", async ()=>{
 // ============================================================
 // Chuyển đổi giữa 4 khu vực quản trị: Từ vựng / Ngữ pháp / Đọc / Hội thoại
 // ============================================================
-const ALL_SECTIONS = ["dashboard", "vocab", "grammar", "reading", "listening", "dialogue", "math", "landing", "parents", "admins", "content-dash"];
+const ALL_SECTIONS = ["dashboard", "vocab", "grammar", "reading", "listening", "dialogue", "math", "landing", "parents", "teachers", "admins", "content-dash"];
 // Nhóm dashboard lớn (2 cấp điều hướng): "users" = Quản trị người dùng (Học sinh,
 // Phụ huynh & Giáo viên, Quản trị viên — mục 13.36), "content" = Quản trị nội
 // dung (dashboard tổng quan + 6 tab soạn bài cũ, giữ nguyên logic bên trong,
 // chỉ gom lại 1 nhóm cho gọn).
-const SECTION_GROUP = { dashboard: "users", parents: "users", admins: "users", "content-dash": "content", vocab: "content", grammar: "content", reading: "content", listening: "content", dialogue: "content", math: "content", landing: "content" };
+const SECTION_GROUP = { dashboard: "users", parents: "users", teachers: "users", admins: "users", "content-dash": "content", vocab: "content", grammar: "content", reading: "content", listening: "content", dialogue: "content", math: "content", landing: "content" };
 // true khi tài khoản đang đăng nhập là super_admin — gán trong afterLogin()
 // (mục 13.36). Tab "🛡️ Quản trị viên" chỉ hiện khi cờ này bật; kiểm tra lại 1
 // lần nữa ở loadAdmins() phòng khi bị vào thẳng qua devtools, và RLS phía
@@ -1734,6 +1753,7 @@ function switchSection(active){
   else if(active === "math") loadMath();
   else if(active === "landing") loadLandingContent();
   else if(active === "parents") loadParents();
+  else if(active === "teachers") loadTeachers();
   else if(active === "admins") loadAdmins();
 }
 document.getElementById("sec-dashboard").addEventListener("click", ()=> switchSection("dashboard"));
@@ -1745,6 +1765,7 @@ document.getElementById("sec-dialogue").addEventListener("click", ()=> switchSec
 document.getElementById("sec-math").addEventListener("click", ()=> switchSection("math"));
 document.getElementById("sec-landing").addEventListener("click", ()=> switchSection("landing"));
 document.getElementById("sec-parents").addEventListener("click", ()=> switchSection("parents"));
+document.getElementById("sec-teachers").addEventListener("click", ()=> switchSection("teachers"));
 document.getElementById("sec-admins").addEventListener("click", ()=> switchSection("admins"));
 document.getElementById("sec-content-dash").addEventListener("click", ()=> switchSection("content-dash"));
 
@@ -2406,18 +2427,67 @@ async function syncPersonLink(table, idCol, studentId, oldId, newId, role){
 // (openEditStudent(), xem "Gán phụ huynh/giáo viên" bên dưới) — cả 2 loại tài
 // khoản đều TỰ đăng ký giống học sinh, admin chỉ chọn đúng tài khoản khi sửa.
 // ============================================================
+function countBy(rows, key){
+  const m = {};
+  (rows||[]).forEach(r => { m[r[key]] = (m[r[key]]||0) + 1; });
+  return m;
+}
+
+// Tách từ 1 hàm loadParents() gộp cả phụ huynh+giáo viên (bản cũ) thành 2 hàm
+// riêng, theo đúng yêu cầu tách 2 sub-tab "👪 Phụ huynh"/"🧑‍🏫 Giáo viên" —
+// mỗi hàm chỉ tải/render đúng bảng của mình, querySelectorAll gắn listener
+// cũng SCOPE riêng theo `#parent-list-body`/`#teacher-list-body` (không dùng
+// selector toàn trang như bản cũ) — 2 bảng giờ có thể tải độc lập nhau (bấm
+// qua lại 2 sub-tab), nếu vẫn dùng `document.querySelectorAll("[data-x]")`
+// không giới hạn phạm vi thì sẽ gắn TRÙNG listener lên cả những hàng của bảng
+// KIA vẫn còn nằm trong DOM (chỉ display:none, không bị xoá), gây bấm 1 lần
+// chạy 2 lần (đổi mật khẩu/xoá lặp...).
 async function loadParents(){
-  const { data: allProfiles, error } = await sb.from("profiles").select("id,email,phone,address,created_at,role,disabled").order("email");
+  const { data: profiles, error } = await sb.from("profiles").select("id,email,phone,address,created_at,disabled").eq("role", "parent").order("email");
   if(error){
     document.getElementById("parent-list-body").innerHTML = `<tr><td colspan="6">Lỗi tải dữ liệu: ${escHtmlAdmin(error.message)}</td></tr>`;
     return;
   }
-  document.getElementById("linked-students-card").style.display = "none";
+  document.getElementById("linked-students-card-parents").style.display = "none";
+  const { data: parentLinks } = await sb.from("parent_links").select("parent_id");
+  const counts = countBy(parentLinks, "parent_id");
+
+  document.getElementById("parent-count").textContent = profiles.length;
+  document.getElementById("parent-list-body").innerHTML = profiles.length ? profiles.map(p => `
+    <tr>
+      <td>${escHtmlAdmin(p.email||p.id)}${p.disabled ? ' <span style="color:var(--red);font-weight:700;">(Đã khoá)</span>' : ''}</td>
+      <td>${escHtmlAdmin(p.phone || "—")}</td>
+      <td>${escHtmlAdmin(p.address || "—")}</td>
+      <td>${p.created_at ? new Date(p.created_at).toLocaleDateString("vi-VN") : "—"}</td>
+      <td><span class="link-count" data-show-linked="parent" data-id="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">${counts[p.id] || 0}</span></td>
+      <td>
+        <button class="btn-sm" data-edit-person="${p.id}">Sửa</button>
+        <button class="btn-sm" data-reset-pw="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">Đổi mật khẩu</button>
+      </td>
+    </tr>`).join("") : `<tr><td colspan="6">Chưa có phụ huynh nào.</td></tr>`;
+
+  document.querySelectorAll("#parent-list-body [data-reset-pw]").forEach(btn=>{
+    btn.addEventListener("click", ()=> openResetUserPassword(btn.dataset.resetPw, btn.dataset.email));
+  });
+  document.querySelectorAll("#parent-list-body [data-show-linked]").forEach(el=>{
+    el.addEventListener("click", ()=> showLinkedStudents(el.dataset.showLinked, el.dataset.id, el.dataset.email));
+  });
+  document.querySelectorAll("#parent-list-body [data-edit-person]").forEach(btn=>{
+    btn.addEventListener("click", ()=> openEditPerson(btn.dataset.editPerson));
+  });
+}
+
+async function loadTeachers(){
+  const { data: profiles, error } = await sb.from("profiles").select("id,email,phone,address,created_at,disabled").eq("role", "teacher").order("email");
+  if(error){
+    document.getElementById("teacher-list-body").innerHTML = `<tr><td colspan="8">Lỗi tải dữ liệu: ${escHtmlAdmin(error.message)}</td></tr>`;
+    return;
+  }
+  document.getElementById("linked-students-card-teachers").style.display = "none";
   document.getElementById("pending-content-card").style.display = "none";
-  const [{ data: parentLinks }, { data: teacherLinks },
+  const [{ data: teacherLinks },
          { data: pendingVocab }, { data: pendingGrammar }, { data: pendingReading }, { data: pendingListening }, { data: pendingDialogues },
          { data: approvedVocab }, { data: approvedGrammar }, { data: approvedReading }, { data: approvedListening }, { data: approvedDialogues }] = await Promise.all([
-    sb.from("parent_links").select("parent_id"),
     sb.from("teacher_links").select("teacher_id"),
     sb.from("vocab_items").select("created_by").eq("content_status", "pending"),
     sb.from("grammar_exercises").select("created_by").eq("content_status", "pending"),
@@ -2433,13 +2503,7 @@ async function loadParents(){
     sb.from("listening_passages").select("created_by").eq("content_status", "approved").not("created_by", "is", null),
     sb.from("dialogues").select("created_by").eq("content_status", "approved").not("created_by", "is", null)
   ]);
-  const countBy = (rows, key) => {
-    const m = {};
-    (rows||[]).forEach(r => { m[r[key]] = (m[r[key]]||0) + 1; });
-    return m;
-  };
-  const parentCounts = countBy(parentLinks, "parent_id");
-  const teacherCounts = countBy(teacherLinks, "teacher_id");
+  const counts = countBy(teacherLinks, "teacher_id");
   // Tổng đề đang chờ duyệt / đã duyệt do giáo viên gửi, gộp cả 5 loại nội dung
   // (mục 13.44/13.47/13.49) — dùng "created_by" chung, gom vào 1 map thay vì
   // đếm riêng từng loại vì chỉ cần TỔNG hiện ở đây (bấm vào số mới xem chi
@@ -2447,46 +2511,35 @@ async function loadParents(){
   const pendingCounts = countBy([...(pendingVocab||[]), ...(pendingGrammar||[]), ...(pendingReading||[]), ...(pendingListening||[]), ...(pendingDialogues||[])], "created_by");
   const approvedCounts = countBy([...(approvedVocab||[]), ...(approvedGrammar||[]), ...(approvedReading||[]), ...(approvedListening||[]), ...(approvedDialogues||[])], "created_by");
 
-  const renderList = (role, counts) => (allProfiles||[]).filter(p => p.role === role).map(p => {
-    const contentCells = role === "teacher"
-      ? `<td><span class="link-count" data-show-pending="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}" style="${pendingCounts[p.id] ? 'color:var(--red);' : ''}">${pendingCounts[p.id] || 0}</span></td>
-         <td><span class="link-count" data-show-approved="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}" style="${approvedCounts[p.id] ? 'color:var(--green);' : ''}">${approvedCounts[p.id] || 0}</span></td>`
-      : "";
-    return `
+  document.getElementById("teacher-count").textContent = profiles.length;
+  document.getElementById("teacher-list-body").innerHTML = profiles.length ? profiles.map(p => `
     <tr>
       <td>${escHtmlAdmin(p.email||p.id)}${p.disabled ? ' <span style="color:var(--red);font-weight:700;">(Đã khoá)</span>' : ''}</td>
       <td>${escHtmlAdmin(p.phone || "—")}</td>
       <td>${escHtmlAdmin(p.address || "—")}</td>
       <td>${p.created_at ? new Date(p.created_at).toLocaleDateString("vi-VN") : "—"}</td>
-      <td><span class="link-count" data-show-linked="${role}" data-id="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">${counts[p.id] || 0}</span></td>
-      ${contentCells}
+      <td><span class="link-count" data-show-linked="teacher" data-id="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">${counts[p.id] || 0}</span></td>
+      <td><span class="link-count" data-show-pending="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}" style="${pendingCounts[p.id] ? 'color:var(--red);' : ''}">${pendingCounts[p.id] || 0}</span></td>
+      <td><span class="link-count" data-show-approved="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}" style="${approvedCounts[p.id] ? 'color:var(--green);' : ''}">${approvedCounts[p.id] || 0}</span></td>
       <td>
         <button class="btn-sm" data-edit-person="${p.id}">Sửa</button>
         <button class="btn-sm" data-reset-pw="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">Đổi mật khẩu</button>
       </td>
-    </tr>`;
-  }).join("");
+    </tr>`).join("") : `<tr><td colspan="8">Chưa có giáo viên nào.</td></tr>`;
 
-  const parents = (allProfiles||[]).filter(p => p.role === "parent");
-  const teachers = (allProfiles||[]).filter(p => p.role === "teacher");
-  document.getElementById("parent-count").textContent = parents.length;
-  document.getElementById("teacher-count").textContent = teachers.length;
-  document.getElementById("parent-list-body").innerHTML = parents.length ? renderList("parent", parentCounts) : `<tr><td colspan="6">Chưa có phụ huynh nào.</td></tr>`;
-  document.getElementById("teacher-list-body").innerHTML = teachers.length ? renderList("teacher", teacherCounts) : `<tr><td colspan="8">Chưa có giáo viên nào.</td></tr>`;
-
-  document.querySelectorAll("[data-reset-pw]").forEach(btn=>{
+  document.querySelectorAll("#teacher-list-body [data-reset-pw]").forEach(btn=>{
     btn.addEventListener("click", ()=> openResetUserPassword(btn.dataset.resetPw, btn.dataset.email));
   });
-  document.querySelectorAll("[data-show-linked]").forEach(el=>{
+  document.querySelectorAll("#teacher-list-body [data-show-linked]").forEach(el=>{
     el.addEventListener("click", ()=> showLinkedStudents(el.dataset.showLinked, el.dataset.id, el.dataset.email));
   });
-  document.querySelectorAll("[data-show-pending]").forEach(el=>{
+  document.querySelectorAll("#teacher-list-body [data-show-pending]").forEach(el=>{
     el.addEventListener("click", ()=> showTeacherContent(el.dataset.showPending, el.dataset.email, "pending"));
   });
-  document.querySelectorAll("[data-show-approved]").forEach(el=>{
+  document.querySelectorAll("#teacher-list-body [data-show-approved]").forEach(el=>{
     el.addEventListener("click", ()=> showTeacherContent(el.dataset.showApproved, el.dataset.email, "approved"));
   });
-  document.querySelectorAll("[data-edit-person]").forEach(btn=>{
+  document.querySelectorAll("#teacher-list-body [data-edit-person]").forEach(btn=>{
     btn.addEventListener("click", ()=> openEditPerson(btn.dataset.editPerson));
   });
 }
@@ -2522,7 +2575,10 @@ async function openEditPerson(userId){
     const { error } = await sb.from("profiles").update(payload).eq("id", userId);
     if(error){ document.getElementById("edit-person-result").textContent = "Lỗi: " + error.message; return; }
     closeModal();
-    await loadParents();
+    // Không biết đang sửa phụ huynh hay giáo viên từ đây (modal dùng chung) —
+    // tải lại cả 2 bảng cho đơn giản/an toàn, đúng như bản gộp cũ vẫn luôn
+    // tải lại cả 2 sau khi sửa.
+    await Promise.all([loadParents(), loadTeachers()]);
   };
 }
 
@@ -2530,21 +2586,17 @@ async function openEditPerson(userId){
 // liên kết"/"Số học sinh phụ trách" — tái dùng đúng các trường đã tính sẵn
 // trong admin_student_dashboard() (mục 13.25/13.30: quiz_count, avg_score_pct,
 // last_activity_at...) thay vì viết thêm truy vấn tính điểm TB riêng. Nếu
-// DASH_STUDENTS chưa tải (vào thẳng tab Phụ huynh & Giáo viên, chưa qua tab Học
+// DASH_STUDENTS chưa tải (vào thẳng tab Phụ huynh/Giáo viên, chưa qua tab Học
 // sinh lần nào) thì tải 1 lần rồi dùng lại, chấp nhận có thể hơi cũ nếu vừa có
 // thay đổi ở nơi khác — không cần thiết phải luôn tải mới cho 1 danh sách xem
-// nhanh như thế này.
+// nhanh như thế này. Từ khi tách 2 sub-tab riêng (Phụ huynh/Giáo viên), mỗi
+// bên có card riêng (`linked-students-card-parents`/`-teachers`) sẵn ĐÚNG VỊ
+// TRÍ ngay dưới bảng của mình — không cần di chuyển DOM qua lại như bản gộp cũ.
 async function showLinkedStudents(role, personId, personEmail){
-  const card = document.getElementById("linked-students-card");
-  const body = document.getElementById("linked-students-body");
-  document.getElementById("linked-students-title").textContent =
+  const card = document.getElementById(role === "parent" ? "linked-students-card-parents" : "linked-students-card-teachers");
+  const body = card.querySelector(".linked-students-body");
+  card.querySelector(".linked-students-title").textContent =
     role === "parent" ? `Học sinh liên kết với phụ huynh ${personEmail}` : `Học sinh do giáo viên ${personEmail} phụ trách`;
-  // Di chuyển card này xuống NGAY DƯỚI đúng bảng vừa bấm (Phụ huynh hay Giáo
-  // viên) — trước đây card đặt cố định sau CẢ 2 bảng nên bấm ở bảng Phụ huynh
-  // phải cuộn qua hết bảng Giáo viên mới thấy, dù scrollIntoView() có tự cuộn
-  // tới đúng vị trí, vị trí đó vẫn ở SAU bảng Giáo viên trong luồng trang.
-  const anchorCard = document.getElementById(role === "parent" ? "parent-table-card" : "teacher-table-card");
-  anchorCard.insertAdjacentElement("afterend", card);
   card.style.display = "block";
   body.innerHTML = `<tr><td colspan="6">Đang tải...</td></tr>`;
   card.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -2610,7 +2662,7 @@ async function showTeacherContent(teacherId, teacherEmail, status){
     ...(dialogues||[]).map(r=>({ type:"Hội thoại", table:"dialogues", id:r.id, language:r.language, level:r.level, label:r.title }))
   ];
 
-  const reload = ()=>{ showTeacherContent(teacherId, teacherEmail, status); loadParents(); };
+  const reload = ()=>{ showTeacherContent(teacherId, teacherEmail, status); loadTeachers(); };
   body.innerHTML = rows.length ? rows.map(r=>{
     const langCfg = LANGS_CFG[r.language];
     const langBadge = langCfg ? `${langCfg.flagEmoji} ${r.language.toUpperCase()}` : r.language;
