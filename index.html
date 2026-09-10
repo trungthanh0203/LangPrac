@@ -65,7 +65,7 @@ section{padding:64px 0;}
 .section-head p{color:var(--text-2);font-size:15px;margin:0;}
 
 /* Language cards */
-.card-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+.card-grid-3{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
 .lang-card{background:var(--bg-card);border-radius:var(--radius);box-shadow:var(--shadow);padding:26px 22px;text-align:center;}
 .lang-card .flag-big{font-size:38px;margin-bottom:12px;}
 .lang-card h3{margin:0 0 8px;color:var(--navy);font-size:17px;}
@@ -212,7 +212,7 @@ footer.site-footer a:hover{color:var(--navy2);text-decoration:underline;}
 <section class="hero">
   <div class="wrap">
     <div>
-      <span class="kicker" data-i18n="heroKicker">🇩🇪 Đức · 🇬🇧 Anh (kể cả SAT) · 🇨🇳 Trung — 1 nơi duy nhất</span>
+      <span class="kicker" data-i18n="heroKicker">🇩🇪 Đức · 🇬🇧 Anh (kể cả SAT) · 🇨🇳 Trung · 🇰🇷 Hàn — 1 nơi duy nhất</span>
       <h1 data-i18n="heroTitle">Học ngoại ngữ có lộ trình rõ ràng — <em>không phải học lan man</em></h1>
       <p class="dek" data-i18n="heroDek">Từ vựng, ngữ pháp, đọc hiểu, nghe, nói — theo đúng khung trình độ quốc tế (A1–B2, HSK1–6, SAT), do iLapra biên soạn. Phụ huynh xem được tiến độ học thật của con, không cần hỏi lại "hôm nay có học không".</p>
       <div class="cta-row">
@@ -225,6 +225,7 @@ footer.site-footer a:hover{color:var(--navy2);text-decoration:underline;}
         <div class="lang-pill"><span class="flag">🇩🇪</span><div><div class="name" data-i18n="pillDeName">Tiếng Đức</div><div class="levels" data-i18n="pillDeLevels">A1 · A2 · B1 · B2 · Nâng cao</div></div></div>
         <div class="lang-pill"><span class="flag">🇬🇧</span><div><div class="name" data-i18n="pillEnName">Tiếng Anh</div><div class="levels" data-i18n="pillEnLevels">A1 · A2 · B1 · B2 · SAT (luyện thi)</div></div></div>
         <div class="lang-pill"><span class="flag">🇨🇳</span><div><div class="name" data-i18n="pillZhName">Tiếng Trung</div><div class="levels">HSK1 · HSK2 · HSK3 · HSK4 · HSK5 · HSK6</div></div></div>
+        <div class="lang-pill"><span class="flag">🇰🇷</span><div><div class="name" data-i18n="pillKoName">Tiếng Hàn</div><div class="levels">TOPIK1 · TOPIK2 · TOPIK3 · TOPIK4 · TOPIK5 · TOPIK6</div></div></div>
       </div>
     </div>
   </div>
@@ -233,7 +234,7 @@ footer.site-footer a:hover{color:var(--navy2);text-decoration:underline;}
 <section id="languages">
   <div class="wrap">
     <div class="section-head">
-      <div class="eyebrow" data-i18n="langEyebrow">3 NGÔN NGỮ</div>
+      <div class="eyebrow" data-i18n="langEyebrow">4 NGÔN NGỮ</div>
       <h2 data-i18n="langTitle">Đủ khung trình độ quốc tế, không dạy nửa vời</h2>
       <p data-i18n="langSub">Mỗi ngôn ngữ đi theo đúng thang trình độ được công nhận rộng rãi, học sinh biết chính xác mình đang ở đâu và cần học gì tiếp theo.</p>
     </div>
@@ -255,6 +256,12 @@ footer.site-footer a:hover{color:var(--navy2);text-decoration:underline;}
         <h3 data-i18n="cardZhName">Tiếng Trung</h3>
         <p data-i18n="cardZhDesc">Đầy đủ 6 cấp HSK — theo đúng chuẩn thi năng lực Hán ngữ quốc tế.</p>
         <span class="badge">HSK1 – HSK6</span>
+      </div>
+      <div class="lang-card">
+        <div class="flag-big">🇰🇷</div>
+        <h3 data-i18n="cardKoName">Tiếng Hàn</h3>
+        <p data-i18n="cardKoDesc">Đầy đủ 6 cấp TOPIK — theo đúng chuẩn đánh giá năng lực tiếng Hàn quốc tế.</p>
+        <span class="badge">TOPIK1 – TOPIK6</span>
       </div>
     </div>
   </div>
@@ -510,7 +517,7 @@ const I18N = {
     tagline: "Tôi luyện ngoại ngữ",
     navParent: "Phụ huynh",
     navCta: "Đăng nhập / Đăng ký",
-    heroKicker: "🇩🇪 Đức · 🇬🇧 Anh (kể cả SAT) · 🇨🇳 Trung — 1 nơi duy nhất",
+    heroKicker: "🇩🇪 Đức · 🇬🇧 Anh (kể cả SAT) · 🇨🇳 Trung · 🇰🇷 Hàn — 1 nơi duy nhất",
     heroTitle: 'Học ngoại ngữ có lộ trình rõ ràng — <em>không phải học lan man</em>',
     heroDek: 'Từ vựng, ngữ pháp, đọc hiểu, nghe, nói — theo đúng khung trình độ quốc tế (A1–B2, HSK1–6, SAT), do iLapra biên soạn. Phụ huynh xem được tiến độ học thật của con, không cần hỏi lại "hôm nay có học không".',
     heroCtaPrimary: "Bắt đầu học ngay",
@@ -518,12 +525,14 @@ const I18N = {
     pillDeName: "Tiếng Đức", pillDeLevels: "A1 · A2 · B1 · B2 · Nâng cao",
     pillEnName: "Tiếng Anh", pillEnLevels: "A1 · A2 · B1 · B2 · SAT (luyện thi)",
     pillZhName: "Tiếng Trung",
-    langEyebrow: "3 NGÔN NGỮ",
+    pillKoName: "Tiếng Hàn",
+    langEyebrow: "4 NGÔN NGỮ",
     langTitle: "Đủ khung trình độ quốc tế, không dạy nửa vời",
     langSub: "Mỗi ngôn ngữ đi theo đúng thang trình độ được công nhận rộng rãi, học sinh biết chính xác mình đang ở đâu và cần học gì tiếp theo.",
     cardDeName: "Tiếng Đức", cardDeDesc: "Khung Châu Âu chung (CEFR) A1 → B2, có thêm phần nâng cao cho người đã có nền tảng.",
     cardEnName: "Tiếng Anh", cardEnDesc: "Từ căn bản A1 đến B2, và riêng 1 lộ trình luyện thi SAT (Digital SAT) gồm cả Tiếng Anh lẫn Toán.", cardEnBadge: "A1 – B2 + SAT",
     cardZhName: "Tiếng Trung", cardZhDesc: "Đầy đủ 6 cấp HSK — theo đúng chuẩn thi năng lực Hán ngữ quốc tế.",
+    cardKoName: "Tiếng Hàn", cardKoDesc: "Đầy đủ 6 cấp TOPIK — theo đúng chuẩn đánh giá năng lực tiếng Hàn quốc tế.",
     skillEyebrow: "6 KỸ NĂNG",
     skillTitle: "Học đầy đủ, không chỉ ghi nhớ từ đơn lẻ",
     skillSub: "Nhiều app chỉ dừng ở flashcard từ vựng. iLapra luyện đủ để dùng ngôn ngữ thật sự.",
@@ -598,7 +607,7 @@ const I18N = {
     tagline: "I practice languages",
     navParent: "For Parents",
     navCta: "Log in / Sign up",
-    heroKicker: "🇩🇪 German · 🇬🇧 English (incl. SAT) · 🇨🇳 Chinese — all in one place",
+    heroKicker: "🇩🇪 German · 🇬🇧 English (incl. SAT) · 🇨🇳 Chinese · 🇰🇷 Korean — all in one place",
     heroTitle: 'Learn a language with a clear path — <em>not scattered guesswork</em>',
     heroDek: "Vocabulary, grammar, reading, listening, speaking — mapped to real international levels (A1–B2, HSK1–6, SAT), built by iLapra. Parents can see their child's real progress, no more asking \"did you study today?\"",
     heroCtaPrimary: "Start learning now",
@@ -606,12 +615,14 @@ const I18N = {
     pillDeName: "German", pillDeLevels: "A1 · A2 · B1 · B2 · Advanced",
     pillEnName: "English", pillEnLevels: "A1 · A2 · B1 · B2 · SAT prep",
     pillZhName: "Chinese",
-    langEyebrow: "3 LANGUAGES",
+    pillKoName: "Korean",
+    langEyebrow: "4 LANGUAGES",
     langTitle: "Full international levels, no half-measures",
     langSub: "Each language follows a widely recognized level scale, so students know exactly where they stand and what to learn next.",
     cardDeName: "German", cardDeDesc: "Common European Framework (CEFR) A1 → B2, plus an advanced track for learners with a foundation already.",
     cardEnName: "English", cardEnDesc: "From basic A1 to B2, plus a dedicated Digital SAT track covering both English and Math.", cardEnBadge: "A1 – B2 + SAT",
     cardZhName: "Chinese", cardZhDesc: "All 6 HSK levels — matching the official international Chinese proficiency test.",
+    cardKoName: "Korean", cardKoDesc: "All 6 TOPIK levels — matching the official international Korean proficiency test.",
     skillEyebrow: "6 SKILLS",
     skillTitle: "Train it all, not just memorize isolated words",
     skillSub: "Most apps stop at vocabulary flashcards. iLapra trains you to actually use the language.",
@@ -734,7 +745,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_8Ro-jEFQqFh7EfbXPfzWaw_V1xrkoyU";
   }catch(e){ /* im lặng — giữ nguyên nội dung mặc định */ }
 })();
 
-// Ẩn/hiện toàn mục "3 Ngôn ngữ" / "6 Kỹ năng" theo tuỳ chọn admin (bảng
+// Ẩn/hiện toàn mục "4 Ngôn ngữ" / "6 Kỹ năng" theo tuỳ chọn admin (bảng
 // landing_settings, sửa qua QuanLyTuVung.html tab "🏠 Trang giới thiệu").
 // Không có dòng nào / lỗi mạng/RLS → mặc định HIỆN cả 2 mục, không vỡ gì.
 (async () => {
