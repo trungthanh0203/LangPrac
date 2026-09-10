@@ -117,14 +117,19 @@ header.top{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#ff
 .q-teacher-static{padding:9px 11px;background:var(--teal-light);border-radius:8px;font-size:13.5px;color:var(--navy2);font-weight:600;}
 .q-no-teacher{padding:12px;background:var(--amber-light);border-radius:8px;font-size:13px;color:#8a5a1f;}
 .q-actions{display:flex;gap:10px;margin-top:6px;}
-.q-actions button{flex:1;}
 .q-status-msg{font-size:12.5px;color:var(--text-2);margin-top:8px;min-height:16px;}
 
 .q-table-wrap{margin-top:22px;overflow-x:auto;}
 table.q-table{width:100%;border-collapse:collapse;font-size:13px;}
 table.q-table th{text-align:left;padding:8px 10px;border-bottom:2px solid var(--border);color:var(--text-2);font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
-table.q-table td{padding:9px 10px;border-bottom:1px solid var(--border);cursor:pointer;}
+table.q-table td{padding:9px 10px;border-bottom:1px solid var(--border);}
 table.q-table tr:hover td{background:var(--bg-page);}
+.q-row-actions{display:flex;gap:6px;white-space:nowrap;}
+.q-row-btn{padding:4px 10px;font-size:11.5px;border-radius:5px;border:1px solid var(--border);background:#fff;cursor:pointer;font-weight:600;}
+.q-row-btn:hover{background:var(--bg-page);}
+.q-row-btn.edit{color:var(--navy2);border-color:var(--navy2);}
+.q-row-btn.delete{color:var(--red);border-color:var(--red);}
+.q-row-btn.confirming{background:var(--red);color:#fff;border-color:var(--red);}
 .q-badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:700;white-space:nowrap;}
 .q-badge.pending{background:var(--amber-light);color:#8a5a1f;}
 .q-badge.viewed{background:var(--teal-light);color:var(--navy);}
@@ -139,7 +144,6 @@ table.q-table tr:hover td{background:var(--bg-page);}
 .q-bubble.student{align-self:flex-start;background:var(--bg-page);border:1px solid var(--border);}
 .q-bubble.teacher{align-self:flex-end;background:var(--teal-light);}
 .q-detail-actions{border-top:1px solid var(--border);padding-top:14px;}
-.q-del-btn{background:none;border:1px solid var(--red);color:var(--red);border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;}
 
 .card{background:var(--bg-card);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);}
 .loading-msg{text-align:center;padding:60px 20px;color:var(--text-3);}
@@ -2372,7 +2376,7 @@ function renderQListView(){
     <div class="q-table-wrap">
       <div class="qa-section-label">${u.qMyQuestionsTitle}</div>
       <table class="q-table">
-        <thead><tr><th>${u.qColTitle}</th><th>${u.qColSkill}</th><th>${u.qColStatus}</th><th>${u.qColDate}</th></tr></thead>
+        <thead><tr><th>${u.qColTitle}</th><th>${u.qColSkill}</th><th>${u.qColStatus}</th><th>${u.qColDate}</th><th></th></tr></thead>
         <tbody id="q-table-body"></tbody>
       </table>
       <div id="q-empty" style="display:none;padding:20px;text-align:center;color:var(--text-3);font-size:13px;">${u.qEmptyList}</div>
@@ -2409,17 +2413,56 @@ function renderQTable(){
     empty.style.display = "block";
     return;
   }
+  const u = qU();
   empty.style.display = "none";
-  body.innerHTML = QA_QUESTIONS.map(q => `
+  // Đã trả lời: chỉ "Xem" (mở thread để đọc/phản hồi thêm), không Sửa/Xoá
+  // được nữa. Chưa trả lời: "Sửa" nạp thẳng vào form phía trên để sửa ngay,
+  // "Xoá" xác nhận 2 lần bấm — không cần qua bước xem chi tiết như trước nữa.
+  body.innerHTML = QA_QUESTIONS.map(q => {
+    const actionsHtml = q.status === "answered"
+      ? `<button type="button" class="q-row-btn" data-view="${q.id}">${u.qViewBtn}</button>`
+      : `<button type="button" class="q-row-btn edit" data-edit="${q.id}">${u.qEditBtn}</button>
+         <button type="button" class="q-row-btn delete" data-delete="${q.id}">${u.qDeleteBtn}</button>`;
+    return `
     <tr data-id="${q.id}">
       <td>${q.urgency === "urgent" ? '<span class="q-urgent">●</span> ' : ""}${escHtml(q.title)}</td>
       <td>${skillLabel(q.skill)}</td>
       <td>${statusBadge(q.status)}</td>
       <td>${formatQDate(q.created_at)}</td>
+      <td><div class="q-row-actions">${actionsHtml}</div></td>
     </tr>
-  `).join("");
-  body.querySelectorAll("tr").forEach(tr => {
-    tr.addEventListener("click", () => openQDetail(tr.dataset.id));
+  `;
+  }).join("");
+  body.querySelectorAll("[data-view]").forEach(btn => {
+    btn.addEventListener("click", () => openQDetail(btn.dataset.view));
+  });
+  body.querySelectorAll("[data-edit]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const q = QA_QUESTIONS.find(r => r.id === btn.dataset.edit);
+      if(!q) return;
+      startEditQaQuestion(q);
+      document.getElementById("q-form").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+  body.querySelectorAll("[data-delete]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if(!btn.classList.contains("confirming")){
+        btn.classList.add("confirming");
+        btn.textContent = qU().qDeleteConfirmBtn;
+        setTimeout(() => {
+          if(btn.classList.contains("confirming")){
+            btn.classList.remove("confirming");
+            btn.textContent = qU().qDeleteBtn;
+          }
+        }, 3000);
+        return;
+      }
+      const { error } = await sb.from("student_questions").delete().eq("id", btn.dataset.delete);
+      if(!error){
+        await loadQaQuestions();
+        renderQTable();
+      }
+    });
   });
 }
 
@@ -2477,6 +2520,8 @@ async function openQDetail(id){
   renderQDetailView(q, messages || []);
 }
 
+// Chỉ mở được cho câu ĐÃ TRẢ LỜI (nút "Xem" trong bảng, xem renderQTable()) —
+// câu chưa trả lời giờ Sửa/Xoá thẳng từ bảng, không cần qua view này nữa.
 function renderQDetailView(q, messages){
   const u = qU();
   QA_VIEW_STATE = { view: "detail", id: q.id };
@@ -2484,14 +2529,6 @@ function renderQDetailView(q, messages){
     `<div class="q-bubble student"><div class="who">${u.qYouLabel}</div>${escHtml(q.content)}</div>`,
     ...messages.map(m => `<div class="q-bubble ${m.sender_role === "teacher" ? "teacher" : "student"}"><div class="who">${m.sender_role === "teacher" ? u.qTeacherAnswerLabel : u.qYouLabel}</div>${escHtml(m.content)}</div>`),
   ].join("");
-  const actionsHtml = q.status === "answered" ? `
-    <div class="q-field"><label>${u.qReplyLabel}</label><textarea id="q-reply-text"></textarea></div>
-    <button type="button" class="btn" id="q-reply-btn">${u.qReplyBtn}</button>
-    <div class="q-status-msg" id="q-reply-status"></div>
-  ` : `
-    <button type="button" class="btn" id="q-edit-btn">${u.qEditBtn}</button>
-    <button type="button" class="q-del-btn" id="q-del-btn" style="margin-left:10px;">${u.qDeleteBtn}</button>
-  `;
   document.getElementById("content-area").innerHTML = `
     <h2 class="qa-title">${escHtml(q.title)}</h2>
     <div class="q-detail-head">
@@ -2499,43 +2536,18 @@ function renderQDetailView(q, messages){
       ${statusBadge(q.status)}
     </div>
     <div class="q-thread">${bubbles}</div>
-    <div class="q-detail-actions">${actionsHtml}</div>
+    <div class="q-detail-actions">
+      <div class="q-field"><label>${u.qReplyLabel}</label><textarea id="q-reply-text"></textarea></div>
+      <button type="button" class="btn" id="q-reply-btn">${u.qReplyBtn}</button>
+      <div class="q-status-msg" id="q-reply-status"></div>
+    </div>
   `;
   document.getElementById("q-back").addEventListener("click", () => {
     renderQListView();
     renderQTeacherField();
     renderQTable();
   });
-  if(q.status === "answered"){
-    document.getElementById("q-reply-btn").addEventListener("click", () => sendQaFollowUp(q.id));
-  } else {
-    document.getElementById("q-edit-btn").addEventListener("click", () => {
-      renderQListView();
-      renderQTable();
-      startEditQaQuestion(q);
-    });
-    const delBtn = document.getElementById("q-del-btn");
-    delBtn.addEventListener("click", async () => {
-      if(!delBtn.classList.contains("confirming")){
-        delBtn.classList.add("confirming");
-        delBtn.textContent = u.qDeleteConfirmBtn;
-        setTimeout(() => {
-          if(delBtn.classList.contains("confirming")){
-            delBtn.classList.remove("confirming");
-            delBtn.textContent = u.qDeleteBtn;
-          }
-        }, 3000);
-        return;
-      }
-      const { error } = await sb.from("student_questions").delete().eq("id", q.id);
-      if(!error){
-        await loadQaQuestions();
-        renderQListView();
-        renderQTeacherField();
-        renderQTable();
-      }
-    });
-  }
+  document.getElementById("q-reply-btn").addEventListener("click", () => sendQaFollowUp(q.id));
 }
 
 async function sendQaFollowUp(questionId){
