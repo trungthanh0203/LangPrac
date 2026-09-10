@@ -84,6 +84,9 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
 .landing-reset-btn:hover{color:var(--navy2);}
 .landing-row-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .landing-field-lang{font-size:10.5px;font-weight:700;color:var(--text-3);margin-bottom:3px;}
+.landing-translate-status{font-size:10.5px;color:var(--text-2);margin-top:3px;min-height:13px;}
+.landing-translate-status.ok{color:var(--green);}
+.landing-translate-status.err{color:var(--red);}
 .landing-row-fields textarea{width:100%;min-height:56px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:12.5px;font-family:inherit;}
 @media (max-width:720px){ .landing-row-fields{grid-template-columns:1fr;} }
 .config-warning{max-width:600px;margin:60px auto;background:var(--amber-light);color:#8a5a15;padding:20px 24px;border-radius:10px;font-size:13px;line-height:1.6;}
@@ -4954,7 +4957,11 @@ function renderLandingGroups(){
             </div>
             <div class="landing-row-fields">
               <div><div class="landing-field-lang">VI</div><textarea id="landing-vi-${k.key}" placeholder="(đang tải nội dung mặc định…)"></textarea></div>
-              <div><div class="landing-field-lang">EN</div><textarea id="landing-en-${k.key}" placeholder="(đang tải nội dung mặc định…)"></textarea></div>
+              <div>
+                <div class="landing-field-lang">EN <span style="font-weight:400;color:var(--text-3);">(tự dịch khi sửa VI)</span></div>
+                <textarea id="landing-en-${k.key}" placeholder="(đang tải nội dung mặc định…)"></textarea>
+                <div class="landing-translate-status" id="landing-tstatus-${k.key}"></div>
+              </div>
             </div>
           </div>
         `).join("")}
@@ -4963,9 +4970,48 @@ function renderLandingGroups(){
   `).join("");
   LANDING_GROUPS.forEach(g => g.keys.forEach(k => {
     document.getElementById(`landing-reset-${k.key}`).addEventListener("click", ()=> resetLandingField(k.key));
+    document.getElementById(`landing-vi-${k.key}`).addEventListener("blur", ()=> autoTranslateField(k.key));
   }));
 }
 renderLandingGroups();
+
+// Tự dịch VI → EN mỗi khi rời khỏi 1 ô VI đã thật sự sửa nội dung (mục "tôi
+// muốn khi cập nhật nội dung tiếng việt thì hệ thống sẽ dịch và cập nhật luôn
+// nội dung tiếng anh"). Dùng MyMemory (api.mymemory.translated.net) — dịch vụ
+// miễn phí, gọi thẳng từ trình duyệt (CORS mở sẵn), KHÔNG cần thêm secret/route
+// nào trong worker.js. Đánh đổi: đây là bản dịch máy, chỉ nên coi là điểm khởi
+// đầu — vẫn nên đọc lại/sửa tay trước khi Lưu, nhất là câu có thẻ <em> lồng
+// bên trong (vd heroTitle) vì máy dịch không hiểu HTML. Có hạn mức miễn phí
+// (~vài nghìn ký tự/ngày) — nếu vượt hạn mức, ô EN giữ nguyên + báo lỗi ngay
+// dưới ô, không chặn việc tự gõ tay EN như bình thường.
+async function translateViToEn(text){
+  const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=vi|en`);
+  const data = await res.json();
+  if(!res.ok || (data.responseStatus && data.responseStatus !== 200)){
+    throw new Error((data && data.responseDetails) || ("HTTP " + res.status));
+  }
+  const translated = data && data.responseData && data.responseData.translatedText;
+  if(!translated) throw new Error("Không nhận được bản dịch");
+  return translated;
+}
+
+async function autoTranslateField(key){
+  const viEl = document.getElementById(`landing-vi-${key}`);
+  const enEl = document.getElementById(`landing-en-${key}`);
+  const statusEl = document.getElementById(`landing-tstatus-${key}`);
+  const value = viEl.value.trim();
+  if(value === (viEl.dataset.lastValue || "").trim()) return; // chưa đổi gì thật sự — khỏi gọi API tốn hạn mức
+  viEl.dataset.lastValue = viEl.value;
+  if(!value) return; // xoá trắng VI thì không tự đụng vào EN (tránh mất nội dung EN đang có)
+  if(statusEl){ statusEl.textContent = "Đang dịch…"; statusEl.className = "landing-translate-status"; }
+  try{
+    const translated = await translateViToEn(value);
+    enEl.value = translated;
+    if(statusEl){ statusEl.textContent = "Đã tự dịch — kiểm tra lại rồi Lưu."; statusEl.className = "landing-translate-status ok"; }
+  }catch(e){
+    if(statusEl){ statusEl.textContent = "Không tự dịch được (" + e.message + ") — tự nhập EN nhé."; statusEl.className = "landing-translate-status err"; }
+  }
+}
 
 let LANDING_ROWS = {}; // key -> {vi,en} — dòng đang có trong landing_content (ghi đè)
 // Nội dung MẶC ĐỊNH thật đang chạy trên trang — lấy trực tiếp từ index.html
@@ -4993,17 +5039,23 @@ function fillLandingField(key){
   const defEn = (DEFAULT_CONTENT.en && DEFAULT_CONTENT.en[key]) || "";
   const viEl = document.getElementById(`landing-vi-${key}`);
   const enEl = document.getElementById(`landing-en-${key}`);
-  if(viEl) viEl.value = (row && row.vi) || defVi;
+  if(viEl){ viEl.value = (row && row.vi) || defVi; viEl.dataset.lastValue = viEl.value; } // mốc so sánh để autoTranslateField() biết VI có thật sự đổi hay không
   if(enEl) enEl.value = (row && row.en) || defEn;
   const badge = document.getElementById(`landing-badge-${key}`);
   if(badge) badge.style.display = row ? "inline-block" : "none";
+  const statusEl = document.getElementById(`landing-tstatus-${key}`);
+  if(statusEl) statusEl.textContent = "";
 }
 
 function resetLandingField(key){
   const defVi = (DEFAULT_CONTENT.vi && DEFAULT_CONTENT.vi[key]) || "";
   const defEn = (DEFAULT_CONTENT.en && DEFAULT_CONTENT.en[key]) || "";
-  document.getElementById(`landing-vi-${key}`).value = defVi;
+  const viEl = document.getElementById(`landing-vi-${key}`);
+  viEl.value = defVi;
+  viEl.dataset.lastValue = defVi;
   document.getElementById(`landing-en-${key}`).value = defEn;
+  const statusEl = document.getElementById(`landing-tstatus-${key}`);
+  if(statusEl) statusEl.textContent = "";
 }
 
 async function loadLandingContent(){
