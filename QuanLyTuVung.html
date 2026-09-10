@@ -116,6 +116,14 @@ td.content-cell{text-align:center;}
 .content-dash-grid-3col{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap);}
 @media (max-width:1100px){.content-dash-grid-3col{grid-template-columns:repeat(2,1fr);}}
 @media (max-width:700px){.content-dash-grid-3col{grid-template-columns:1fr;}}
+/* Hàng "Số lượng theo Kỹ năng" (hẹp) + "Thành phần kỹ năng theo Trình độ" (rộng,
+   có thể cuộn ngang khi nhiều cột) — cố ý KHÔNG chia đều 1fr/1fr như content-dash-grid. */
+.content-dash-grid-uneven{display:grid;grid-template-columns:320px 1fr;gap:var(--gap);}
+@media (max-width:900px){.content-dash-grid-uneven{grid-template-columns:1fr;}}
+/* min-width:0 bắt buộc phải có — thiếu dòng này thì cột 1fr sẽ tự giãn theo bề
+   rộng nội dung nhỏ nhất của .content-vstack-wrap bên trong (khi có nhiều cột),
+   làm cả trang bị kéo rộng ra thay vì cuộn ngang đúng bên trong khung chart. */
+.content-dash-grid-uneven > .card{min-width:0;}
 .chart-hint{font-size:12px;color:var(--text-2);margin-bottom:10px;}
 .content-filter-bar{display:none;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--navy2);background:var(--teal-light);border-radius:8px;padding:9px 14px;margin-bottom:var(--gap);}
 .content-donut-wrap{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
@@ -131,10 +139,13 @@ td.content-cell{text-align:center;}
 .content-hbar-track{flex:1;background:var(--bg-page);border-radius:6px;height:15px;overflow:hidden;}
 .content-hbar-fill{display:block;height:100%;border-radius:6px;transition:width .2s;}
 .content-hbar-value{width:30px;flex:none;font-size:12px;font-weight:700;color:var(--navy2);text-align:right;}
-.content-stack-row{margin-bottom:11px;}
-.content-stack-label{font-size:11.5px;color:var(--text-2);margin-bottom:4px;}
-.content-stack-track{display:flex;height:17px;border-radius:6px;overflow:hidden;background:var(--bg-page);}
-.content-stack-track span{display:block;height:100%;}
+/* "Thành phần kỹ năng theo Trình độ" — cột dựng đứng xếp hàng ngang, cuộn ngang
+   (overflow-x:auto) khi số cột (ngôn ngữ × trình độ) nhiều hơn chỗ hiển thị. */
+.content-vstack-wrap{display:flex;gap:16px;align-items:flex-end;overflow-x:auto;padding:2px 2px 8px;}
+.content-vstack-col{flex:none;width:56px;display:flex;flex-direction:column;align-items:center;}
+.content-vstack-bar{width:34px;height:140px;display:flex;flex-direction:column;border-radius:6px;overflow:hidden;background:var(--bg-page);}
+.content-vstack-bar span{display:block;width:100%;}
+.content-vstack-label{margin-top:6px;font-size:10.5px;color:var(--text-2);text-align:center;line-height:1.25;white-space:nowrap;}
 th.content-col-highlight{background:var(--teal)!important;}
 td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
 </style>
@@ -236,6 +247,9 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
           <div class="chart-hint">Bấm vào cột để lọc nhanh bảng chi tiết bên dưới.</div>
           <div id="content-dash-level-chart"></div>
         </div>
+      </div>
+
+      <div class="content-dash-grid-uneven">
         <div class="card">
           <h3>Số lượng theo Kỹ năng</h3>
           <div class="chart-hint">Bấm vào dòng để đánh dấu cột tương ứng trong bảng chi tiết.</div>
@@ -243,8 +257,8 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
         </div>
         <div class="card">
           <h3>Thành phần kỹ năng theo Trình độ</h3>
-          <div class="chart-hint">Mỗi cột = 1 trình độ, chia theo tỷ lệ % từng kỹ năng bên trong trình độ đó.</div>
-          <div id="content-dash-stack-chart"></div>
+          <div class="chart-hint">Mỗi cột = 1 trình độ, chia theo tỷ lệ % từng kỹ năng bên trong trình độ đó. Cuộn ngang nếu có nhiều cột.</div>
+          <div id="content-dash-stack-chart" class="content-vstack-wrap"></div>
           <div id="content-dash-stack-legend" class="content-donut-legend" style="flex-direction:row;flex-wrap:wrap;gap:10px;margin-top:8px;"></div>
         </div>
       </div>
@@ -3165,11 +3179,11 @@ function renderContentDashStackChart(){
       const v = Number(r[s.key]||0);
       const pct = v/total*100;
       if(pct <= 0) return "";
-      return `<span style="width:${pct}%;background:${s.color};" title="${escHtmlAdmin(s.label)}: ${v}"></span>`;
+      return `<span style="height:${pct}%;background:${s.color};" title="${escHtmlAdmin(s.label)}: ${v}"></span>`;
     }).join("");
-    return `<div class="content-stack-row">
-      <div class="content-stack-label">${escHtmlAdmin(label)}</div>
-      <div class="content-stack-track">${segs}</div>
+    return `<div class="content-vstack-col">
+      <div class="content-vstack-bar">${segs}</div>
+      <div class="content-vstack-label">${escHtmlAdmin(label)}</div>
     </div>`;
   }).join("");
   legendEl.innerHTML = SKILL_DEFS.map(s => `<div class="content-legend-item" style="cursor:default;padding:2px 4px;">
