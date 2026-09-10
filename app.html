@@ -100,16 +100,13 @@ header.top{background:linear-gradient(120deg,var(--navy),var(--navy2));color:#ff
 .selectors select{padding:9px 14px;border-radius:8px;border:1px solid var(--border);font-size:13.5px;background:#fff;}
 
 /* ---------- Hỏi giáo viên (icon cạnh logo trong header → mở modal) ---------- */
-.ask-teacher-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;border:1px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.15);font-size:17px;cursor:pointer;}
-.ask-teacher-btn:hover{background:rgba(255,255,255,0.25);}
-.ask-teacher-badge{position:absolute;top:-3px;right:-3px;width:15px;height:15px;border-radius:50%;background:var(--navy2);color:#fff;font-size:9.5px;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1;border:1.5px solid var(--navy);}
+.ask-teacher-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;border:2px solid #fff;background:#fff;font-size:17px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.25);}
+.ask-teacher-btn:hover{background:var(--amber-light);}
+.ask-teacher-btn.active{border-color:var(--navy2);}
+.ask-teacher-badge{position:absolute;top:-3px;right:-3px;width:15px;height:15px;border-radius:50%;background:var(--navy2);color:#fff;font-size:9.5px;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1;border:1.5px solid #fff;}
 
-.overlay{display:none;position:fixed;inset:0;background:rgba(20,30,48,0.55);z-index:50;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px;}
-.overlay.show{display:flex;}
-.modal{background:#fff;border-radius:12px;width:100%;max-width:700px;padding:24px 28px;box-shadow:0 12px 40px rgba(0,0,0,.25);}
-.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
-.modal-head h3{margin:0;font-size:17px;color:var(--navy2);}
-.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-3);}
+.qa-title{font-size:19px;margin:0 0 16px;color:var(--navy2);}
+.qa-section-label{font-weight:700;color:var(--navy2);margin-bottom:8px;font-size:14px;}
 
 .q-field{margin-bottom:12px;}
 .q-field label{display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;}
@@ -434,10 +431,6 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
 
   <div class="card" id="content-area">
     <div class="loading-msg">…</div>
-  </div>
-
-  <div class="overlay" id="q-overlay">
-    <div class="modal" id="q-modal"></div>
   </div>
 
   <div class="reminder-setting hidden" id="reminder-setting">
@@ -889,13 +882,18 @@ async function onReminderCheckboxChange(e){
 document.getElementById("chk-reminder").addEventListener("change", onReminderCheckboxChange);
 
 function setActiveTab(){
+  // Rời khỏi Hỏi-đáp sang tab khác thì phải quên view đang xem đi — nếu không,
+  // applyLanguageUI() (qua refreshQaViewIfOpen()) sẽ tưởng Hỏi-đáp vẫn đang
+  // hiện và ghi đè #content-area của TAB KHÁC mỗi khi đổi ngôn ngữ.
+  if(mode !== "qa") QA_VIEW_STATE = null;
   document.getElementById("tab-flash").classList.toggle("active", mode==="flash");
   document.getElementById("tab-game").classList.toggle("active", mode==="game");
   document.getElementById("tab-grammar").classList.toggle("active", mode==="grammar");
   document.getElementById("tab-practice").classList.toggle("active", mode==="practice");
   document.getElementById("tab-review").classList.toggle("active", mode==="review");
   document.getElementById("btn-header-stats").classList.toggle("active", mode==="stats");
-  document.getElementById("vocab-filters").style.display = (mode==="grammar" || mode==="practice" || mode==="stats" || mode==="review") ? "none" : "contents";
+  document.getElementById("btn-ask-teacher").classList.toggle("active", mode==="qa");
+  document.getElementById("vocab-filters").style.display = (mode==="grammar" || mode==="practice" || mode==="stats" || mode==="review" || mode==="qa") ? "none" : "contents";
   document.getElementById("practice-filters").style.display = (mode==="practice") ? "block" : "none";
 }
 // Tải lại đúng nội dung theo tab đang active — dùng ở mọi nơi có thể đổi ngôn ngữ/trình độ/...
@@ -905,6 +903,7 @@ function reloadCurrentMode(){
   else if(mode==="practice"){ loadPractice(); }
   else if(mode==="stats"){ loadStats(); }
   else if(mode==="review"){ loadReviewQueue(); }
+  else if(mode==="qa"){ /* Hỏi–đáp không phụ thuộc ngôn ngữ/trình độ — applyLanguageUI() (gọi TRƯỚC hàm này ở onLanguageSelectChange) đã tự vẽ lại nhãn qua refreshQaViewIfOpen() rồi. */ }
   else { loadItems(); }
 }
 document.getElementById("sel-level").addEventListener("change", e=>{
@@ -2260,18 +2259,22 @@ async function saveDialoguePronunciationResult(){
 }
 
 // ============================================================
-// Hỏi–đáp với giáo viên phụ trách — icon 🙋 cạnh logo trong header, mở modal
-// (đổi lại từ bản "tab Q&A" trước đó theo yêu cầu người dùng). Modal copy
-// khung .overlay/.modal từ QuanLyTuVung.html. 2 view trong CÙNG modal: "list"
-// (form gửi/sửa + bảng câu hỏi của tôi) và "detail" (thread hỏi-đáp + Sửa/Xoá
-// hoặc Phản hồi thêm tuỳ trạng thái) — chuyển qua lại bằng cách render đè
-// innerHTML của #q-modal.
+// Hỏi–đáp với giáo viên phụ trách — icon 🙋 cạnh logo trong header, hoạt động
+// ĐÚNG như btn-header-stats (mode="stats"): đổi `mode`, gọi setActiveTab(),
+// vẽ nội dung THẲNG vào #content-area — KHÔNG popup/modal (đã thử bản
+// icon+modal và bản tab riêng trước đó, chốt lại bản này theo yêu cầu người
+// dùng). 2 view trong CÙNG #content-area: "list" (form gửi/sửa + bảng câu hỏi
+// của tôi) và "detail" (thread hỏi-đáp + Sửa/Xoá hoặc Phản hồi thêm tuỳ trạng
+// thái) — chuyển qua lại bằng cách render đè innerHTML của #content-area,
+// giống hệt cách loadGrammar()/loadPractice() đổi nội dung khi chuyển tab.
 //
-// QA_VIEW_STATE theo dõi view đang mở (null nếu modal đang đóng) để
+// QA_VIEW_STATE theo dõi view đang hiện (null nếu mode !=="qa") để
 // applyLanguageUI() render lại ĐÚNG NGÔN NGỮ MỚI khi người dùng đổi ngôn ngữ
-// lúc modal đang mở — thiếu bước này là nguyên nhân bug "đổi ngôn ngữ nhưng
-// nội dung Hỏi-đáp không đổi theo" (label lấy qua qU()=L().ui đọc ĐÚNG ngôn
-// ngữ hiện tại rồi, chỉ là không ai gọi lại hàm render khi ngôn ngữ đổi).
+// lúc đang xem Hỏi-đáp — thiếu bước này là nguyên nhân bug "đổi ngôn ngữ
+// nhưng nội dung Hỏi-đáp không đổi theo" (label lấy qua qU()=L().ui đọc ĐÚNG
+// ngôn ngữ hiện tại rồi, chỉ là không ai gọi lại hàm render khi ngôn ngữ đổi).
+// reloadCurrentMode() KHÔNG cần re-render lại cho mode="qa" — applyLanguageUI()
+// (gọi TRƯỚC nó ở onLanguageSelectChange) đã tự lo qua QA_VIEW_STATE rồi.
 // ============================================================
 let QA_TEACHERS = [];        // [{id, email}] giáo viên phụ trách của học sinh này
 let QA_QUESTIONS = [];       // câu hỏi của chính học sinh này (cache để mở nhanh detail)
@@ -2280,17 +2283,17 @@ let QA_VIEW_STATE = null;    // null | {view:"list"} | {view:"detail", id}
 
 function qU(){ return L().ui; }
 
-function openQOverlay(){ document.getElementById("q-overlay").classList.add("show"); }
-function closeQOverlay(){ document.getElementById("q-overlay").classList.remove("show"); QA_VIEW_STATE = null; }
-document.getElementById("q-overlay").addEventListener("click", (e)=>{ if(e.target.id === "q-overlay") closeQOverlay(); });
+// Hoạt động ĐÚNG như btn-header-stats (mode="stats") — đổi mode + vẽ nội dung
+// thẳng vào #content-area, KHÔNG dùng popup/modal (đổi lại theo yêu cầu người
+// dùng, bản trước dùng overlay/modal).
+document.getElementById("btn-ask-teacher").addEventListener("click", ()=>{ mode="qa"; setActiveTab(); loadQA(); });
 
-document.getElementById("btn-ask-teacher").addEventListener("click", async ()=>{
-  openQOverlay();
+async function loadQA(){
   renderQListView();
   await Promise.all([loadQaTeachers(), loadQaQuestions()]);
   renderQTeacherField();
   renderQTable();
-});
+}
 
 // Gọi ở cuối applyLanguageUI() — nếu modal Hỏi-đáp đang mở, render lại ĐÚNG
 // view hiện tại bằng nhãn của ngôn ngữ vừa đổi. Không tải lại dữ liệu (không
@@ -2339,11 +2342,8 @@ function formatQDate(iso){
 function renderQListView(){
   const u = qU();
   QA_VIEW_STATE = { view: "list" };
-  document.getElementById("q-modal").innerHTML = `
-    <div class="modal-head">
-      <h3>${u.askTeacherModalTitle}</h3>
-      <button type="button" class="modal-close" id="q-close">&times;</button>
-    </div>
+  document.getElementById("content-area").innerHTML = `
+    <h2 class="qa-title">${u.askTeacherModalTitle}</h2>
     <form id="q-form">
       <div class="q-field"><label>${u.qTitleLabel}</label><input type="text" id="q-title" required></div>
       <div class="q-field"><label>${u.qSkillLabel}</label>
@@ -2370,7 +2370,7 @@ function renderQListView(){
       <div class="q-status-msg" id="q-status-msg"></div>
     </form>
     <div class="q-table-wrap">
-      <div style="font-weight:700;color:var(--navy2);margin-bottom:8px;font-size:14px;">${u.qMyQuestionsTitle}</div>
+      <div class="qa-section-label">${u.qMyQuestionsTitle}</div>
       <table class="q-table">
         <thead><tr><th>${u.qColTitle}</th><th>${u.qColSkill}</th><th>${u.qColStatus}</th><th>${u.qColDate}</th></tr></thead>
         <tbody id="q-table-body"></tbody>
@@ -2378,7 +2378,6 @@ function renderQListView(){
       <div id="q-empty" style="display:none;padding:20px;text-align:center;color:var(--text-3);font-size:13px;">${u.qEmptyList}</div>
     </div>
   `;
-  document.getElementById("q-close").addEventListener("click", closeQOverlay);
   document.getElementById("q-form").addEventListener("submit", (e)=>{ e.preventDefault(); submitQaForm(); });
   document.getElementById("q-cancel-edit").addEventListener("click", resetQaForm);
   resetQaForm();
@@ -2493,11 +2492,8 @@ function renderQDetailView(q, messages){
     <button type="button" class="btn" id="q-edit-btn">${u.qEditBtn}</button>
     <button type="button" class="q-del-btn" id="q-del-btn" style="margin-left:10px;">${u.qDeleteBtn}</button>
   `;
-  document.getElementById("q-modal").innerHTML = `
-    <div class="modal-head">
-      <h3>${escHtml(q.title)}</h3>
-      <button type="button" class="modal-close" id="q-close">&times;</button>
-    </div>
+  document.getElementById("content-area").innerHTML = `
+    <h2 class="qa-title">${escHtml(q.title)}</h2>
     <div class="q-detail-head">
       <button type="button" class="q-back-link" id="q-back">${u.qBackToList}</button>
       ${statusBadge(q.status)}
@@ -2505,7 +2501,6 @@ function renderQDetailView(q, messages){
     <div class="q-thread">${bubbles}</div>
     <div class="q-detail-actions">${actionsHtml}</div>
   `;
-  document.getElementById("q-close").addEventListener("click", closeQOverlay);
   document.getElementById("q-back").addEventListener("click", () => {
     renderQListView();
     renderQTeacherField();
