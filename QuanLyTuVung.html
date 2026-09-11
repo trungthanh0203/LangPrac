@@ -2124,6 +2124,7 @@ function setStudCycleFilter(key){ DASH_FILTER.cycleDuration = (DASH_FILTER.cycle
 function clearStudFilters(){ DASH_FILTER = { day:null, activityDay:null, scoreBucket:null, intensityBucket:null, language:null, recency:null, cycleDuration:null, noParent:false, noTeacher:false, notActiveToday:false, expiringSoon:false }; refreshStudentStats(); }
 function setStudNoParentFilter(){ DASH_FILTER.noParent = !DASH_FILTER.noParent; refreshStudentStats(); if(DASH_FILTER.noParent) scrollToStudentTable(); }
 function setStudNoTeacherFilter(){ DASH_FILTER.noTeacher = !DASH_FILTER.noTeacher; refreshStudentStats(); if(DASH_FILTER.noTeacher) scrollToStudentTable(); }
+function setStudActiveTodayFilter(){ DASH_FILTER.activeToday = !DASH_FILTER.activeToday; refreshStudentStats(); if(DASH_FILTER.activeToday) scrollToStudentTable(); }
 function setStudNotActiveTodayFilter(){ DASH_FILTER.notActiveToday = !DASH_FILTER.notActiveToday; refreshStudentStats(); if(DASH_FILTER.notActiveToday) scrollToStudentTable(); }
 function setStudExpiringSoonFilter(){ DASH_FILTER.expiringSoon = !DASH_FILTER.expiringSoon; refreshStudentStats(); if(DASH_FILTER.expiringSoon) scrollToStudentTable(); }
 function scrollToStudentTable(){
@@ -2159,7 +2160,8 @@ function renderStudFilterBar(){
   }
   if(DASH_FILTER.noParent) parts.push(`<b>Chưa có phụ huynh</b>`);
   if(DASH_FILTER.noTeacher) parts.push(`<b>Chưa có giáo viên</b>`);
-  if(DASH_FILTER.notActiveToday) parts.push(`<b>Chưa làm bài trong ngày</b>`);
+  if(DASH_FILTER.activeToday) parts.push(`<b>Đã làm bài hôm nay</b>`);
+  if(DASH_FILTER.notActiveToday) parts.push(`<b>Chưa làm bài hôm nay</b>`);
   if(DASH_FILTER.expiringSoon) parts.push(`<b>Sắp hết chu kỳ (≤10 ngày)</b>`);
   if(!parts.length){ bar.style.display = "none"; bar.innerHTML = ""; return; }
   bar.style.display = "flex";
@@ -2194,14 +2196,16 @@ async function loadDashboard(){
   }
 
   DASH_STUDENTS = students || [];
-  DASH_FILTER = { day:null, activityDay:null, scoreBucket:null, intensityBucket:null, language:null, recency:null, cycleDuration:null, noParent:false, noTeacher:false, notActiveToday:false, expiringSoon:false };
+  DASH_FILTER = { day:null, activityDay:null, scoreBucket:null, intensityBucket:null, language:null, recency:null, cycleDuration:null, noParent:false, noTeacher:false, activeToday:false, notActiveToday:false, expiringSoon:false };
   refreshStudentStats();
 }
 
-// 4/6 thẻ (chưa có phụ huynh/giáo viên/chưa làm bài hôm nay/sắp hết chu kỳ) bấm
-// được để lọc + cuộn xuống bảng chi tiết cuối tab (setStudNoParentFilter()/
-// setStudNoTeacherFilter()/setStudNotActiveTodayFilter()/setStudExpiringSoonFilter())
-// — viền teal khi đang là bộ lọc active. Thẻ "sắp hết chu kỳ" cố ý đặt CUỐI
+// 5/6 thẻ (làm bài hôm nay/chưa làm bài hôm nay/chưa có phụ huynh/giáo viên/
+// sắp hết chu kỳ) bấm được để lọc + cuộn xuống bảng chi tiết cuối tab
+// (setStudActiveTodayFilter()/setStudNotActiveTodayFilter()/setStudNoParentFilter()/
+// setStudNoTeacherFilter()/setStudExpiringSoonFilter()) — viền teal khi đang
+// là bộ lọc active. Thẻ đầu tiên (Tổng học sinh/Điểm trung bình, gộp 2 số
+// liệu chung 1 thẻ) KHÔNG bấm được. Thẻ "sắp hết chu kỳ" cố ý đặt CUỐI
 // cùng (mục 13.34) theo đúng yêu cầu.
 function renderDashCards(students){
   const total = students.length;
@@ -2214,16 +2218,17 @@ function renderDashCards(students){
   const expiringSoon = students.filter(expiringSoonOf).length;
 
   document.getElementById("dash-cards").innerHTML = `
-    <div class="dash-card"><span class="label">Tổng học sinh</span><span class="num">${total}</span></div>
-    <div class="dash-card"><span class="label">Điểm trung bình tổng</span><span class="num">${avgScore==null?'—':avgScore+'%'}</span></div>
+    <div class="dash-card"><span class="label">Tổng học sinh / Điểm trung bình</span><span class="num">${total} / ${avgScore==null?'—':avgScore+'%'}</span></div>
+    <div class="dash-card clickable${DASH_FILTER.activeToday?' active-filter':''}" id="kpi-active-today"><span class="label">Học sinh làm bài hôm nay</span><span class="num">${activeToday}</span></div>
+    <div class="dash-card clickable${notActiveToday>0?' warn':''}${DASH_FILTER.notActiveToday?' active-filter':''}" id="kpi-not-active-today"><span class="label">Học sinh chưa làm bài hôm nay</span><span class="num">${notActiveToday}</span></div>
     <div class="dash-card clickable${noParent>0?' warn':''}${DASH_FILTER.noParent?' active-filter':''}" id="kpi-no-parent"><span class="label">Học sinh chưa có phụ huynh</span><span class="num">${noParent}</span></div>
     <div class="dash-card clickable${noTeacher>0?' warn':''}${DASH_FILTER.noTeacher?' active-filter':''}" id="kpi-no-teacher"><span class="label">Học sinh chưa có giáo viên</span><span class="num">${noTeacher}</span></div>
-    <div class="dash-card clickable${notActiveToday>0?' warn':''}${DASH_FILTER.notActiveToday?' active-filter':''}" id="kpi-not-active-today"><span class="label">Học sinh chưa làm bài trong ngày</span><span class="num">${notActiveToday}</span></div>
     <div class="dash-card clickable${expiringSoon>0?' warn':''}${DASH_FILTER.expiringSoon?' active-filter':''}" id="kpi-expiring-soon"><span class="label">Sắp hết chu kỳ (≤10 ngày)</span><span class="num">${expiringSoon}</span></div>
   `;
+  document.getElementById("kpi-active-today").addEventListener("click", setStudActiveTodayFilter);
+  document.getElementById("kpi-not-active-today").addEventListener("click", setStudNotActiveTodayFilter);
   document.getElementById("kpi-no-parent").addEventListener("click", setStudNoParentFilter);
   document.getElementById("kpi-no-teacher").addEventListener("click", setStudNoTeacherFilter);
-  document.getElementById("kpi-not-active-today").addEventListener("click", setStudNotActiveTodayFilter);
   document.getElementById("kpi-expiring-soon").addEventListener("click", setStudExpiringSoonFilter);
 }
 
@@ -2526,6 +2531,7 @@ function renderDashTable(){
     if(DASH_FILTER.cycleDuration && cycleDurationKeyOf(s) !== DASH_FILTER.cycleDuration) return false;
     if(DASH_FILTER.noParent && s.parent_emails) return false;
     if(DASH_FILTER.noTeacher && s.teacher_emails) return false;
+    if(DASH_FILTER.activeToday && !activeTodayOf(s)) return false;
     if(DASH_FILTER.notActiveToday && activeTodayOf(s)) return false;
     if(DASH_FILTER.expiringSoon && !expiringSoonOf(s)) return false;
     return true;
@@ -3228,7 +3234,26 @@ async function loadContentDashboard(){
   const cardsEl = document.getElementById("content-dash-cards");
   cardsEl.innerHTML = `<div class="dash-card"><span class="label">Đang tải...</span></div>`;
 
-  const { data, error } = await sb.rpc("admin_content_stats");
+  // "Tổng đề bài cần duyệt" gộp content_status='pending' từ cả 5 bảng nội
+  // dung do giáo viên gửi (mục 13.41/13.42/13.47) + "Tổng câu hỏi cần trả
+  // lời" = student_questions chưa 'answered' (đúng khuôn showTeacherQuestions()
+  // filter "unanswered", dòng ~3016). Dùng { count:"exact", head:true } để
+  // chỉ lấy số đếm, không tải dữ liệu dòng — nhẹ hơn hẳn so với select cột rồi
+  // đếm .length (đúng tinh thần tối ưu tốc độ tab này, xem CLAUDE.md).
+  const [
+    { data, error },
+    { count: pendingVocab }, { count: pendingGrammar }, { count: pendingReading },
+    { count: pendingListening }, { count: pendingDialogues },
+    { count: unansweredQuestions },
+  ] = await Promise.all([
+    sb.rpc("admin_content_stats"),
+    sb.from("vocab_items").select("id", { count: "exact", head: true }).eq("content_status", "pending"),
+    sb.from("grammar_exercises").select("id", { count: "exact", head: true }).eq("content_status", "pending"),
+    sb.from("reading_passages").select("id", { count: "exact", head: true }).eq("content_status", "pending"),
+    sb.from("listening_passages").select("id", { count: "exact", head: true }).eq("content_status", "pending"),
+    sb.from("dialogues").select("id", { count: "exact", head: true }).eq("content_status", "pending"),
+    sb.from("student_questions").select("id", { count: "exact", head: true }).neq("status", "answered"),
+  ]);
   if(error){
     cardsEl.innerHTML = `<div class="dash-card warn"><span class="label">Lỗi tải dashboard: ${escHtmlAdmin(error.message)} — đã chạy migration 37 trên Supabase chưa?</span></div>`;
     return;
@@ -3236,21 +3261,22 @@ async function loadContentDashboard(){
   CONTENT_DASH_STATS = data || [];
   CONTENT_FILTER = { language: null, levelKey: null };
   CONTENT_SKILL_HIGHLIGHT = null;
-  renderContentDashCards(CONTENT_DASH_STATS);
+  const pendingContentTotal = (pendingVocab||0) + (pendingGrammar||0) + (pendingReading||0) + (pendingListening||0) + (pendingDialogues||0);
+  renderContentDashCards(CONTENT_DASH_STATS, pendingContentTotal, unansweredQuestions||0);
   refreshContentDashboard();
 }
 
-function renderContentDashCards(stats){
+function renderContentDashCards(stats, pendingContentTotal, unansweredQuestions){
   const languages = new Set(stats.map(r=>r.language));
-  const totalItems = stats.reduce((sum,r)=> sum + CONTENT_METRICS.reduce((s,m)=> s + Number(r[m]||0), 0), 0);
   let zeroCells = 0;
   stats.forEach(r=> CONTENT_METRICS.forEach(m=>{ if(Number(r[m]||0) === 0) zeroCells++; }));
 
   document.getElementById("content-dash-cards").innerHTML = `
-    <div class="dash-card"><span class="num">${languages.size}</span><span class="label">Ngôn ngữ đang có nội dung</span></div>
-    <div class="dash-card"><span class="num">${stats.length}</span><span class="label">Cặp ngôn ngữ + trình độ</span></div>
-    <div class="dash-card"><span class="num">${totalItems}</span><span class="label">Tổng số mục nội dung</span></div>
+    <div class="dash-card"><span class="num">${languages.size}</span><span class="label">Tổng ngoại ngữ</span></div>
+    <div class="dash-card"><span class="num">${stats.length}</span><span class="label">Tổng trình độ</span></div>
     <div class="dash-card${zeroCells>0?' warn':''}"><span class="num">${zeroCells}</span><span class="label">Ô kỹ năng còn thiếu nội dung</span></div>
+    <div class="dash-card${pendingContentTotal>0?' warn':''}"><span class="num">${pendingContentTotal}</span><span class="label">Tổng đề bài cần duyệt</span></div>
+    <div class="dash-card${unansweredQuestions>0?' warn':''}"><span class="num">${unansweredQuestions}</span><span class="label">Tổng câu hỏi cần trả lời</span></div>
   `;
 }
 
