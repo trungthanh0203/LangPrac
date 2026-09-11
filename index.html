@@ -513,6 +513,18 @@ footer.site-footer a:hover{color:var(--navy2);text-decoration:underline;}
   </div>
 </section>
 
+<section id="exams" style="display:none;background:var(--bg-card);">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow" data-i18n="examsEyebrow">KỲ THI CHỨNG CHỈ</div>
+      <h2 data-i18n="examsTitle">Học xong rồi, thi ở đâu?</h2>
+      <p data-i18n="examsSub">Thông tin các kỳ thi chứng chỉ chính thức theo từng ngôn ngữ — tìm hiểu và đăng ký thi khi bạn đã sẵn sàng.</p>
+    </div>
+    <p class="resource-disclosure" data-i18n="examsDisclosure">*Một số liên kết bên dưới là liên kết đối tác — iLapra có thể nhận hoa hồng nếu bạn đăng ký qua đây, không ảnh hưởng đến giá bạn trả.</p>
+    <div class="resource-grid" id="exam-grid"></div>
+  </div>
+</section>
+
 <section id="resources" style="display:none;">
   <div class="wrap">
     <div class="section-head">
@@ -625,6 +637,10 @@ const I18N = {
     step2Title: "Chọn ngôn ngữ &amp; trình độ", step2Desc: "Chọn đúng ngôn ngữ và trình độ đang học, đổi lại bất cứ lúc nào.",
     step3Title: "Luyện tập mỗi ngày", step3Desc: "Học từ vựng, làm bài luyện tập — phụ huynh xem tiến độ qua dashboard riêng.",
     finalTitle: "Sẵn sàng bắt đầu?", finalDesc: "Tạo tài khoản miễn phí và vào học ngay hôm nay.", finalCta: "Đăng ký / Đăng nhập",
+    examsEyebrow: "KỲ THI CHỨNG CHỈ",
+    examsTitle: "Học xong rồi, thi ở đâu?",
+    examsSub: "Thông tin các kỳ thi chứng chỉ chính thức theo từng ngôn ngữ — tìm hiểu và đăng ký thi khi bạn đã sẵn sàng.",
+    examsDisclosure: "*Một số liên kết bên dưới là liên kết đối tác — iLapra có thể nhận hoa hồng nếu bạn đăng ký qua đây, không ảnh hưởng đến giá bạn trả.",
     resourcesEyebrow: "TÀI NGUYÊN HỌC TẬP",
     resourcesTitle: "Một số gợi ý hữu ích cho việc học của bạn",
     resourcesDisclosure: "*Một số liên kết bên dưới là liên kết đối tác — iLapra có thể nhận hoa hồng nếu bạn mua qua đây, không ảnh hưởng đến giá bạn trả.",
@@ -718,6 +734,10 @@ const I18N = {
     step2Title: "Pick a language &amp; level", step2Desc: "Choose the language and level you're studying, change it anytime.",
     step3Title: "Practice every day", step3Desc: "Study vocabulary, do practice exercises — parents track progress via their own dashboard.",
     finalTitle: "Ready to start?", finalDesc: "Create a free account and start learning today.", finalCta: "Sign up / Log in",
+    examsEyebrow: "CERTIFICATE EXAMS",
+    examsTitle: "Finished learning — where do you take the exam?",
+    examsSub: "Official certificate exam info for each language — look it up and register whenever you're ready.",
+    examsDisclosure: "*Some links below are affiliate links — iLapra may earn a commission if you register through them, at no extra cost to you.",
     resourcesEyebrow: "LEARNING RESOURCES",
     resourcesTitle: "A few useful picks for your learning journey",
     resourcesDisclosure: "*Some links below are affiliate links — iLapra may earn a commission if you buy through them, at no extra cost to you.",
@@ -725,10 +745,12 @@ const I18N = {
   }
 };
 
-// Danh sách link "Tài nguyên học tập" (bảng affiliate_links, migration 56) —
-// khai báo TRƯỚC applyLang() vì applyLang(initialLang) gọi renderResourceCards()
-// ngay lúc khởi động (let có temporal dead zone, phải đứng trước lần dùng đầu).
+// Danh sách link "Tài nguyên học tập" / "Kỳ thi chứng chỉ" (bảng
+// affiliate_links, migration 56+57) — khai báo TRƯỚC applyLang() vì
+// applyLang(initialLang) gọi renderAffiliateSections() ngay lúc khởi động
+// (let có temporal dead zone, phải đứng trước lần dùng đầu).
 let AFFILIATE_RESOURCES = [];
+let AFFILIATE_EXAMS = [];
 
 function applyLang(lang){
   document.documentElement.lang = lang;
@@ -739,7 +761,7 @@ function applyLang(lang){
   document.getElementById("btn-lang-vi").classList.toggle("active", lang === "vi");
   document.getElementById("btn-lang-en").classList.toggle("active", lang === "en");
   try{ localStorage.setItem("ilapra_landing_lang", lang); }catch(e){}
-  renderResourceCards(); // đổi ngôn ngữ thì đổi luôn title_en/description_en nếu có
+  renderAffiliateSections(); // đổi ngôn ngữ thì đổi luôn title_en/description_en nếu có
 }
 
 let initialLang = "vi";
@@ -797,20 +819,21 @@ const SUPABASE_ANON_KEY = "sb_publishable_8Ro-jEFQqFh7EfbXPfzWaw_V1xrkoyU";
   }catch(e){ /* im lặng — giữ nguyên hiện cả 2 mục */ }
 })();
 
-// Mục "Tài nguyên học tập" (bảng affiliate_links, migration 56, sửa qua
-// QuanLyTuVung.html tab "🔗 Affiliate") — chỉ hiện mục này khi có ít nhất 1
-// link đang bật cho placement="landing_resources"; rỗng/lỗi mạng/bảng chưa
-// tồn tại → giữ nguyên display:none có sẵn trong HTML, không vỡ trang.
-function renderResourceCards(){
-  const grid = document.getElementById("resource-grid");
-  const section = document.getElementById("resources");
-  if(!grid || !section || !AFFILIATE_RESOURCES.length){ if(section) section.style.display = "none"; return; }
+// Mục "Tài nguyên học tập" + "Kỳ thi chứng chỉ" (bảng affiliate_links,
+// migration 56+57, sửa qua QuanLyTuVung.html tab "🔗 Affiliate") — mỗi mục
+// chỉ hiện khi có ít nhất 1 link đang bật cho đúng placement; rỗng/lỗi mạng/
+// bảng chưa tồn tại → giữ nguyên display:none có sẵn trong HTML, không vỡ
+// trang. Dùng chung 1 hàm render cho cả 2 mục vì cấu trúc thẻ giống hệt nhau.
+function renderLinkCards(items, gridId, sectionId, ctaVi, ctaEn){
+  const grid = document.getElementById(gridId);
+  const section = document.getElementById(sectionId);
+  if(!grid || !section || !items.length){ if(section) section.style.display = "none"; return; }
   const lang = document.documentElement.lang === "en" ? "en" : "vi";
-  grid.innerHTML = AFFILIATE_RESOURCES.map(r=>{
+  const cta = lang === "en" ? ctaEn : ctaVi;
+  grid.innerHTML = items.map(r=>{
     const title = (lang === "en" && r.title_en) ? r.title_en : r.title;
     const desc = (lang === "en" && r.description_en) ? r.description_en : (r.description || "");
     const img = r.image_url ? `<img src="${r.image_url}" alt="" loading="lazy">` : "";
-    const cta = lang === "en" ? "View →" : "Xem →";
     return `<div class="resource-card">
       ${img}
       <h4>${escResource(title)}</h4>
@@ -821,18 +844,23 @@ function renderResourceCards(){
   section.style.display = "block";
 }
 function escResource(s){ return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function renderAffiliateSections(){
+  renderLinkCards(AFFILIATE_RESOURCES, "resource-grid", "resources", "Xem →", "View →");
+  renderLinkCards(AFFILIATE_EXAMS, "exam-grid", "exams", "Tìm hiểu & đăng ký →", "Learn more & register →");
+}
 (async () => {
   try{
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const { data, error } = await sb.from("affiliate_links")
       .select("*")
-      .eq("placement", "landing_resources")
+      .in("placement", ["landing_resources", "landing_exams"])
       .eq("active", true)
       .order("sort_order");
     if(error || !data || !data.length) return;
-    AFFILIATE_RESOURCES = data;
-    renderResourceCards();
-  }catch(e){ /* im lặng — giữ mục "Tài nguyên học tập" ẩn */ }
+    AFFILIATE_RESOURCES = data.filter(r => r.placement === "landing_resources");
+    AFFILIATE_EXAMS = data.filter(r => r.placement === "landing_exams");
+    renderAffiliateSections();
+  }catch(e){ /* im lặng — giữ cả 2 mục ẩn */ }
 })();
 </script>
 

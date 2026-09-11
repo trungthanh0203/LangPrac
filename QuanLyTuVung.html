@@ -667,10 +667,14 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
         </div>
         <div style="font-size:12px;color:var(--text-2);margin-bottom:10px;">
           Gắn link liên kết/affiliate vào trang giới thiệu (<code>index.html</code>,
-          mục "Tài nguyên học tập") hoặc dashboard phụ huynh
-          (<code>PhuHuynh.html</code>, thẻ gợi ý cuối mỗi học sinh — chỉ hiện khi
-          khớp đúng ngôn ngữ/trình độ con đang học nhiều nhất). Chọn "Mọi ngôn
-          ngữ" / "Mọi trình độ" để 1 link áp dụng rộng hơn.
+          mục "Tài nguyên học tập" hoặc mục "Kỳ thi chứng chỉ") hoặc dashboard
+          phụ huynh (<code>PhuHuynh.html</code>, thẻ gợi ý cuối mỗi học sinh —
+          chỉ hiện khi khớp đúng ngôn ngữ/trình độ con đang học nhiều nhất).
+          Chọn "Mọi ngôn ngữ" / "Mọi trình độ" để 1 link áp dụng rộng hơn.
+          Không phải link nào cũng cần là affiliate thật — kỳ thi của các đơn
+          vị phi lợi nhuận/nhà nước (Goethe-Institut, HSK, TOPIK...) thường
+          không có chương trình hoa hồng, cứ để link thông tin chính thức
+          bình thường, vẫn hữu ích cho người học.
         </div>
         <div class="table-wrap">
           <table>
@@ -5313,7 +5317,7 @@ document.getElementById("btn-save-landing").addEventListener("click", async ()=>
 // (fieldForm/openAdd/openEdit/wireItemForm) nhưng đơn giản hơn — không cần
 // CSV import, danh sách link sẽ nhỏ, thêm tay là đủ.
 // ============================================================
-const AFFILIATE_PLACEMENT_LABELS = { landing_resources: "Trang giới thiệu", parent_dashboard: "Dashboard phụ huynh" };
+const AFFILIATE_PLACEMENT_LABELS = { landing_resources: "Trang giới thiệu — Tài nguyên học tập", landing_exams: "Trang giới thiệu — Kỳ thi chứng chỉ", parent_dashboard: "Dashboard phụ huynh" };
 let AFFILIATE_ITEMS = [];
 
 async function loadAffiliateLinks(){
@@ -5361,7 +5365,8 @@ function affiliateFieldForm(record){
   return `
     <div class="field-row"><label>Vị trí hiển thị</label>
       <select data-f="placement">
-        <option value="landing_resources" ${r.placement==="landing_resources"?"selected":""}>Trang giới thiệu (index.html)</option>
+        <option value="landing_resources" ${r.placement==="landing_resources"?"selected":""}>Trang giới thiệu — Tài nguyên học tập</option>
+        <option value="landing_exams" ${r.placement==="landing_exams"?"selected":""}>Trang giới thiệu — Kỳ thi chứng chỉ</option>
         <option value="parent_dashboard" ${r.placement==="parent_dashboard"?"selected":""}>Dashboard phụ huynh (PhuHuynh.html)</option>
       </select>
     </div>
