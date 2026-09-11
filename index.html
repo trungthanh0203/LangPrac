@@ -72,6 +72,18 @@ section{padding:64px 0;}
 .lang-card p{margin:0;color:var(--text-2);font-size:13.5px;}
 .lang-card .badge{display:inline-block;margin-top:12px;background:var(--amber-light);color:#8a5a1f;border-radius:999px;padding:5px 12px;font-size:11.5px;font-weight:700;}
 
+/* Resources (affiliate) — mục "Tài nguyên học tập được đề xuất", chỉ hiện
+   khi có link admin cấu hình qua bảng affiliate_links (migration 56), ẩn hẳn
+   nếu rỗng — xem IIFE cuối file. */
+.resource-disclosure{text-align:center;font-size:11.5px;color:var(--text-3);margin:0 0 22px;}
+.resource-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+.resource-card{background:var(--bg-card);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;display:flex;flex-direction:column;}
+.resource-card img{width:100%;height:110px;object-fit:cover;border-radius:10px;margin-bottom:12px;background:var(--bg-page);}
+.resource-card h4{margin:0 0 6px;font-size:14.5px;color:var(--navy);}
+.resource-card p{margin:0 0 14px;font-size:12.5px;color:var(--text-2);flex:1;}
+.resource-card a{align-self:flex-start;font-size:12.5px;font-weight:700;color:var(--navy2);text-decoration:none;}
+.resource-card a:hover{text-decoration:underline;}
+
 /* Skills grid */
 .skill-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
 .skill-card{background:var(--bg-card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px 16px;text-align:center;}
@@ -179,6 +191,7 @@ footer.site-footer a:hover{color:var(--navy2);text-decoration:underline;}
   .card-grid-3{grid-template-columns:1fr;}
   .skill-grid{grid-template-columns:repeat(2,1fr);}
   .diff-grid{grid-template-columns:1fr;}
+  .resource-grid{grid-template-columns:1fr;}
   .role-feature-grid{grid-template-columns:1fr;}
   .step-row{grid-template-columns:1fr;}
   .nav-cta .btn:not(.btn-primary){display:none;}
@@ -500,6 +513,17 @@ footer.site-footer a:hover{color:var(--navy2);text-decoration:underline;}
   </div>
 </section>
 
+<section id="resources" style="display:none;">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow" data-i18n="resourcesEyebrow">TÀI NGUYÊN HỌC TẬP</div>
+      <h2 data-i18n="resourcesTitle">Một số gợi ý hữu ích cho việc học của bạn</h2>
+    </div>
+    <p class="resource-disclosure" data-i18n="resourcesDisclosure">*Một số liên kết bên dưới là liên kết đối tác — iLapra có thể nhận hoa hồng nếu bạn mua qua đây, không ảnh hưởng đến giá bạn trả.</p>
+    <div class="resource-grid" id="resource-grid"></div>
+  </div>
+</section>
+
 <footer class="site-footer">
   <div class="wrap">
     <div>© 2026 iLapra</div>
@@ -601,6 +625,9 @@ const I18N = {
     step2Title: "Chọn ngôn ngữ &amp; trình độ", step2Desc: "Chọn đúng ngôn ngữ và trình độ đang học, đổi lại bất cứ lúc nào.",
     step3Title: "Luyện tập mỗi ngày", step3Desc: "Học từ vựng, làm bài luyện tập — phụ huynh xem tiến độ qua dashboard riêng.",
     finalTitle: "Sẵn sàng bắt đầu?", finalDesc: "Tạo tài khoản miễn phí và vào học ngay hôm nay.", finalCta: "Đăng ký / Đăng nhập",
+    resourcesEyebrow: "TÀI NGUYÊN HỌC TẬP",
+    resourcesTitle: "Một số gợi ý hữu ích cho việc học của bạn",
+    resourcesDisclosure: "*Một số liên kết bên dưới là liên kết đối tác — iLapra có thể nhận hoa hồng nếu bạn mua qua đây, không ảnh hưởng đến giá bạn trả.",
     footerTerms: "Điều khoản dịch vụ", footerPrivacy: "Chính sách bảo mật",
   },
   en: {
@@ -691,9 +718,17 @@ const I18N = {
     step2Title: "Pick a language &amp; level", step2Desc: "Choose the language and level you're studying, change it anytime.",
     step3Title: "Practice every day", step3Desc: "Study vocabulary, do practice exercises — parents track progress via their own dashboard.",
     finalTitle: "Ready to start?", finalDesc: "Create a free account and start learning today.", finalCta: "Sign up / Log in",
+    resourcesEyebrow: "LEARNING RESOURCES",
+    resourcesTitle: "A few useful picks for your learning journey",
+    resourcesDisclosure: "*Some links below are affiliate links — iLapra may earn a commission if you buy through them, at no extra cost to you.",
     footerTerms: "Terms of Service", footerPrivacy: "Privacy Policy",
   }
 };
+
+// Danh sách link "Tài nguyên học tập" (bảng affiliate_links, migration 56) —
+// khai báo TRƯỚC applyLang() vì applyLang(initialLang) gọi renderResourceCards()
+// ngay lúc khởi động (let có temporal dead zone, phải đứng trước lần dùng đầu).
+let AFFILIATE_RESOURCES = [];
 
 function applyLang(lang){
   document.documentElement.lang = lang;
@@ -704,6 +739,7 @@ function applyLang(lang){
   document.getElementById("btn-lang-vi").classList.toggle("active", lang === "vi");
   document.getElementById("btn-lang-en").classList.toggle("active", lang === "en");
   try{ localStorage.setItem("ilapra_landing_lang", lang); }catch(e){}
+  renderResourceCards(); // đổi ngôn ngữ thì đổi luôn title_en/description_en nếu có
 }
 
 let initialLang = "vi";
@@ -759,6 +795,44 @@ const SUPABASE_ANON_KEY = "sb_publishable_8Ro-jEFQqFh7EfbXPfzWaw_V1xrkoyU";
       if(el && row.enabled === false) el.style.display = "none";
     });
   }catch(e){ /* im lặng — giữ nguyên hiện cả 2 mục */ }
+})();
+
+// Mục "Tài nguyên học tập" (bảng affiliate_links, migration 56, sửa qua
+// QuanLyTuVung.html tab "🔗 Affiliate") — chỉ hiện mục này khi có ít nhất 1
+// link đang bật cho placement="landing_resources"; rỗng/lỗi mạng/bảng chưa
+// tồn tại → giữ nguyên display:none có sẵn trong HTML, không vỡ trang.
+function renderResourceCards(){
+  const grid = document.getElementById("resource-grid");
+  const section = document.getElementById("resources");
+  if(!grid || !section || !AFFILIATE_RESOURCES.length){ if(section) section.style.display = "none"; return; }
+  const lang = document.documentElement.lang === "en" ? "en" : "vi";
+  grid.innerHTML = AFFILIATE_RESOURCES.map(r=>{
+    const title = (lang === "en" && r.title_en) ? r.title_en : r.title;
+    const desc = (lang === "en" && r.description_en) ? r.description_en : (r.description || "");
+    const img = r.image_url ? `<img src="${r.image_url}" alt="" loading="lazy">` : "";
+    const cta = lang === "en" ? "View →" : "Xem →";
+    return `<div class="resource-card">
+      ${img}
+      <h4>${escResource(title)}</h4>
+      <p>${escResource(desc)}</p>
+      <a href="${escResource(r.link_url)}" target="_blank" rel="noopener sponsored">${cta}</a>
+    </div>`;
+  }).join("");
+  section.style.display = "block";
+}
+function escResource(s){ return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+(async () => {
+  try{
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data, error } = await sb.from("affiliate_links")
+      .select("*")
+      .eq("placement", "landing_resources")
+      .eq("active", true)
+      .order("sort_order");
+    if(error || !data || !data.length) return;
+    AFFILIATE_RESOURCES = data;
+    renderResourceCards();
+  }catch(e){ /* im lặng — giữ mục "Tài nguyên học tập" ẩn */ }
 })();
 </script>
 

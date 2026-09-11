@@ -26,6 +26,18 @@ header.top h1{font-size:18px;margin:0;font-weight:700;}
 .card{background:var(--bg-card);border-radius:var(--radius);padding:22px 24px;box-shadow:var(--shadow);margin-bottom:var(--gap);}
 .card h2{font-size:16px;margin:0 0 4px;color:var(--navy2);}
 .card .sub{font-size:12.5px;color:var(--text-2);margin-bottom:14px;}
+/* Thẻ gợi ý "Tài nguyên học tập" (bảng affiliate_links, migration 56) — nhẹ
+   hơn .card thường, có nút đóng, chỉ hiện khi có link khớp ngôn ngữ/trình độ
+   con đang học nhiều nhất. */
+.affiliate-card{background:var(--bg-page);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:var(--gap);display:flex;align-items:center;gap:14px;}
+.affiliate-card img{width:52px;height:52px;object-fit:cover;border-radius:8px;flex-shrink:0;}
+.affiliate-card-body{flex:1;min-width:0;}
+.affiliate-card-title{font-size:13px;font-weight:700;color:var(--navy2);margin-bottom:2px;}
+.affiliate-card-desc{font-size:12px;color:var(--text-2);}
+.affiliate-card-actions{display:flex;gap:8px;align-items:center;flex-shrink:0;}
+.affiliate-card-actions a{font-size:12px;font-weight:700;color:var(--navy2);text-decoration:none;white-space:nowrap;}
+.affiliate-card-actions a:hover{text-decoration:underline;}
+.affiliate-card-disclosure{font-size:10px;color:var(--text-3);margin-top:6px;}
 .loading-msg,.empty-msg{text-align:center;padding:40px 20px;color:var(--text-3);}
 
 .login-screen{min-height:70vh;display:flex;align-items:center;justify-content:center;}
@@ -302,8 +314,32 @@ async function loadDashboard(parentId){
   const { data: profiles } = await sb.from("profiles").select("id,email").in("id", studentIds);
   const emailOf = Object.fromEntries((profiles||[]).map(p=>[p.id, p.email]));
 
-  const blocks = await Promise.all(studentIds.map(id => buildStudentBlock(id, emailOf[id] || id, dateStr, onlyQuiz)));
+  // "Tài nguyên học tập" (bảng affiliate_links, migration 56) — tải 1 LẦN cho
+  // cả trang (không phải mỗi học sinh 1 lần), rồi mỗi buildStudentBlock() tự
+  // chọn link khớp nhất theo ngôn ngữ/trình độ con đang học. Lỗi mạng/bảng
+  // chưa tồn tại → mảng rỗng, không hiện gì, không vỡ dashboard.
+  let affiliateRows = [];
+  try{
+    const { data } = await sb.from("affiliate_links").select("*").eq("placement", "parent_dashboard").eq("active", true);
+    affiliateRows = data || [];
+  }catch(e){ /* im lặng */ }
+
+  const blocks = await Promise.all(studentIds.map(id => buildStudentBlock(id, emailOf[id] || id, dateStr, onlyQuiz, affiliateRows)));
   area.innerHTML = blocks.join("");
+}
+
+// Chọn 1 link "affiliate_links" khớp nhất với cặp (language, level) học sinh
+// đang học nhiều nhất: khớp đúng ngôn ngữ+trình độ > khớp ngôn ngữ (trình độ
+// null = áp dụng mọi trình độ) > chung (ngôn ngữ null = áp dụng mọi ngôn ngữ).
+// Không có dòng nào khớp → trả về null (không fallback link không liên quan).
+function pickAffiliateLink(rows, language, level){
+  if(!rows || !rows.length || !language) return null;
+  const exact = rows.find(r => r.language === language && r.level === level);
+  if(exact) return exact;
+  const langOnly = rows.find(r => r.language === language && !r.level);
+  if(langOnly) return langOnly;
+  const generic = rows.find(r => !r.language);
+  return generic || null;
 }
 
 // Giới hạn 50 dòng, khớp với app.html's loadStats() (tab "Thống kê" của học sinh)
@@ -319,7 +355,7 @@ const EX_TYPE_LABELS = {
   listening_choice: "Nghe & chọn", synonym_antonym: "Đồng/Trái nghĩa", odd_one_out: "Từ khác nhóm", word_form: "Biến đổi từ"
 };
 
-async function buildStudentBlock(studentId, studentEmail, dateStr, onlyQuiz){
+async function buildStudentBlock(studentId, studentEmail, dateStr, onlyQuiz, affiliateRows){
   const dayStart = new Date(`${dateStr}T00:00:00`).toISOString();
   const dayEnd = new Date(`${dateStr}T23:59:59.999`).toISOString();
 
@@ -396,6 +432,37 @@ async function buildStudentBlock(studentId, studentEmail, dateStr, onlyQuiz){
     ? `<div class="empty-msg">Không tải được dữ liệu tiến trình: ${escHtml(levelStatsError.message)} — đã chạy migration 39 trên Supabase chưa?</div>`
     : buildLevelPathHtml(studentId, levelStats);
 
+  // "Tài nguyên học tập" (migration 56) — chọn cặp (ngôn ngữ, trình độ) con
+  // đang học NHIỀU NHẤT (quiz_count cao nhất, bỏ qua trình độ chưa có bài
+  // nào), rồi tìm link khớp nhất qua pickAffiliateLink(). Không có link nào
+  // khớp, hoặc đã bị phụ huynh bấm đóng trước đó (localStorage theo đúng
+  // link đó) → không hiện gì cả.
+  let affiliateHtml = "";
+  const topLevelStat = (levelStats||[]).filter(r=>r.quiz_count > 0).sort((a,b)=>b.quiz_count-a.quiz_count)[0];
+  if(topLevelStat){
+    const link = pickAffiliateLink(affiliateRows, topLevelStat.language, topLevelStat.level);
+    if(link){
+      let dismissed = false;
+      try{ dismissed = localStorage.getItem(`affiliate_dismissed_${studentId}_${link.id}`) === "1"; }catch(e){}
+      if(!dismissed){
+        const img = link.image_url ? `<img src="${escHtml(link.image_url)}" alt="">` : "";
+        affiliateHtml = `
+    <div class="affiliate-card" id="affiliate-${studentId}">
+      ${img}
+      <div class="affiliate-card-body">
+        <div class="affiliate-card-title">${escHtml(link.title)}</div>
+        <div class="affiliate-card-desc">${escHtml(link.description || "")}</div>
+        <div class="affiliate-card-disclosure">*Liên kết đối tác — iLapra có thể nhận hoa hồng, không ảnh hưởng giá bạn trả.</div>
+      </div>
+      <div class="affiliate-card-actions">
+        <a href="${escHtml(link.link_url)}" target="_blank" rel="noopener sponsored">Xem →</a>
+        <button type="button" class="btn-sm" data-dismiss-affiliate="${studentId}|${link.id}">✕</button>
+      </div>
+    </div>`;
+      }
+    }
+  }
+
   return `
     <div class="card">
       <h2 style="font-size:14px;">Tiến trình học theo trình độ — ${studentLabel}</h2>
@@ -419,6 +486,7 @@ async function buildStudentBlock(studentId, studentEmail, dateStr, onlyQuiz){
       ${dayTotalHtml}
       <div class="activity-list">${timelineHtml}</div>
     </div>
+    ${affiliateHtml}
   `;
 }
 
@@ -528,6 +596,14 @@ document.getElementById("dashboard-area").addEventListener("click", (e)=>{
   if(closeBtn){
     const c = document.getElementById(`level-detail-${closeBtn.dataset.closeDetail}`);
     if(c){ c.style.display = "none"; c.dataset.openKey = ""; }
+    return;
+  }
+  const dismissBtn = e.target.closest("[data-dismiss-affiliate]");
+  if(dismissBtn){
+    const [studentId, linkId] = dismissBtn.dataset.dismissAffiliate.split("|");
+    try{ localStorage.setItem(`affiliate_dismissed_${studentId}_${linkId}`, "1"); }catch(err){}
+    const card = document.getElementById(`affiliate-${studentId}`);
+    if(card) card.remove();
     return;
   }
   const node = e.target.closest(".level-node[data-clickable]");

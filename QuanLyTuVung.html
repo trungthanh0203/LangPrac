@@ -226,6 +226,7 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
       <button id="sec-dialogue" data-group="content" style="display:none;">🗣️ Hội thoại</button>
       <button id="sec-math" data-group="content" style="display:none;">🔢 Toán</button>
       <button id="sec-landing" data-group="content" style="display:none;">🏠 Trang giới thiệu</button>
+      <button id="sec-affiliate" data-group="content" style="display:none;">🔗 Affiliate</button>
     </div>
 
     <div id="content-dash-section" style="display:none;">
@@ -656,6 +657,30 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
         <span id="landing-vis-status" style="font-size:12px;color:var(--text-2);"></span>
       </div>
       <div id="landing-groups"></div>
+    </div>
+
+    <div id="affiliate-section" style="display:none;">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:10px;">
+          <h3 style="margin:0;">Link Affiliate (<span id="affiliate-count">0</span>)</h3>
+          <button class="btn btn-primary" id="btn-add-affiliate">+ Thêm link</button>
+        </div>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:10px;">
+          Gắn link liên kết/affiliate vào trang giới thiệu (<code>index.html</code>,
+          mục "Tài nguyên học tập") hoặc dashboard phụ huynh
+          (<code>PhuHuynh.html</code>, thẻ gợi ý cuối mỗi học sinh — chỉ hiện khi
+          khớp đúng ngôn ngữ/trình độ con đang học nhiều nhất). Chọn "Mọi ngôn
+          ngữ" / "Mọi trình độ" để 1 link áp dụng rộng hơn.
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Vị trí</th><th>Ngôn ngữ</th><th>Trình độ</th><th>Tiêu đề</th><th>Link</th><th>Thứ tự</th><th>Trạng thái</th><th></th>
+            </tr></thead>
+            <tbody id="affiliate-list-body"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <div id="parents-section" style="display:none;">
@@ -1844,12 +1869,12 @@ document.getElementById("btn-import").addEventListener("click", async ()=>{
 // ============================================================
 // Chuyển đổi giữa 4 khu vực quản trị: Từ vựng / Ngữ pháp / Đọc / Hội thoại
 // ============================================================
-const ALL_SECTIONS = ["dashboard", "vocab", "grammar", "reading", "listening", "dialogue", "math", "landing", "parents", "teachers", "admins", "content-dash"];
+const ALL_SECTIONS = ["dashboard", "vocab", "grammar", "reading", "listening", "dialogue", "math", "landing", "affiliate", "parents", "teachers", "admins", "content-dash"];
 // Nhóm dashboard lớn (2 cấp điều hướng): "users" = Quản trị người dùng (Học sinh,
 // Phụ huynh & Giáo viên, Quản trị viên — mục 13.36), "content" = Quản trị nội
 // dung (dashboard tổng quan + 6 tab soạn bài cũ, giữ nguyên logic bên trong,
 // chỉ gom lại 1 nhóm cho gọn).
-const SECTION_GROUP = { dashboard: "users", parents: "users", teachers: "users", admins: "users", "content-dash": "content", vocab: "content", grammar: "content", reading: "content", listening: "content", dialogue: "content", math: "content", landing: "content" };
+const SECTION_GROUP = { dashboard: "users", parents: "users", teachers: "users", admins: "users", "content-dash": "content", vocab: "content", grammar: "content", reading: "content", listening: "content", dialogue: "content", math: "content", landing: "content", affiliate: "content" };
 // true khi tài khoản đang đăng nhập là super_admin — gán trong afterLogin()
 // (mục 13.36). Tab "🛡️ Quản trị viên" chỉ hiện khi cờ này bật; kiểm tra lại 1
 // lần nữa ở loadAdmins() phòng khi bị vào thẳng qua devtools, và RLS phía
@@ -1883,6 +1908,7 @@ function switchSection(active){
   else if(active === "dialogue") loadDialogues();
   else if(active === "math") loadMath();
   else if(active === "landing") loadLandingContent();
+  else if(active === "affiliate") loadAffiliateLinks();
   else if(active === "parents") loadParents();
   else if(active === "teachers") loadTeachers();
   else if(active === "admins") loadAdmins();
@@ -1895,6 +1921,7 @@ document.getElementById("sec-listening").addEventListener("click", ()=> switchSe
 document.getElementById("sec-dialogue").addEventListener("click", ()=> switchSection("dialogue"));
 document.getElementById("sec-math").addEventListener("click", ()=> switchSection("math"));
 document.getElementById("sec-landing").addEventListener("click", ()=> switchSection("landing"));
+document.getElementById("sec-affiliate").addEventListener("click", ()=> switchSection("affiliate"));
 document.getElementById("sec-parents").addEventListener("click", ()=> switchSection("parents"));
 document.getElementById("sec-teachers").addEventListener("click", ()=> switchSection("teachers"));
 document.getElementById("sec-admins").addEventListener("click", ()=> switchSection("admins"));
@@ -5278,6 +5305,155 @@ document.getElementById("btn-save-landing").addEventListener("click", async ()=>
   statusEl.textContent = `Đã lưu ${upserts.length} mục tuỳ chỉnh` + (deleteKeys.length ? `, khôi phục mặc định ${deleteKeys.length} mục` : "") + ". Mở lại trang giới thiệu để xem ngay.";
   await loadLandingContent();
 });
+
+// ============================================================
+// Tab "🔗 Affiliate" — link liên kết/affiliate cho index.html (mục "Tài
+// nguyên học tập") và PhuHuynh.html (thẻ gợi ý cuối mỗi học sinh), bảng
+// affiliate_links (migration 56). CRUD 1-bản-ghi, đúng khuôn tab Từ vựng
+// (fieldForm/openAdd/openEdit/wireItemForm) nhưng đơn giản hơn — không cần
+// CSV import, danh sách link sẽ nhỏ, thêm tay là đủ.
+// ============================================================
+const AFFILIATE_PLACEMENT_LABELS = { landing_resources: "Trang giới thiệu", parent_dashboard: "Dashboard phụ huynh" };
+let AFFILIATE_ITEMS = [];
+
+async function loadAffiliateLinks(){
+  const { data, error } = await fetchAllPages(() => sb.from("affiliate_links").select("*").order("placement").order("sort_order"));
+  if(error){
+    document.getElementById("affiliate-list-body").innerHTML = `<tr><td colspan="8">Lỗi tải dữ liệu: ${escHtmlAdmin(error.message)} — đã chạy migration 56_migration_add_affiliate_links.sql trên Supabase chưa?</td></tr>`;
+    return;
+  }
+  AFFILIATE_ITEMS = data || [];
+  renderAffiliateTable();
+}
+
+function renderAffiliateTable(){
+  document.getElementById("affiliate-count").textContent = AFFILIATE_ITEMS.length;
+  document.getElementById("affiliate-list-body").innerHTML = AFFILIATE_ITEMS.map(r=>{
+    const langLabel = r.language ? ((LANGS_CFG[r.language] && LANGS_CFG[r.language].adminLabel) || r.language) : "Mọi ngôn ngữ";
+    const levelLabel = r.level || (r.language ? "Mọi trình độ" : "—");
+    const statusHtml = r.active
+      ? `<span class="badge" style="background:var(--green-light);color:var(--green);">✅ Đang bật</span>`
+      : `<span class="badge" style="background:var(--red-light);color:var(--red);">⏸ Đã tắt</span>`;
+    return `<tr>
+      <td>${escHtmlAdmin(AFFILIATE_PLACEMENT_LABELS[r.placement] || r.placement)}</td>
+      <td>${escHtmlAdmin(langLabel)}</td>
+      <td>${escHtmlAdmin(levelLabel)}</td>
+      <td>${escHtmlAdmin(r.title)}</td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><a href="${escHtmlAdmin(r.link_url)}" target="_blank" rel="noopener">${escHtmlAdmin(r.link_url)}</a></td>
+      <td>${r.sort_order}</td>
+      <td>${statusHtml}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-sm" onclick="openEditAffiliate(${r.id})">Sửa</button>
+        <button class="btn-sm danger" onclick="deleteAffiliateItem(${r.id})">Xoá</button>
+      </td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="8">Chưa có link nào — bấm "+ Thêm link" để tạo mới.</td></tr>`;
+}
+
+function affiliateLevelOptions(language, selectedLevel){
+  if(!language) return "";
+  const levels = (LANGS_CFG[language] && LANGS_CFG[language].levels) || [];
+  return levels.map(lv=>`<option value="${lv.code}" ${lv.code===selectedLevel?"selected":""}>${lv.label}</option>`).join("");
+}
+
+function affiliateFieldForm(record){
+  const r = record || { placement:"landing_resources", language:"", level:"", title:"", title_en:"", description:"", description_en:"", image_url:"", link_url:"", sort_order:0, active:true };
+  return `
+    <div class="field-row"><label>Vị trí hiển thị</label>
+      <select data-f="placement">
+        <option value="landing_resources" ${r.placement==="landing_resources"?"selected":""}>Trang giới thiệu (index.html)</option>
+        <option value="parent_dashboard" ${r.placement==="parent_dashboard"?"selected":""}>Dashboard phụ huynh (PhuHuynh.html)</option>
+      </select>
+    </div>
+    <div class="field-row"><label>Ngôn ngữ áp dụng</label>
+      <select data-f="language" id="aff-language">
+        <option value="">Mọi ngôn ngữ</option>
+        ${LANGS_ORDER.map(code=>`<option value="${code}" ${code===r.language?"selected":""}>${LANGS_CFG[code].adminLabel}</option>`).join("")}
+      </select>
+    </div>
+    <div class="field-row"><label>Trình độ áp dụng</label>
+      <select data-f="level" id="aff-level" ${r.language?"":"disabled"}>
+        <option value="">Mọi trình độ</option>
+        ${affiliateLevelOptions(r.language, r.level)}
+      </select>
+    </div>
+    <div class="field-row"><label>Tiêu đề (Tiếng Việt)</label><input data-f="title" value="${escHtmlAdmin(r.title||"")}"></div>
+    <div class="field-row"><label>Tiêu đề (English — chỉ dùng cho "Trang giới thiệu", để trống thì hiện tạm bản Tiếng Việt khi trang ở chế độ EN)</label><input data-f="title_en" value="${escHtmlAdmin(r.title_en||"")}"></div>
+    <div class="field-row"><label>Mô tả ngắn (Tiếng Việt)</label><textarea data-f="description">${escHtmlAdmin(r.description||"")}</textarea></div>
+    <div class="field-row"><label>Mô tả ngắn (English)</label><textarea data-f="description_en">${escHtmlAdmin(r.description_en||"")}</textarea></div>
+    <div class="field-row"><label>Ảnh minh hoạ (URL, tuỳ chọn)</label><input data-f="image_url" value="${escHtmlAdmin(r.image_url||"")}"></div>
+    <div class="field-row"><label>Link đích (URL affiliate)</label><input data-f="link_url" value="${escHtmlAdmin(r.link_url||"")}"></div>
+    <div class="field-row"><label>Thứ tự hiển thị (số nhỏ hiện trước)</label><input type="number" data-f="sort_order" value="${r.sort_order||0}"></div>
+    <div class="field-row"><label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" data-f="active" ${r.active!==false?"checked":""} style="width:auto;"> Đang bật (hiện trên app)</label></div>
+  `;
+}
+
+function wireAffiliateForm(record){
+  document.getElementById("overlay").classList.add("show");
+  document.getElementById("m-close").onclick = closeModal;
+  document.getElementById("m-cancel").onclick = closeModal;
+  const langSel = document.getElementById("aff-language");
+  const levelSel = document.getElementById("aff-level");
+  langSel.addEventListener("change", ()=>{
+    levelSel.disabled = !langSel.value;
+    levelSel.innerHTML = `<option value="">Mọi trình độ</option>` + affiliateLevelOptions(langSel.value, "");
+  });
+  document.getElementById("item-form").onsubmit = async (e)=>{
+    e.preventDefault();
+    const form = e.target;
+    const payload = {};
+    form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.type === "checkbox" ? el.checked : el.value; });
+    payload.language = payload.language || null;
+    payload.level = payload.level || null;
+    payload.title_en = payload.title_en || null;
+    payload.description_en = payload.description_en || null;
+    payload.image_url = payload.image_url || null;
+    payload.sort_order = parseInt(payload.sort_order, 10) || 0;
+    payload.updated_at = new Date().toISOString();
+    payload.updated_by = CURRENT_ADMIN_ID;
+    if(!payload.title || !payload.link_url){ alert("Cần nhập đủ Tiêu đề và Link đích."); return; }
+    let data, error;
+    if(record){
+      ({ data, error } = await sb.from("affiliate_links").update(payload).eq("id", record.id).select().maybeSingle());
+    } else {
+      ({ data, error } = await sb.from("affiliate_links").insert(payload).select().maybeSingle());
+    }
+    if(error){ alert("Lỗi: " + error.message); return; }
+    if(record){
+      const idx = AFFILIATE_ITEMS.findIndex(it=>it.id===record.id);
+      if(idx>-1 && data) AFFILIATE_ITEMS[idx] = data;
+    } else if(data){
+      AFFILIATE_ITEMS.push(data);
+    }
+    closeModal();
+    renderAffiliateTable();
+  };
+}
+
+document.getElementById("btn-add-affiliate").addEventListener("click", ()=>{
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Thêm link Affiliate</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="item-form">${affiliateFieldForm(null)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Thêm</button></div>
+    </form>`;
+  wireAffiliateForm(null);
+});
+window.openEditAffiliate = function(id){
+  const record = AFFILIATE_ITEMS.find(i=>i.id===id);
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Sửa link Affiliate</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="item-form">${affiliateFieldForm(record)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Lưu</button></div>
+    </form>`;
+  wireAffiliateForm(record);
+};
+window.deleteAffiliateItem = async function(id){
+  if(!confirm("Xoá link này?")) return;
+  const { error } = await sb.from("affiliate_links").delete().eq("id", id);
+  if(error){ alert("Lỗi: " + error.message); return; }
+  AFFILIATE_ITEMS = AFFILIATE_ITEMS.filter(it=>it.id!==id);
+  renderAffiliateTable();
+};
 </script>
 </body>
 </html>
