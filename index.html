@@ -76,13 +76,17 @@ section{padding:64px 0;}
    khi có link admin cấu hình qua bảng affiliate_links (migration 56), ẩn hẳn
    nếu rỗng — xem IIFE cuối file. */
 .resource-disclosure{text-align:center;font-size:11.5px;color:var(--text-3);margin:0 0 22px;}
-.resource-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
-.resource-card{background:var(--bg-card);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px;display:flex;flex-direction:column;}
-.resource-card img{width:100%;height:110px;object-fit:cover;border-radius:10px;margin-bottom:12px;background:var(--bg-page);}
-.resource-card h4{margin:0 0 6px;font-size:14.5px;color:var(--navy);}
-.resource-card p{margin:0 0 14px;font-size:12.5px;color:var(--text-2);flex:1;}
-.resource-card a{align-self:flex-start;font-size:12.5px;font-weight:700;color:var(--navy2);text-decoration:none;}
-.resource-card a:hover{text-decoration:underline;}
+.resource-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+.resource-card{background:var(--bg-card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;transition:transform .18s ease,box-shadow .18s ease;}
+.resource-card:hover{transform:translateY(-5px);box-shadow:0 16px 34px rgba(20,40,90,.18);}
+.resource-card .resource-media{height:112px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:46px;background:linear-gradient(135deg,var(--navy) 0%,#24468c 100%);}
+.resource-card .resource-media img{width:100%;height:100%;object-fit:cover;}
+.resource-card .resource-body{padding:16px 18px 18px;display:flex;flex-direction:column;flex:1;}
+.resource-card .resource-badge{display:inline-block;align-self:flex-start;background:var(--amber-light);color:#8a5a1f;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:4px 10px;margin-bottom:9px;}
+.resource-card h4{margin:0 0 6px;font-size:15px;color:var(--navy);line-height:1.3;}
+.resource-card p{margin:0 0 16px;font-size:12.5px;color:var(--text-2);flex:1;line-height:1.5;}
+.resource-card .resource-cta{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;background:var(--navy);color:#fff !important;font-size:12.5px;font-weight:700;text-decoration:none !important;padding:9px 18px;border-radius:999px;transition:background .15s;}
+.resource-card .resource-cta:hover{background:var(--red);}
 
 /* Skills grid */
 .skill-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
@@ -824,29 +828,47 @@ const SUPABASE_ANON_KEY = "sb_publishable_8Ro-jEFQqFh7EfbXPfzWaw_V1xrkoyU";
 // chỉ hiện khi có ít nhất 1 link đang bật cho đúng placement; rỗng/lỗi mạng/
 // bảng chưa tồn tại → giữ nguyên display:none có sẵn trong HTML, không vỡ
 // trang. Dùng chung 1 hàm render cho cả 2 mục vì cấu trúc thẻ giống hệt nhau.
-function renderLinkCards(items, gridId, sectionId, ctaVi, ctaEn){
+// Cờ minh hoạ theo ngôn ngữ — dùng làm nền thẻ khi admin CHƯA gắn ảnh thật
+// (image_url trống, trường hợp phổ biến nhất vì không bắt buộc), để thẻ
+// không bao giờ trống trơn phần đầu — mượn đúng bộ cờ đã dùng ở .lang-pill.
+const RESOURCE_FLAG = { de: "🇩🇪", en: "🇬🇧", zh: "🇨🇳", ko: "🇰🇷" };
+function renderLinkCards(items, gridId, sectionId, opts){
   const grid = document.getElementById(gridId);
   const section = document.getElementById(sectionId);
   if(!grid || !section || !items.length){ if(section) section.style.display = "none"; return; }
   const lang = document.documentElement.lang === "en" ? "en" : "vi";
-  const cta = lang === "en" ? ctaEn : ctaVi;
+  const cta = lang === "en" ? opts.ctaEn : opts.ctaVi;
+  const badge = lang === "en" ? opts.badgeEn : opts.badgeVi;
   grid.innerHTML = items.map(r=>{
     const title = (lang === "en" && r.title_en) ? r.title_en : r.title;
     const desc = (lang === "en" && r.description_en) ? r.description_en : (r.description || "");
-    const img = r.image_url ? `<img src="${r.image_url}" alt="" loading="lazy">` : "";
+    const media = r.image_url
+      ? `<img src="${escResource(r.image_url)}" alt="" loading="lazy">`
+      : (RESOURCE_FLAG[r.language] || opts.fallbackIcon);
     return `<div class="resource-card">
-      ${img}
-      <h4>${escResource(title)}</h4>
-      <p>${escResource(desc)}</p>
-      <a href="${escResource(r.link_url)}" target="_blank" rel="noopener sponsored">${cta}</a>
+      <div class="resource-media">${media}</div>
+      <div class="resource-body">
+        <span class="resource-badge">${escResource(badge)}</span>
+        <h4>${escResource(title)}</h4>
+        <p>${escResource(desc)}</p>
+        <a class="resource-cta" href="${escResource(r.link_url)}" target="_blank" rel="noopener sponsored">${cta}</a>
+      </div>
     </div>`;
   }).join("");
   section.style.display = "block";
 }
 function escResource(s){ return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function renderAffiliateSections(){
-  renderLinkCards(AFFILIATE_RESOURCES, "resource-grid", "resources", "Xem →", "View →");
-  renderLinkCards(AFFILIATE_EXAMS, "exam-grid", "exams", "Tìm hiểu & đăng ký →", "Learn more & register →");
+  renderLinkCards(AFFILIATE_RESOURCES, "resource-grid", "resources", {
+    ctaVi: "Xem ngay →", ctaEn: "Check it out →",
+    badgeVi: "★ Được đề xuất", badgeEn: "★ Recommended",
+    fallbackIcon: "📚",
+  });
+  renderLinkCards(AFFILIATE_EXAMS, "exam-grid", "exams", {
+    ctaVi: "Tìm hiểu & đăng ký →", ctaEn: "Learn more & register →",
+    badgeVi: "✓ Chính thức", badgeEn: "✓ Official",
+    fallbackIcon: "🎓",
+  });
 }
 (async () => {
   try{
