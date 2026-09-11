@@ -227,6 +227,7 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
       <button id="sec-math" data-group="content" style="display:none;">🔢 Toán</button>
       <button id="sec-landing" data-group="content" style="display:none;">🏠 Trang giới thiệu</button>
       <button id="sec-affiliate" data-group="content" style="display:none;">🔗 Affiliate</button>
+      <button id="sec-levels" data-group="content" style="display:none;">🌐 Trình độ</button>
     </div>
 
     <div id="content-dash-section" style="display:none;">
@@ -687,6 +688,43 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
       </div>
     </div>
 
+    <div id="levels-section" style="display:none;">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:10px;">
+          <h3 style="margin:0;">Trình độ (<span id="levels-count">0</span>)</h3>
+          <button class="btn btn-primary" id="btn-add-level">+ Thêm trình độ</button>
+        </div>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:10px;">
+          Danh sách trình độ hợp lệ của mỗi ngôn ngữ (vd A1/A2/B1.../HSK1-6) —
+          quyết định trình độ nào hiện được trong dropdown khi nhập nội dung
+          (Từ vựng/Ngữ pháp/Đọc/Nghe/Hội thoại/Toán) và khi học sinh chọn trình
+          độ học. Thêm trình độ mới ở đây thay vì sửa <code>languages.json</code>.
+          <b>Lưu ý quan trọng:</b>
+          <ul style="margin:6px 0 0 18px;padding:0;">
+            <li>Đổi "Mã trình độ" của 1 dòng đã có sẵn nội dung sẽ làm nội dung
+              cũ đó "mất tích" khỏi dropdown (dữ liệu KHÔNG bị xoá, vẫn còn
+              nguyên trong hệ thống — chỉ không chọn lại được qua giao diện).</li>
+            <li>Xoá 1 dòng trình độ cũng KHÔNG xoá dữ liệu đã nhập theo trình độ
+              đó, chỉ ẩn khỏi dropdown từ nay về sau.</li>
+            <li>Tiếng Anh: đừng đổi/xoá mã <code>SAT</code> — app học có 1 chỗ
+              nhận diện đúng chữ "SAT" để hiện phần luyện Toán, đổi mã sẽ làm
+              mất tính năng đó mà không báo lỗi gì.</li>
+            <li>"Thứ tự" quyết định thứ tự hiện trên đường tiến trình học của
+              học sinh — đánh số theo đúng thứ tự trình độ thật (A1 &lt; A2 &lt;
+              B1...), đừng để trùng số giữa các trình độ CÙNG 1 ngôn ngữ.</li>
+          </ul>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Ngôn ngữ</th><th>Mã trình độ</th><th>Nhãn hiển thị</th><th>Thứ tự</th><th></th>
+            </tr></thead>
+            <tbody id="levels-list-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <div id="parents-section" style="display:none;">
       <div style="font-size:12px;color:var(--text-2);margin-bottom:var(--gap);">
         Gán phụ huynh cho học sinh ngay trong modal "Sửa" ở tab <b>🎓 Học sinh</b>
@@ -930,7 +968,32 @@ async function loadLanguagesConfig(){
   const cfg = await res.json();
   LANGS_CFG = cfg.languages || cfg; // hỗ trợ cả file cũ (không tách theme) lẫn file mới
   LANGS_ORDER = Object.keys(LANGS_CFG);
+  await mergeLanguageLevelsFromDb(LANGS_CFG);
   buildLanguageDropdowns();
+}
+
+// Trình độ (levels) giờ quản lý qua Supabase (bảng language_levels, migration
+// 59+60) — admin tự thêm/sửa/xoá qua tab "🌐 Trình độ", không cần sửa
+// languages.json/deploy lại nữa. Ghi đè "levels" tĩnh của từng ngôn ngữ bằng
+// dữ liệu DB; ngôn ngữ nào CHƯA có dòng nào trong DB (lỗi mạng, hoặc seed
+// chưa chạy) → GIỮ NGUYÊN "levels" tĩnh trong languages.json làm phương án dự
+// phòng, không vỡ trang. Dùng CHUNG cho cả 4 trang đọc languages.json — copy
+// y hệt hàm này nếu sửa ở app.html/GiaoVien.html/PhuHuynh.html.
+async function mergeLanguageLevelsFromDb(langsCfg){
+  try{
+    const lvClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data, error } = await lvClient.from("language_levels").select("language,level_code,label,sort_order");
+    if(error || !data || !data.length) return;
+    const byLang = {};
+    data.forEach(r => { (byLang[r.language] = byLang[r.language] || []).push(r); });
+    Object.keys(byLang).forEach(lang=>{
+      if(langsCfg[lang]){
+        langsCfg[lang].levels = byLang[lang]
+          .sort((a,b)=>a.sort_order-b.sort_order) // sort ở CLIENT, không tin thứ tự Supabase trả về
+          .map(r=>({ code: r.level_code, label: r.label }));
+      }
+    });
+  }catch(e){ /* im lặng — giữ nguyên levels tĩnh trong languages.json */ }
 }
 
 function allLevelsUnion(){
@@ -1873,12 +1936,12 @@ document.getElementById("btn-import").addEventListener("click", async ()=>{
 // ============================================================
 // Chuyển đổi giữa 4 khu vực quản trị: Từ vựng / Ngữ pháp / Đọc / Hội thoại
 // ============================================================
-const ALL_SECTIONS = ["dashboard", "vocab", "grammar", "reading", "listening", "dialogue", "math", "landing", "affiliate", "parents", "teachers", "admins", "content-dash"];
+const ALL_SECTIONS = ["dashboard", "vocab", "grammar", "reading", "listening", "dialogue", "math", "landing", "affiliate", "levels", "parents", "teachers", "admins", "content-dash"];
 // Nhóm dashboard lớn (2 cấp điều hướng): "users" = Quản trị người dùng (Học sinh,
 // Phụ huynh & Giáo viên, Quản trị viên — mục 13.36), "content" = Quản trị nội
 // dung (dashboard tổng quan + 6 tab soạn bài cũ, giữ nguyên logic bên trong,
 // chỉ gom lại 1 nhóm cho gọn).
-const SECTION_GROUP = { dashboard: "users", parents: "users", teachers: "users", admins: "users", "content-dash": "content", vocab: "content", grammar: "content", reading: "content", listening: "content", dialogue: "content", math: "content", landing: "content", affiliate: "content" };
+const SECTION_GROUP = { dashboard: "users", parents: "users", teachers: "users", admins: "users", "content-dash": "content", vocab: "content", grammar: "content", reading: "content", listening: "content", dialogue: "content", math: "content", landing: "content", affiliate: "content", levels: "content" };
 // true khi tài khoản đang đăng nhập là super_admin — gán trong afterLogin()
 // (mục 13.36). Tab "🛡️ Quản trị viên" chỉ hiện khi cờ này bật; kiểm tra lại 1
 // lần nữa ở loadAdmins() phòng khi bị vào thẳng qua devtools, và RLS phía
@@ -1913,6 +1976,7 @@ function switchSection(active){
   else if(active === "math") loadMath();
   else if(active === "landing") loadLandingContent();
   else if(active === "affiliate") loadAffiliateLinks();
+  else if(active === "levels") loadLanguageLevels();
   else if(active === "parents") loadParents();
   else if(active === "teachers") loadTeachers();
   else if(active === "admins") loadAdmins();
@@ -1926,6 +1990,7 @@ document.getElementById("sec-dialogue").addEventListener("click", ()=> switchSec
 document.getElementById("sec-math").addEventListener("click", ()=> switchSection("math"));
 document.getElementById("sec-landing").addEventListener("click", ()=> switchSection("landing"));
 document.getElementById("sec-affiliate").addEventListener("click", ()=> switchSection("affiliate"));
+document.getElementById("sec-levels").addEventListener("click", ()=> switchSection("levels"));
 document.getElementById("sec-parents").addEventListener("click", ()=> switchSection("parents"));
 document.getElementById("sec-teachers").addEventListener("click", ()=> switchSection("teachers"));
 document.getElementById("sec-admins").addEventListener("click", ()=> switchSection("admins"));
@@ -5469,6 +5534,129 @@ window.deleteAffiliateItem = async function(id){
   if(error){ alert("Lỗi: " + error.message); return; }
   AFFILIATE_ITEMS = AFFILIATE_ITEMS.filter(it=>it.id!==id);
   renderAffiliateTable();
+};
+
+// ============================================================
+// Tab "🌐 Trình độ" — bảng language_levels (migration 59+60), thay cho việc
+// sửa tay mảng "levels" trong languages.json + deploy lại code mỗi lần thêm
+// trình độ mới (vd C1/C2/IELTS...). CRUD 1-bản-ghi, đúng khuôn tab Affiliate.
+// ============================================================
+let LEVEL_ITEMS = [];
+
+async function loadLanguageLevels(){
+  const { data, error } = await fetchAllPages(() => sb.from("language_levels").select("*"));
+  if(error){
+    document.getElementById("levels-list-body").innerHTML = `<tr><td colspan="5">Lỗi tải dữ liệu: ${escHtmlAdmin(error.message)} — đã chạy migration 59_migration_add_language_levels.sql trên Supabase chưa?</td></tr>`;
+    return;
+  }
+  LEVEL_ITEMS = data || [];
+  renderLevelsTable();
+}
+
+function renderLevelsTable(){
+  document.getElementById("levels-count").textContent = LEVEL_ITEMS.length;
+  // Nhóm theo ngôn ngữ (đúng thứ tự LANGS_ORDER), trong mỗi nhóm sắp theo sort_order — để admin nhìn thấy ĐÚNG thứ tự sẽ hiện trên app.
+  const sorted = [...LEVEL_ITEMS].sort((a,b)=>{
+    const langCmp = LANGS_ORDER.indexOf(a.language) - LANGS_ORDER.indexOf(b.language);
+    return langCmp !== 0 ? langCmp : a.sort_order - b.sort_order;
+  });
+  document.getElementById("levels-list-body").innerHTML = sorted.map(r=>{
+    const langLabel = (LANGS_CFG[r.language] && LANGS_CFG[r.language].adminLabel) || r.language;
+    return `<tr>
+      <td>${escHtmlAdmin(langLabel)}</td>
+      <td><code>${escHtmlAdmin(r.level_code)}</code></td>
+      <td>${escHtmlAdmin(r.label)}</td>
+      <td>${r.sort_order}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn-sm" onclick="openEditLevel(${r.id})">Sửa</button>
+        <button class="btn-sm danger" onclick="deleteLevelItem(${r.id})">Xoá</button>
+      </td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="5">Chưa có trình độ nào — bấm "+ Thêm trình độ" để tạo mới.</td></tr>`;
+}
+
+function levelFieldForm(record){
+  const r = record || { language: LANGS_ORDER[0], level_code: "", label: "", sort_order: 0 };
+  return `
+    <div class="field-row"><label>Ngôn ngữ</label>
+      <select data-f="language">
+        ${LANGS_ORDER.map(code=>`<option value="${code}" ${code===r.language?"selected":""}>${LANGS_CFG[code].adminLabel}</option>`).join("")}
+      </select>
+    </div>
+    <div class="field-row"><label>Mã trình độ (vd A1, HSK1, SAT... — dùng để lưu dữ liệu, KHÔNG nên đổi sau khi đã có nội dung nhập theo mã này)</label><input data-f="level_code" value="${escHtmlAdmin(r.level_code||"")}"></div>
+    <div class="field-row"><label>Nhãn hiển thị (vd "A1", "HSK 1"...)</label><input data-f="label" value="${escHtmlAdmin(r.label||"")}"></div>
+    <div class="field-row"><label>Thứ tự hiển thị (số nhỏ hiện trước — theo đúng thứ tự trình độ thật, vd A1=1, A2=2...)</label><input type="number" data-f="sort_order" value="${r.sort_order||0}"></div>
+  `;
+}
+
+function wireLevelForm(record){
+  document.getElementById("overlay").classList.add("show");
+  document.getElementById("m-close").onclick = closeModal;
+  document.getElementById("m-cancel").onclick = closeModal;
+  document.getElementById("item-form").onsubmit = async (e)=>{
+    e.preventDefault();
+    const form = e.target;
+    const payload = {};
+    form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
+    payload.sort_order = parseInt(payload.sort_order, 10) || 0;
+    payload.updated_at = new Date().toISOString();
+    payload.updated_by = CURRENT_ADMIN_ID;
+    if(!payload.language || !payload.level_code || !payload.label){ alert("Cần nhập đủ Ngôn ngữ, Mã trình độ và Nhãn hiển thị."); return; }
+    let data, error;
+    if(record){
+      ({ data, error } = await sb.from("language_levels").update(payload).eq("id", record.id).select().maybeSingle());
+    } else {
+      ({ data, error } = await sb.from("language_levels").insert(payload).select().maybeSingle());
+    }
+    if(error){
+      const friendly = (error.code === "23505" || /duplicate key/i.test(error.message))
+        ? `Mã trình độ "${payload.level_code}" đã tồn tại cho ngôn ngữ này — dùng mã khác hoặc sửa dòng đã có.`
+        : error.message;
+      alert("Lỗi: " + friendly);
+      return;
+    }
+    if(record){
+      const idx = LEVEL_ITEMS.findIndex(it=>it.id===record.id);
+      if(idx>-1 && data) LEVEL_ITEMS[idx] = data;
+    } else if(data){
+      LEVEL_ITEMS.push(data);
+    }
+    closeModal();
+    renderLevelsTable();
+    // Cập nhật ngay LANGS_CFG (dùng cho mọi dropdown ngôn ngữ/trình độ khác
+    // trong trang admin này) để thấy hiệu quả ngay, không cần tải lại trang.
+    await mergeLanguageLevelsFromDb(LANGS_CFG);
+    buildLanguageDropdowns();
+  };
+}
+
+document.getElementById("btn-add-level").addEventListener("click", ()=>{
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Thêm trình độ</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="item-form">${levelFieldForm(null)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Thêm</button></div>
+    </form>`;
+  wireLevelForm(null);
+});
+window.openEditLevel = function(id){
+  const record = LEVEL_ITEMS.find(i=>i.id===id);
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Sửa trình độ</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="item-form">${levelFieldForm(record)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Lưu</button></div>
+    </form>`;
+  wireLevelForm(record);
+};
+window.deleteLevelItem = async function(id){
+  const item = LEVEL_ITEMS.find(i=>i.id===id);
+  if(!item) return;
+  if(!confirm(`Xoá trình độ "${item.label}" (${item.language})? Dữ liệu đã nhập theo trình độ này KHÔNG bị xoá, chỉ ẩn khỏi dropdown từ nay về sau.`)) return;
+  const { error } = await sb.from("language_levels").delete().eq("id", id);
+  if(error){ alert("Lỗi: " + error.message); return; }
+  LEVEL_ITEMS = LEVEL_ITEMS.filter(it=>it.id!==id);
+  renderLevelsTable();
+  await mergeLanguageLevelsFromDb(LANGS_CFG);
+  buildLanguageDropdowns();
 };
 </script>
 </body>

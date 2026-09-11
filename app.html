@@ -499,6 +499,32 @@ async function logActivity(eventType, extraFields){
   if(error) console.warn("logActivity failed:", eventType, error.message);
 }
 
+// Trình độ (levels) giờ quản lý qua Supabase (bảng language_levels, migration
+// 59+60) — admin tự thêm/sửa/xoá qua tab "🌐 Trình độ" (QuanLyTuVung.html),
+// không cần sửa languages.json/deploy lại nữa. Ghi đè "levels" tĩnh của từng
+// ngôn ngữ bằng dữ liệu DB; ngôn ngữ nào CHƯA có dòng nào trong DB (lỗi mạng,
+// hoặc seed chưa chạy) → GIỮ NGUYÊN "levels" tĩnh trong languages.json làm
+// phương án dự phòng, không vỡ trang. LƯU Ý: `levels[0]` được dùng làm trình
+// độ MẶC ĐỊNH lúc đăng nhập (xem enterApp()), và buildLevelPathHtml() (tab
+// Thống kê) vẽ đường tiến trình theo ĐÚNG thứ tự mảng này — sort theo
+// sort_order là bắt buộc, không được bỏ qua.
+async function mergeLanguageLevelsFromDb(langsCfg){
+  try{
+    const lvClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data, error } = await lvClient.from("language_levels").select("language,level_code,label,sort_order");
+    if(error || !data || !data.length) return;
+    const byLang = {};
+    data.forEach(r => { (byLang[r.language] = byLang[r.language] || []).push(r); });
+    Object.keys(byLang).forEach(lang=>{
+      if(langsCfg[lang]){
+        langsCfg[lang].levels = byLang[lang]
+          .sort((a,b)=>a.sort_order-b.sort_order) // sort ở CLIENT, không tin thứ tự Supabase trả về
+          .map(r=>({ code: r.level_code, label: r.label }));
+      }
+    });
+  }catch(e){ /* im lặng — giữ nguyên levels tĩnh trong languages.json */ }
+}
+
 function L(){ return LANGS[currentLanguage]; }
 function fmt(str, vars){ return str.replace(/\{(\w+)\}/g, (_, k) => (vars[k] !== undefined ? vars[k] : "")); }
 function shuffle(arr){
@@ -516,6 +542,7 @@ async function boot(){
   THEME = cfg.theme;
   LANGS = cfg.languages;
   LANG_ORDER = Object.keys(LANGS);
+  await mergeLanguageLevelsFromDb(LANGS);
   applyGlobalTheme();
 
   const { data: { session } } = await sb.auth.getSession();
