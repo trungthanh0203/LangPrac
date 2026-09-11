@@ -79,10 +79,13 @@ section{padding:64px 0;}
 .resource-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
 .resource-card{background:var(--bg-card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;transition:transform .18s ease,box-shadow .18s ease;}
 .resource-card:hover{transform:translateY(-5px);box-shadow:0 16px 34px rgba(20,40,90,.18);}
-.resource-card .resource-media{height:118px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:linear-gradient(135deg,var(--navy) 0%,#24468c 100%);}
-.resource-card .resource-media img{width:100%;height:100%;object-fit:cover;}
-.resource-card .resource-media-icon{font-size:36px;line-height:1;filter:drop-shadow(0 2px 4px rgba(0,0,0,.2));}
-.resource-card .resource-media-label{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:rgba(255,255,255,.92);}
+.resource-card .resource-media{height:122px;flex-shrink:0;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;background:linear-gradient(135deg,var(--navy) 0%,#24468c 100%);}
+.resource-card .resource-media::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.16) 1.6px,transparent 1.6px);background-size:16px 16px;}
+.resource-card .resource-media img{width:100%;height:100%;object-fit:cover;position:relative;}
+.resource-card .resource-media-icon-wrap{position:relative;width:54px;height:54px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 18px rgba(0,0,0,.28);transition:transform .22s ease;}
+.resource-card:hover .resource-media-icon-wrap{transform:scale(1.1) rotate(-6deg);}
+.resource-card .resource-media-icon{font-size:26px;line-height:1;}
+.resource-card .resource-media-label{position:relative;font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#fff;background:rgba(255,255,255,.2);padding:3px 11px;border-radius:999px;}
 /* Gradient riêng theo ngôn ngữ (KHÔNG dùng emoji cờ quốc gia — 🇩🇪🇬🇧🇨🇳🇰🇷 hay
    bị Windows/nhiều trình duyệt render lỗi thành 2 chữ cái đen thay vì hình cờ
    màu, đã bị người dùng báo là "chữ đen" xấu — dùng icon + tên ngôn ngữ +
@@ -860,7 +863,7 @@ function renderLinkCards(items, gridId, sectionId, opts){
     const langLabel = r.language ? ((lang === "en" ? RESOURCE_LANG_LABEL_EN[r.language] : RESOURCE_LANG_LABEL[r.language]) || "") : "";
     const media = r.image_url
       ? `<img src="${escResource(r.image_url)}" alt="" loading="lazy">`
-      : `<span class="resource-media-icon">${opts.fallbackIcon}</span>${langLabel ? `<span class="resource-media-label">${escResource(langLabel)}</span>` : ""}`;
+      : `<div class="resource-media-icon-wrap"><span class="resource-media-icon">${opts.fallbackIcon}</span></div>${langLabel ? `<span class="resource-media-label">${escResource(langLabel)}</span>` : ""}`;
     return `<div class="resource-card">
       <div class="resource-media ${r.image_url ? "" : langClass}">${media}</div>
       <div class="resource-body">
