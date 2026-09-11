@@ -941,7 +941,11 @@ if(SUPABASE_URL.includes("YOUR-PROJECT") || SUPABASE_ANON_KEY.includes("YOUR-ANO
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let ME = null;
 let ITEMS = [];
-let filters = { language:"all", level:"all", type:"all", status:"all", search:"" };
+// language:null = "chưa xác định độ ưu tiên" — buildLanguageDropdowns() tự set
+// về ngôn ngữ ĐẦU TIÊN (vd Tiếng Đức) ngay lần đầu, KHÔNG phải "Tất cả ngôn
+// ngữ" — để loadData() chỉ tải đúng 1 ngôn ngữ mặc định thay vì toàn bảng
+// (xem loadData(), lý do tối ưu tốc độ ghi ở đó).
+let filters = { language:null, level:"all", type:"all", status:"all", search:"" };
 let VOCAB_CREATORS = {}; // map created_by (uuid giáo viên) -> email, phục vụ hiển thị "Người gửi" ở cột Trạng thái
 
 // ============================================================
@@ -1005,10 +1009,17 @@ function allLevelsUnion(){
 }
 
 function buildLanguageDropdowns(){
-  // Bộ lọc ngôn ngữ (bảng danh sách từ vựng)
+  // Bộ lọc ngôn ngữ (bảng danh sách từ vựng) — mặc định ĐÚNG 1 ngôn ngữ đầu
+  // tiên (vd Tiếng Đức), KHÔNG phải "Tất cả ngôn ngữ", để loadData() chỉ tải
+  // đúng ngôn ngữ đó thay vì toàn bảng (xem loadData()). Chỉ set mặc định
+  // lần ĐẦU TIÊN (filters.language còn null) — các lần buildLanguageDropdowns()
+  // chạy lại sau đó (vd sau khi sửa gì đó ở tab "🌐 Trình độ") chỉ khôi phục
+  // lại đúng lựa chọn ĐANG có, không được âm thầm reset về Tiếng Đức.
   const fLang = document.getElementById("f-language");
   fLang.innerHTML = '<option value="all">Tất cả ngôn ngữ</option>' +
     LANGS_ORDER.map(code=>`<option value="${code}">${LANGS_CFG[code].adminLabel}</option>`).join("");
+  if(filters.language === null) filters.language = LANGS_ORDER[0] || "all";
+  fLang.value = filters.language;
   rebuildLevelFilterOptions();
 
   // Ngôn ngữ mặc định cho CSV
@@ -1160,7 +1171,11 @@ async function afterLogin(){
   if(session) await afterLogin(); else showScreen("login");
 })();
 
-document.getElementById("f-language").addEventListener("change", e=>{ filters.language = e.target.value; rebuildLevelFilterOptions(); renderTable(); });
+// Đổi ngôn ngữ lọc phải TẢI LẠI (không chỉ renderTable() lọc trong bộ nhớ)
+// vì ITEMS giờ chỉ chứa đúng dữ liệu của ngôn ngữ đang chọn — đổi sang ngôn
+// ngữ khác (hoặc "Tất cả") thì dữ liệu đó chưa có trong bộ nhớ, phải gọi
+// loadData() lại (đã tự render ở cuối hàm, không cần gọi renderTable() nữa).
+document.getElementById("f-language").addEventListener("change", async e=>{ filters.language = e.target.value; rebuildLevelFilterOptions(); await loadData(); });
 document.getElementById("f-level").addEventListener("change", e=>{ filters.level = e.target.value; renderTable(); });
 document.getElementById("f-type").addEventListener("change", e=>{ filters.type = e.target.value; renderTable(); });
 document.getElementById("f-status").addEventListener("change", e=>{ filters.status = e.target.value; renderTable(); });
@@ -1174,14 +1189,23 @@ async function loadData(){
   // sau đăng nhập). Việc hiện #app/ẩn #loading giờ do afterLogin() làm NGAY
   // sau đăng nhập thành công, tách hẳn khỏi việc tải dữ liệu Từ vựng.
   //
-  // PostgREST (Supabase) mặc định chỉ trả tối đa 1000 dòng/lần select(), BẤT
-  // KỂ có giới hạn gì trong code — bảng vocab_items giờ đã hơn 1000 dòng
-  // (Đức+Anh cộng lại đã đúng 1000, khiến Trung/Hàn KHÔNG BAO GIỜ lọt vào
-  // được dù tải lại bao nhiêu lần — lỗi thật đã gặp 2026-09-11). Dùng
-  // fetchAllPages() dùng chung để tự phân trang lấy hết (xem định nghĩa +
-  // ghi chú đầy đủ phía trên, cạnh dedupeRowsById()).
-  const { data: allRows, error: loadErr } = await fetchAllPages(() =>
-    sb.from("vocab_items").select("*").order("level").order("id"));
+  // Giới hạn tải theo ĐÚNG ngôn ngữ đang chọn ở dropdown lọc (mặc định ngôn
+  // ngữ đầu tiên, vd Tiếng Đức — xem buildLanguageDropdowns()) thay vì luôn
+  // tải TOÀN BỘ bảng (có thể 4000+ dòng) — đây là nguyên nhân thật gây
+  // "đơ/khoá cả giao diện" khi vào tab Từ vựng (2026-09-11, lần 4): vừa tốn
+  // nhiều lượt gọi mạng phân trang, vừa phải dựng lại innerHTML cho hàng
+  // nghìn dòng cùng lúc — việc dựng đó chạy ĐỒNG BỘ nên chặn cả luồng chính,
+  // làm MỌI nút trên trang (kể cả tab khác) không bấm được cho tới khi xong.
+  // Chỉ khi admin CHỦ ĐỘNG chọn "Tất cả ngôn ngữ" mới quay lại tải hết (có
+  // phân trang qua fetchAllPages() — PostgREST/Supabase mặc định chỉ trả tối
+  // đa 1000 dòng/lần select(), xem ghi chú đầy đủ ở định nghĩa fetchAllPages()
+  // cạnh dedupeRowsById() — lúc đó vẫn có thể chậm, nhưng là lựa chọn chủ
+  // động của admin, không còn là mặc định ép mọi người phải chịu nữa).
+  const { data: allRows, error: loadErr } = await fetchAllPages(() => {
+    let q = sb.from("vocab_items").select("*").order("level").order("id");
+    if(filters.language && filters.language !== "all") q = q.eq("language", filters.language);
+    return q;
+  });
   if(loadErr){ alert("Lỗi tải Từ vựng: " + loadErr.message); return; }
   ITEMS = allRows;
   // Nội dung do giáo viên gửi (mục 13.41) có created_by -> tải email để hiện
@@ -1200,7 +1224,7 @@ async function loadData(){
 
 function getFiltered(){
   return ITEMS.filter(r=>{
-    if(filters.language!=="all" && r.language!==filters.language) return false;
+    if(filters.language && filters.language!=="all" && r.language!==filters.language) return false;
     if(filters.level!=="all" && r.level!==filters.level) return false;
     if(filters.type!=="all" && r.type!==filters.type) return false;
     if(filters.status!=="all" && r.content_status!==filters.status) return false;
