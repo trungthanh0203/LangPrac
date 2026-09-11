@@ -1114,14 +1114,20 @@ async function afterLogin(){
   // bị khoá vẫn phải bị chặn, không phân biệt vai trò. Tài khoản bị khoá vẫn
   // đăng nhập được ở tầng Supabase Auth (email/mật khẩu đúng) nên phải tự
   // signOut() ngay ở đây, đây là chặn Ở TẦNG ỨNG DỤNG, không phải tầng Auth.
-  const { data: profileRow } = await sb.from("profiles").select("disabled").eq("id", user.id).maybeSingle();
+  // 2 câu truy vấn dưới đây ĐỘC LẬP nhau (đều chỉ cần user.id) — gộp
+  // Promise.all để chạy song song thay vì nối tiếp, bớt 1 vòng round-trip
+  // mạng mỗi lần đăng nhập; thứ tự ƯU TIÊN thông báo (khoá tài khoản > chưa
+  // có quyền admin) vẫn giữ nguyên, chỉ xử lý SAU khi cả 2 đã có kết quả.
+  const [{ data: profileRow }, { data: adminRow }] = await Promise.all([
+    sb.from("profiles").select("disabled").eq("id", user.id).maybeSingle(),
+    sb.from("admins").select("user_id, role").eq("user_id", user.id).limit(1),
+  ]);
   if(profileRow && profileRow.disabled){
     await sb.auth.signOut();
     document.getElementById("denied-message").textContent = "Tài khoản của bạn đã bị vô hiệu hoá. Liên hệ quản trị viên để biết thêm chi tiết.";
     showScreen("denied");
     return;
   }
-  const { data: adminRow } = await sb.from("admins").select("user_id, role").eq("user_id", user.id).limit(1);
   if(!adminRow || !adminRow.length){
     document.getElementById("denied-message").textContent = "Tài khoản của bạn chưa được cấp quyền quản trị. Liên hệ người phụ trách để được thêm vào danh sách quản trị viên.";
     showScreen("denied");
@@ -1131,7 +1137,13 @@ async function afterLogin(){
   IS_SUPER_ADMIN = adminRow[0].role === "super_admin";
   document.getElementById("header-admin-email").textContent = user.email || "";
   showScreen("main");
-  loadData();
+  // KHÔNG gọi loadData() (tải toàn bộ vocab_items, có thể 4000+ dòng, phải
+  // phân trang nhiều lượt) ở đây nữa — màn hình mặc định là "Học sinh", không
+  // phải "Từ vựng", nên việc tải trước không ích gì mà còn chiếm CPU/băng
+  // thông đúng lúc trang cần dựng giao diện (nguyên nhân báo "load lâu mới
+  // thao tác được" — xem CLAUDE.md). Tab Từ vựng đã tự tải lại đúng lúc bấm
+  // vào (switchSection("vocab")) — xem mục "Cách làm việc hiệu quả" trong
+  // CLAUDE.md, đừng thêm lại lệnh gọi eager kiểu này.
   switchGroup("users"); // mặc định mở nhóm "Quản trị người dùng" (tab Học sinh) khi vào trang
 }
 (async function(){
@@ -1936,7 +1948,15 @@ document.getElementById("btn-import").addEventListener("click", async ()=>{
 // ============================================================
 // Chuyển đổi giữa 4 khu vực quản trị: Từ vựng / Ngữ pháp / Đọc / Hội thoại
 // ============================================================
-const ALL_SECTIONS = ["dashboard", "vocab", "grammar", "reading", "listening", "dialogue", "math", "landing", "affiliate", "levels", "parents", "teachers", "admins", "content-dash"];
+// Thứ tự mảng này quyết định tab MẶC ĐỊNH khi bấm vào 1 nhóm (switchGroup() ->
+// firstInGroup = phần tử ĐẦU TIÊN cùng nhóm) — PHẢI khớp đúng thứ tự nút hiện
+// trên giao diện (.section-tabs). "content-dash" (dashboard tổng quan, chỉ 1
+// lệnh RPC nhẹ) phải đứng TRƯỚC "vocab" (tải cả bảng vocab_items, có thể
+// 4000+ dòng phải phân trang) — để lại "vocab" trước từng gây bug thật: bấm
+// "📚 Quản trị nội dung" bị mở nhầm thẳng vào tab Từ vựng, tải nặng ngay dù
+// người dùng chỉ đang muốn xem tổng quan (báo cáo "chuyển tab nội dung chậm"
+// 2026-09-11).
+const ALL_SECTIONS = ["dashboard", "content-dash", "vocab", "grammar", "reading", "listening", "dialogue", "math", "landing", "affiliate", "levels", "parents", "teachers", "admins"];
 // Nhóm dashboard lớn (2 cấp điều hướng): "users" = Quản trị người dùng (Học sinh,
 // Phụ huynh & Giáo viên, Quản trị viên — mục 13.36), "content" = Quản trị nội
 // dung (dashboard tổng quan + 6 tab soạn bài cũ, giữ nguyên logic bên trong,
