@@ -1137,6 +1137,15 @@ async function afterLogin(){
   IS_SUPER_ADMIN = adminRow[0].role === "super_admin";
   document.getElementById("header-admin-email").textContent = user.email || "";
   showScreen("main");
+  // #app (toàn bộ khung nav + nội dung, nằm trong #main-wrap) khởi tạo
+  // display:none trong HTML gốc — PHẢI tự hiện ra ở đây, ngay khi đăng nhập
+  // thành công. Trước đây việc này bị gộp chung vào loadData() (tab Từ vựng)
+  // — bỏ eager loadData() khỏi afterLogin() (lần sửa trước) vô tình làm #app
+  // KHÔNG BAO GIỜ hiện ra nữa (kẹt mãi ở "Đang tải…") vì không còn gì gọi tới
+  // loadData() ngay lúc đăng nhập nữa — lỗi thật 2026-09-11 (lần 3). Từ nay:
+  // việc hiện #app tách hẳn khỏi việc tải dữ liệu của bất kỳ tab nào.
+  document.getElementById("loading").style.display = "none";
+  document.getElementById("app").style.display = "block";
   // KHÔNG gọi loadData() (tải toàn bộ vocab_items, có thể 4000+ dòng, phải
   // phân trang nhiều lượt) ở đây nữa — màn hình mặc định là "Học sinh", không
   // phải "Từ vựng", nên việc tải trước không ích gì mà còn chiếm CPU/băng
@@ -1158,16 +1167,13 @@ document.getElementById("f-status").addEventListener("change", e=>{ filters.stat
 document.getElementById("f-search").addEventListener("input", e=>{ filters.search = e.target.value.trim().toLowerCase(); renderTable(); });
 
 async function loadData(){
-  // Chỉ ẩn/hiện cả khung #app (kèm thanh điều hướng) khi đây THẬT SỰ là lần
-  // tải đầu tiên (lúc #app còn đang display:none từ HTML gốc, ngay sau đăng
-  // nhập) — loadData() giờ còn được gọi lại mỗi lần bấm vào tab "Từ vựng"
-  // (xem switchSection()) để dữ liệu luôn mới, KHÔNG được che mất cả trang
-  // mỗi lần đó (đúng nguyên nhân "trắng cả trang" đã báo — xem CLAUDE.md).
-  const isFirstLoad = document.getElementById("app").style.display !== "block";
-  if(isFirstLoad){
-    document.getElementById("loading").style.display = "block";
-    document.getElementById("app").style.display = "none";
-  }
+  // KHÔNG được đụng vào #loading/#app ở đây nữa (từng gây lỗi thật
+  // 2026-09-11 lần 3: bỏ eager loadData() khỏi afterLogin() nhưng quên rằng
+  // đây là NƠI DUY NHẤT từng hiện #app — kết quả #app mãi mãi ở display:none
+  // cho tới khi ai đó bấm vào tab Từ vựng, trang bị kẹt ở "Đang tải…" ngay
+  // sau đăng nhập). Việc hiện #app/ẩn #loading giờ do afterLogin() làm NGAY
+  // sau đăng nhập thành công, tách hẳn khỏi việc tải dữ liệu Từ vựng.
+  //
   // PostgREST (Supabase) mặc định chỉ trả tối đa 1000 dòng/lần select(), BẤT
   // KỂ có giới hạn gì trong code — bảng vocab_items giờ đã hơn 1000 dòng
   // (Đức+Anh cộng lại đã đúng 1000, khiến Trung/Hàn KHÔNG BAO GIỜ lọt vào
@@ -1176,7 +1182,7 @@ async function loadData(){
   // ghi chú đầy đủ phía trên, cạnh dedupeRowsById()).
   const { data: allRows, error: loadErr } = await fetchAllPages(() =>
     sb.from("vocab_items").select("*").order("level").order("id"));
-  if(loadErr){ document.getElementById("loading").textContent = "Lỗi: " + loadErr.message; return; }
+  if(loadErr){ alert("Lỗi tải Từ vựng: " + loadErr.message); return; }
   ITEMS = allRows;
   // Nội dung do giáo viên gửi (mục 13.41) có created_by -> tải email để hiện
   // "Người gửi" cạnh badge trạng thái, chỉ query khi thật sự có dòng nào cần.
@@ -1186,10 +1192,6 @@ async function loadData(){
     VOCAB_CREATORS = Object.fromEntries((creators||[]).map(c=>[c.id, c.email]));
   } else {
     VOCAB_CREATORS = {};
-  }
-  if(isFirstLoad){
-    document.getElementById("loading").style.display = "none";
-    document.getElementById("app").style.display = "block";
   }
   const categories = [...new Set(ITEMS.map(r=>r.category).filter(Boolean))].sort();
   document.getElementById("vocab-category-list").innerHTML = categories.map(c=>`<option value="${c.replace(/"/g,'&quot;')}">`).join("");
