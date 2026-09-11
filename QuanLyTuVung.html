@@ -1064,9 +1064,16 @@ async function loadData(){
     document.getElementById("loading").style.display = "block";
     document.getElementById("app").style.display = "none";
   }
-  const { data, error } = await sb.from("vocab_items").select("*").order("level").order("id");
-  if(error){ document.getElementById("loading").textContent = "Lỗi: " + error.message; return; }
-  ITEMS = data || [];
+  // PostgREST (Supabase) mặc định chỉ trả tối đa 1000 dòng/lần select(), BẤT
+  // KỂ có giới hạn gì trong code — bảng vocab_items giờ đã hơn 1000 dòng
+  // (Đức+Anh cộng lại đã đúng 1000, khiến Trung/Hàn KHÔNG BAO GIỜ lọt vào
+  // được dù tải lại bao nhiêu lần — lỗi thật đã gặp 2026-09-11). Dùng
+  // fetchAllPages() dùng chung để tự phân trang lấy hết (xem định nghĩa +
+  // ghi chú đầy đủ phía trên, cạnh dedupeRowsById()).
+  const { data: allRows, error: loadErr } = await fetchAllPages(() =>
+    sb.from("vocab_items").select("*").order("level").order("id"));
+  if(loadErr){ document.getElementById("loading").textContent = "Lỗi: " + loadErr.message; return; }
+  ITEMS = allRows;
   // Nội dung do giáo viên gửi (mục 13.41) có created_by -> tải email để hiện
   // "Người gửi" cạnh badge trạng thái, chỉ query khi thật sự có dòng nào cần.
   const creatorIds = [...new Set(ITEMS.filter(r=>r.created_by).map(r=>r.created_by))];
@@ -1608,6 +1615,27 @@ function parseCsvLine(line){
   }
   out.push(cur);
   return out.map(s=>s.trim());
+}
+
+// PostgREST (lớp API của Supabase) mặc định CHỈ trả tối đa 1000 dòng/lần
+// select(), bất kể code có xin nhiều hơn hay không giới hạn gì (giới hạn phía
+// SERVER, không báo lỗi gì cả — âm thầm cắt bớt). Bảng vocab_items từng dính
+// lỗi thật vì việc này (2026-09-11, xem CLAUDE.md) — hàm dùng chung này tự
+// phân trang bằng .range() để LUÔN lấy hết, dùng cho MỌI hàm tải dữ liệu
+// trong trang admin, kể cả những nơi hiện tại còn xa mới tới 1000 dòng (1 bài
+// học/1 đoạn văn/1 ngôn ngữ+trình độ) — phòng trước để không lặp lại lỗi.
+// "queryFactory" phải là 1 HÀM trả về query MỚI mỗi lần gọi (không truyền
+// thẳng query đã build sẵn), vì mỗi trang cần tự thêm .range() riêng.
+async function fetchAllPages(queryFactory){
+  const PAGE_SIZE = 1000;
+  let allRows = [];
+  for(let from = 0; ; from += PAGE_SIZE){
+    const { data, error } = await queryFactory().range(from, from + PAGE_SIZE - 1);
+    if(error) return { data: null, error };
+    allRows = allRows.concat(data || []);
+    if(!data || data.length < PAGE_SIZE) break;
+  }
+  return { data: allRows, error: null };
 }
 
 // Phân tích CSV đầy đủ, hiểu được các trường dữ liệu chứa xuống dòng thật bên trong
@@ -3364,7 +3392,8 @@ document.getElementById("btn-save-lesson").addEventListener("click", async ()=>{
 // Bài tập ngữ pháp
 // ============================================================
 async function loadExercises(lessonId){
-  const { data, error } = await sb.from("grammar_exercises").select("*").eq("lesson_id", lessonId).order("order_index");
+  const { data, error } = await fetchAllPages(() =>
+    sb.from("grammar_exercises").select("*").eq("lesson_id", lessonId).order("order_index"));
   if(error){ alert("Lỗi khi tải bài tập: " + error.message); return; }
   CURRENT_EXERCISES = data || [];
   await loadCreatorEmails(CURRENT_EXERCISES.map(ex=>ex.created_by));
@@ -3681,10 +3710,10 @@ async function loadPassages(){
   const level = document.getElementById("r-level").value;
   document.getElementById("rq-card").style.display = "none";
   CURRENT_PASSAGE = null;
-  const { data, error } = await sb.from("reading_passages")
+  const { data, error } = await fetchAllPages(() => sb.from("reading_passages")
     .select("*, reading_questions(count)")
     .eq("language", language).eq("level", level)
-    .order("order_index");
+    .order("order_index"));
   if(error){ alert("Lỗi khi tải đoạn văn: " + error.message); return; }
   CURRENT_PASSAGES = data || [];
   await loadCreatorEmails(CURRENT_PASSAGES.map(p=>p.created_by));
@@ -3773,7 +3802,8 @@ window.selectPassage = async function(id){
   await loadRQ(id);
 };
 async function loadRQ(passageId){
-  const { data, error } = await sb.from("reading_questions").select("*").eq("passage_id", passageId).order("order_index");
+  const { data, error } = await fetchAllPages(() =>
+    sb.from("reading_questions").select("*").eq("passage_id", passageId).order("order_index"));
   if(error){ alert("Lỗi khi tải câu hỏi: " + error.message); return; }
   CURRENT_RQ = data || [];
   renderRQ();
@@ -4044,10 +4074,10 @@ async function loadLiPassages(){
   const level = document.getElementById("li-level").value;
   document.getElementById("lq-card").style.display = "none";
   CURRENT_LI_PASSAGE = null;
-  const { data, error } = await sb.from("listening_passages")
+  const { data, error } = await fetchAllPages(() => sb.from("listening_passages")
     .select("*, listening_questions(count)")
     .eq("language", language).eq("level", level)
-    .order("order_index");
+    .order("order_index"));
   if(error){ alert("Lỗi khi tải đoạn văn nghe: " + error.message); return; }
   CURRENT_LI_PASSAGES = data || [];
   await loadCreatorEmails(CURRENT_LI_PASSAGES.map(p=>p.created_by));
@@ -4134,7 +4164,8 @@ window.selectLiPassage = async function(id){
   await loadLQ(id);
 };
 async function loadLQ(passageId){
-  const { data, error } = await sb.from("listening_questions").select("*").eq("passage_id", passageId).order("order_index");
+  const { data, error } = await fetchAllPages(() =>
+    sb.from("listening_questions").select("*").eq("passage_id", passageId).order("order_index"));
   if(error){ alert("Lỗi khi tải câu hỏi: " + error.message); return; }
   CURRENT_LQ = data || [];
   renderLQ();
@@ -4407,9 +4438,11 @@ async function loadMath(){
   const language = document.getElementById("m-language").value;
   const level = document.getElementById("m-level").value;
   const domain = document.getElementById("m-domain").value;
-  let query = sb.from("math_problems").select("*").eq("language", language).eq("level", level).order("order_index");
-  if(domain !== "all") query = query.eq("domain", domain);
-  const { data, error } = await query;
+  const { data, error } = await fetchAllPages(() => {
+    let query = sb.from("math_problems").select("*").eq("language", language).eq("level", level).order("order_index");
+    if(domain !== "all") query = query.eq("domain", domain);
+    return query;
+  });
   if(error){ alert("Lỗi khi tải câu Toán: " + error.message); return; }
   CURRENT_MATH = data || [];
   renderMath();
@@ -4602,10 +4635,10 @@ async function loadDialogues(){
   const level = document.getElementById("d-level").value;
   document.getElementById("line-card").style.display = "none";
   CURRENT_DIALOGUE = null;
-  const { data, error } = await sb.from("dialogues")
+  const { data, error } = await fetchAllPages(() => sb.from("dialogues")
     .select("*, dialogue_lines(count)")
     .eq("language", language).eq("level", level)
-    .order("order_index");
+    .order("order_index"));
   if(error){ alert("Lỗi khi tải hội thoại: " + error.message); return; }
   CURRENT_DIALOGUES = data || [];
   await loadCreatorEmails(CURRENT_DIALOGUES.map(d=>d.created_by));
@@ -4693,7 +4726,8 @@ window.selectDialogue = async function(id){
   await loadLines(id);
 };
 async function loadLines(dialogueId){
-  const { data, error } = await sb.from("dialogue_lines").select("*").eq("dialogue_id", dialogueId).order("order_index");
+  const { data, error } = await fetchAllPages(() =>
+    sb.from("dialogue_lines").select("*").eq("dialogue_id", dialogueId).order("order_index"));
   if(error){ alert("Lỗi khi tải câu thoại: " + error.message); return; }
   CURRENT_LINES = data || [];
   renderLines();
