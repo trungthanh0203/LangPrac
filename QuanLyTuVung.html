@@ -2745,6 +2745,14 @@ async function openEditStudent(id){
   const esCoursePlans = activePlansRaw || [];
   let esEnrollments = enrollmentsRaw || [];
   const esPlanFor = (duration) => { const p = esCoursePlans.find(x=>x.cycle_duration===duration); return p ? Number(p.tuition_amount)||0 : 0; };
+  // Chế độ "Sửa" 1 dòng lịch sử đã có (editEsEnrollment()) — null = đang thêm
+  // mới. Khi sửa, Chu kỳ/Học phí/Khuyến mãi/Thưởng giới thiệu bị KHOÁ (giữ
+  // nguyên số liệu gốc của giao dịch đó, tránh tính lại sai vì thưởng giới
+  // thiệu có thể đã chuyển "applied" không còn chọn lại được) — chỉ Giảm
+  // khác/Trạng thái/Đã đóng/Ngày đóng được sửa.
+  let esEditingId = null;
+  let esEditFrozenPromoAmount = 0;
+  let esEditFrozenReferralAmount = 0;
 
   const ROLE_LABEL = { parent: "phụ huynh", teacher: "giáo viên", student: "học sinh" };
   const personOptions = (currentId) => `<option value="">— Không có —</option>` + (allProfiles||[]).map(p=>{
@@ -2843,10 +2851,14 @@ async function openEditStudent(id){
           <span style="font-size:12px;color:var(--text-2);">Ngày đóng:</span>
           <input type="date" id="es-paid-at" style="max-width:160px;">
         </div>
+        <div id="es-edit-notice" style="display:none;align-items:center;gap:8px;background:var(--amber-light);color:var(--amber);border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:12px;">
+          <span>Đang sửa 1 dòng lịch sử đã lưu — Chu kỳ/Học phí/Khuyến mãi/Thưởng giới thiệu giữ nguyên, chỉ sửa được Giảm khác/Trạng thái/Đã đóng/Ngày đóng.</span>
+          <button type="button" class="btn-sm" id="es-cancel-edit" style="margin-left:auto;">Huỷ sửa</button>
+        </div>
         <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
           <span>Số tiền phải đóng: <b id="es-amount-due" style="color:var(--navy2);">0đ</b></span>
           <span>Số tiền còn đóng: <b id="es-amount-remaining" style="color:var(--navy2);">0đ</b></span>
-          <button type="button" class="btn btn-primary btn-sm" id="es-summarize">📊 Tổng kết</button>
+          <button type="button" class="btn btn-primary btn-sm" id="es-summarize">💾 Lưu</button>
           <span id="es-tuition-result" style="font-size:12px;"></span>
         </div>
         <div style="margin-top:12px;">
@@ -2922,11 +2934,21 @@ async function openEditStudent(id){
   // khoản này); CHỈ "Giảm khác" là nhập tay tự do (không có mức cố định).
   function recomputeEsSummary(){
     const tuition = parseFloat(document.getElementById("es-tuition").value) || 0;
-    const promo = esActivePromos.find(p=>String(p.id)===document.getElementById("es-promotion").value);
-    const referralSelect = document.getElementById("es-referral");
-    const reward = referralSelect ? esPendingRewards.find(r=>String(r.id)===referralSelect.value) : null;
-    const promoAmount = promo ? Math.round(promo.discount_type === "percent" ? tuition * Number(promo.discount_value) / 100 : Number(promo.discount_value)) : 0;
-    const referralAmount = reward ? Math.round(reward.discount_value_type === "percent" ? tuition * Number(reward.reward_value) / 100 : Number(reward.reward_value)) : 0;
+    let promoAmount, referralAmount;
+    if(esEditingId){
+      // Đang sửa 1 dòng đã lưu — Khuyến mãi/Thưởng giới thiệu bị khoá, dùng
+      // ĐÚNG số tiền đã ghi nhận lúc tạo (không tính lại từ dropdown, vì
+      // thưởng giới thiệu có thể đã chuyển "applied", không còn trong danh
+      // sách để dropdown khớp lại được).
+      promoAmount = esEditFrozenPromoAmount;
+      referralAmount = esEditFrozenReferralAmount;
+    } else {
+      const promo = esActivePromos.find(p=>String(p.id)===document.getElementById("es-promotion").value);
+      const referralSelect = document.getElementById("es-referral");
+      const reward = referralSelect ? esPendingRewards.find(r=>String(r.id)===referralSelect.value) : null;
+      promoAmount = promo ? Math.round(promo.discount_type === "percent" ? tuition * Number(promo.discount_value) / 100 : Number(promo.discount_value)) : 0;
+      referralAmount = reward ? Math.round(reward.discount_value_type === "percent" ? tuition * Number(reward.reward_value) / 100 : Number(reward.reward_value)) : 0;
+    }
     const otherAmount = parseFloat(document.getElementById("es-other-amount").value) || 0;
     const amountPaid = parseFloat(document.getElementById("es-amount-paid").value) || 0;
     const amountDue = Math.max(0, tuition - promoAmount - referralAmount - otherAmount);
@@ -2958,8 +2980,11 @@ async function openEditStudent(id){
         <td>${Number(r.amount_paid).toLocaleString("vi-VN")}đ</td>
         <td>${(Number(r.final_amount) - Number(r.amount_paid)).toLocaleString("vi-VN")}đ</td>
         <td>${r.paid_at ? new Date(r.paid_at).toLocaleDateString("vi-VN") : "—"}</td>
-        <td><button type="button" class="btn-sm danger" onclick="deleteEsEnrollment(${r.id})">Xoá</button></td>
-      </tr>`).join("") || `<tr><td colspan="11">Chưa có lịch sử — bấm "Tổng kết" để ghi nhận lần đầu.</td></tr>`;
+        <td style="white-space:nowrap;">
+          <button type="button" class="btn-sm" onclick="editEsEnrollment(${r.id})">Sửa</button>
+          <button type="button" class="btn-sm danger" onclick="deleteEsEnrollment(${r.id})">Xoá</button>
+        </td>
+      </tr>`).join("") || `<tr><td colspan="11">Chưa có lịch sử — bấm "Lưu" để ghi nhận lần đầu.</td></tr>`;
   }
   renderEsHistory();
 
@@ -2968,8 +2993,69 @@ async function openEditStudent(id){
     const { error } = await sb.from("course_enrollments").delete().eq("id", enrollId);
     if(error){ alert("Lỗi: " + error.message); return; }
     esEnrollments = esEnrollments.filter(e=>e.id!==enrollId);
+    if(esEditingId === enrollId) cancelEsEdit();
     renderEsHistory();
   };
+
+  // Sửa 1 dòng lịch sử đã có — chỉ cho sửa Giảm khác/Trạng thái/Đã đóng/Ngày
+  // đóng (xem giải thích esEditingId ở trên); Chu kỳ/Học phí/Khuyến mãi/
+  // Thưởng giới thiệu hiện lại ĐÚNG số liệu gốc nhưng bị khoá không cho đổi.
+  window.editEsEnrollment = function(enrollId){
+    const row = esEnrollments.find(e=>e.id===enrollId);
+    if(!row) return;
+    esEditingId = enrollId;
+    esEditFrozenPromoAmount = Number(row.promotion_discount_amount)||0;
+    esEditFrozenReferralAmount = Number(row.referral_discount_amount)||0;
+
+    document.getElementById("es-cycle-duration").value = row.cycle_duration;
+    document.getElementById("es-cycle-duration").disabled = true;
+    document.getElementById("es-cycle-start").value = row.start_date;
+    document.getElementById("es-cycle-start").disabled = true;
+    updateCycleEndDisplay();
+    document.getElementById("es-tuition").value = row.tuition_amount;
+    document.getElementById("es-tuition").disabled = true;
+    document.getElementById("es-promotion").value = row.promotion_id || "";
+    document.getElementById("es-promotion").disabled = true;
+    const refSel = document.getElementById("es-referral");
+    if(refSel){ refSel.value = row.referral_reward_id || ""; refSel.disabled = true; }
+    document.getElementById("es-other-reason").value = row.other_discount_reason || "";
+    document.getElementById("es-other-amount").value = row.other_discount_amount || 0;
+    document.getElementById("es-course-status").value = row.status;
+    document.getElementById("es-amount-paid").value = row.amount_paid;
+    document.getElementById("es-paid-at").value = row.paid_at ? new Date(row.paid_at).toISOString().slice(0,10) : "";
+
+    document.getElementById("es-summarize").textContent = "💾 Cập nhật";
+    document.getElementById("es-edit-notice").style.display = "flex";
+    document.getElementById("es-tuition-result").textContent = "";
+    recomputeEsSummary();
+    showEsTab("cycle");
+    document.getElementById("es-panel-cycle").scrollIntoView({ block: "start" });
+  };
+
+  window.cancelEsEdit = function(){
+    esEditingId = null;
+    document.getElementById("es-cycle-duration").disabled = false;
+    document.getElementById("es-cycle-start").disabled = false;
+    document.getElementById("es-tuition").disabled = false;
+    document.getElementById("es-promotion").disabled = false;
+    document.getElementById("es-promotion").value = "";
+    const refSel = document.getElementById("es-referral");
+    if(refSel){ refSel.disabled = false; refSel.value = ""; }
+    document.getElementById("es-other-reason").value = "";
+    document.getElementById("es-other-amount").value = 0;
+    document.getElementById("es-course-status").value = "trial";
+    document.getElementById("es-amount-paid").value = 0;
+    document.getElementById("es-cycle-start").value = new Date().toISOString().slice(0,10);
+    document.getElementById("es-cycle-duration").value = "month";
+    updateCycleEndDisplay();
+    document.getElementById("es-tuition").value = esPlanFor("month");
+    document.getElementById("es-paid-at").value = new Date().toISOString().slice(0,10);
+    document.getElementById("es-summarize").textContent = "💾 Lưu";
+    document.getElementById("es-edit-notice").style.display = "none";
+    document.getElementById("es-tuition-result").textContent = "";
+    recomputeEsSummary();
+  };
+  document.getElementById("es-cancel-edit").addEventListener("click", cancelEsEdit);
 
   document.getElementById("es-summarize").addEventListener("click", async ()=>{
     const resultEl = document.getElementById("es-tuition-result");
@@ -2977,6 +3063,21 @@ async function openEditStudent(id){
     const duration = document.getElementById("es-cycle-duration").value;
     if(!startDate){ resultEl.style.color = "var(--red)"; resultEl.textContent = "Cần chọn ngày bắt đầu."; return; }
     const endDate = computeCycleEndDate(startDate, duration);
+
+    // Chặn tạo trùng: 1 học sinh không thể có 2 dòng lịch sử CÙNG chu kỳ +
+    // CÙNG ngày bắt đầu — bấm "Lưu" thêm lần nữa mà không đổi chu kỳ/ngày sẽ
+    // bị chặn ở đây, dùng nút "Sửa" trên dòng đã có để cập nhật thay vì tạo
+    // dòng mới trùng. Không áp dụng khi đang SỬA (esEditingId) vì đó chính là
+    // dòng đang được cập nhật, không phải dòng mới.
+    if(!esEditingId){
+      const dup = esEnrollments.find(e=>e.start_date===startDate && e.cycle_duration===duration);
+      if(dup){
+        resultEl.style.color = "var(--red)";
+        resultEl.textContent = `Đã có lịch sử cho chu kỳ này (bắt đầu ${new Date(startDate+"T00:00:00").toLocaleDateString("vi-VN")}) — dùng nút "Sửa" trên dòng đó để cập nhật.`;
+        return;
+      }
+    }
+
     const referralSelect = document.getElementById("es-referral");
     const promotionId = document.getElementById("es-promotion").value ? parseInt(document.getElementById("es-promotion").value, 10) : null;
     const referralRewardId = (referralSelect && referralSelect.value) ? parseInt(referralSelect.value, 10) : null;
@@ -3004,12 +3105,21 @@ async function openEditStudent(id){
       updated_at: new Date().toISOString(),
       updated_by: CURRENT_ADMIN_ID
     };
-    const { data, error } = await sb.from("course_enrollments").insert(payload).select().maybeSingle();
+    const wasEditing = !!esEditingId;
+    let data, error;
+    if(wasEditing){
+      ({ data, error } = await sb.from("course_enrollments").update(payload).eq("id", esEditingId).select().maybeSingle());
+    } else {
+      ({ data, error } = await sb.from("course_enrollments").insert(payload).select().maybeSingle());
+    }
     if(error){ resultEl.style.color = "var(--red)"; resultEl.textContent = "Lỗi: " + error.message; return; }
 
     // Thưởng giới thiệu dạng giảm giá, nếu chọn và đang "pending" -> đánh dấu
     // đã dùng ngay, tránh áp lại lần nữa cho 1 lần đóng học phí khác sau này.
-    if(referralRewardId){
+    // CHỈ áp dụng khi TẠO MỚI — lúc SỬA, dropdown thưởng bị khoá nên
+    // referralRewardId luôn là giá trị GỐC (đã applied từ trước, không cần
+    // đánh dấu lại).
+    if(!wasEditing && referralRewardId){
       const reward = esPendingRewards.find(r=>r.id===referralRewardId);
       if(reward && reward.status === "pending"){
         const { error: rewardErr } = await sb.from("referral_rewards").update({ status: "applied", applied_at: new Date().toISOString(), updated_at: new Date().toISOString(), updated_by: CURRENT_ADMIN_ID }).eq("id", reward.id);
@@ -3028,30 +3138,41 @@ async function openEditStudent(id){
       }
     }
 
-    // Đồng bộ lại chu kỳ HIỆN TẠI trên profiles — y hệt nút "Gia hạn từ hôm
-    // nay" — để KPI "Sắp hết chu kỳ" + cron nhắc học (worker.js) vẫn hoạt
-    // động đúng, không cần sửa gì ở 2 nơi đó.
-    await sb.from("profiles").update({
-      cycle_start_date: startDate, cycle_end_date: endDate, cycle_duration: duration
-    }).eq("id", id);
-
-    if(data) esEnrollments.unshift(data);
+    if(wasEditing){
+      const idx = esEnrollments.findIndex(e=>e.id===esEditingId);
+      if(idx>-1 && data) esEnrollments[idx] = data;
+    } else if(data){
+      esEnrollments.unshift(data);
+    }
     renderEsHistory();
-    recomputeEsSummary();
 
-    // Patch trực tiếp DASH_STUDENTS trong bộ nhớ (thay vì tải lại cả trang) —
-    // để 2 thẻ KPI "Đã đóng học phí"/"Đang học thử" đúng ngay lập tức.
-    const dashRow = DASH_STUDENTS.find(x=>x.id===id);
-    if(dashRow){
-      dashRow.cycle_start_date = startDate;
-      dashRow.cycle_end_date = endDate;
-      dashRow.cycle_duration = duration;
-      dashRow.latest_enrollment_status = payload.status;
-      refreshStudentStats();
+    // Đồng bộ profiles.cycle_* theo dòng MỚI NHẤT (start_date lớn nhất) trong
+    // TOÀN BỘ lịch sử — không dùng thẳng dòng vừa lưu, vì "Sửa" có thể đang
+    // sửa 1 dòng CŨ (không phải chu kỳ hiện tại); sửa dòng cũ không được phép
+    // làm "thụt lùi" chu kỳ hiện tại của học sinh. Y hệt nút "Gia hạn từ hôm
+    // nay" về đích đến (3 cột cycle_* trên profiles), chỉ khác nguồn dữ liệu.
+    const latest = esEnrollments.reduce((a,b)=> (!a || b.start_date > a.start_date) ? b : a, null);
+    if(latest){
+      await sb.from("profiles").update({
+        cycle_start_date: latest.start_date, cycle_end_date: latest.end_date, cycle_duration: latest.cycle_duration
+      }).eq("id", id);
+      // Patch trực tiếp DASH_STUDENTS trong bộ nhớ (thay vì tải lại cả
+      // trang) — để 2 thẻ KPI "Đã đóng học phí"/"Đang học thử" đúng ngay.
+      const dashRow = DASH_STUDENTS.find(x=>x.id===id);
+      if(dashRow){
+        dashRow.cycle_start_date = latest.start_date;
+        dashRow.cycle_end_date = latest.end_date;
+        dashRow.cycle_duration = latest.cycle_duration;
+        dashRow.latest_enrollment_status = latest.status;
+        refreshStudentStats();
+      }
     }
 
+    if(wasEditing) cancelEsEdit();
+    else recomputeEsSummary();
+
     resultEl.style.color = "var(--green)";
-    resultEl.textContent = "Đã lưu ✓";
+    resultEl.textContent = wasEditing ? "Đã cập nhật ✓" : "Đã lưu ✓";
     setTimeout(()=>{ if(resultEl) resultEl.textContent = ""; }, 2500);
   });
 }
