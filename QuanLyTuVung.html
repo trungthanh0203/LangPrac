@@ -737,22 +737,25 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
     <div id="course-plans-section" style="display:none;">
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:10px;">
-          <h3 style="margin:0;">Bảng giá học phí theo chu kỳ</h3>
+          <h3 style="margin:0;">Bảng giá học phí (<span id="course-plans-count">0</span>)</h3>
+          <button class="btn btn-primary" id="btn-add-course-plan">+ Thêm gói học phí</button>
         </div>
         <div style="font-size:12px;color:var(--text-2);margin-bottom:10px;">
           Mỗi học sinh có lịch học RIÊNG (hệ thống học online, không phải lớp
-          học) — bảng này chỉ ĐỊNH NGHĨA mức học phí mặc định cho mỗi chu kỳ
-          (dùng chung cho mọi ngôn ngữ/trình độ). Việc ghi nhận chu kỳ + học
-          phí + khuyến mãi/thưởng giới thiệu THEO TỪNG học sinh làm ngay trong
-          modal "Sửa học sinh" (mục "Chu kỳ học & học phí", tab 🎓 Học sinh) —
-          học phí ở đó tự điền theo bảng giá này, vẫn sửa tay được cho từng
-          trường hợp riêng. Tắt "Đang bán" nếu tạm ngừng nhận chu kỳ đó (không
-          ẩn khỏi dropdown chọn chu kỳ, chỉ mang tính ghi chú).
+          học) — danh mục này ĐỊNH NGHĨA các gói học phí theo chu kỳ (dùng
+          chung cho mọi ngôn ngữ/trình độ), có thể có NHIỀU gói cho CÙNG 1 chu
+          kỳ (vd "Gói tiêu chuẩn"/"Gói tăng cường" cùng "1 tháng" nhưng giá
+          khác nhau). Việc ghi nhận chu kỳ + học phí + khuyến mãi/thưởng giới
+          thiệu THEO TỪNG học sinh làm ngay trong modal "Sửa học sinh" (mục
+          "Chu kỳ học", tab 🎓 Học sinh) — chọn gói ở đó sẽ tự điền học phí từ
+          danh mục này, vẫn sửa tay được cho từng trường hợp riêng. Tắt "Đang
+          bán" nếu tạm ngừng chào bán gói đó (không ẩn lịch sử cũ đã dùng gói
+          này).
         </div>
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>Chu kỳ</th><th>Học phí (đ)</th><th>Đang bán</th><th></th>
+              <th>Tên gói</th><th>Chu kỳ</th><th>Học phí (đ)</th><th>Đang bán</th><th></th>
             </tr></thead>
             <tbody id="course-plans-list-body"></tbody>
           </table>
@@ -2728,7 +2731,7 @@ async function openEditStudent(id){
     sb.from("admins").select("user_id"),
     sb.from("promotions").select("*").eq("active", true),
     sb.from("referral_rewards").select("*").eq("referrer_student_id", id).eq("status", "pending").eq("reward_type", "discount"),
-    sb.from("course_plans").select("*"),
+    sb.from("course_plans").select("*").eq("active", true),
     sb.from("course_enrollments").select("*").eq("student_id", id).order("start_date", { ascending: false })
   ]);
   const adminIds = new Set((adminRows||[]).map(a=>a.user_id));
@@ -2744,7 +2747,10 @@ async function openEditStudent(id){
   const esPendingRewards = pendingRewardsRaw || [];
   const esCoursePlans = activePlansRaw || [];
   let esEnrollments = enrollmentsRaw || [];
-  const esPlanFor = (duration) => { const p = esCoursePlans.find(x=>x.cycle_duration===duration); return p ? Number(p.tuition_amount)||0 : 0; };
+  // Từ migration 64, 1 chu kỳ có thể có NHIỀU gói học phí khác nhau (vd "Gói
+  // tiêu chuẩn"/"Gói tăng cường" cùng "1 tháng") — dropdown "Gói học phí" lọc
+  // theo đúng chu kỳ đang chọn, chọn 1 gói mới tự điền lại "Học phí".
+  const esPlansForDuration = (duration) => esCoursePlans.filter(p=>p.cycle_duration===duration);
   // Chế độ "Sửa" 1 dòng lịch sử đã có (editEsEnrollment()) — null = đang thêm
   // mới. Khi sửa, Chu kỳ/Học phí/Khuyến mãi/Thưởng giới thiệu bị KHOÁ (giữ
   // nguyên số liệu gốc của giao dịch đó, tránh tính lại sai vì thưởng giới
@@ -2818,6 +2824,8 @@ async function openEditStudent(id){
       <div class="field-row" style="background:var(--bg-page);border-radius:8px;padding:12px;margin:6px 0;">
         <label style="font-weight:700;">💰 Học phí cho chu kỳ này</label>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0 12px;">
+          <span style="font-size:12px;color:var(--text-2);">Gói học phí:</span>
+          <select id="es-course-plan" style="max-width:220px;"></select>
           <span style="font-size:12px;color:var(--text-2);">Học phí (đ):</span>
           <input type="number" min="0" id="es-tuition" style="max-width:160px;">
         </div>
@@ -2912,21 +2920,41 @@ async function openEditStudent(id){
     document.getElementById("es-cycle-end-display").textContent = new Date(end+"T00:00:00").toLocaleDateString("vi-VN");
     return end;
   };
+  // Dropdown "Gói học phí" lọc theo đúng chu kỳ đang chọn (1 chu kỳ có thể có
+  // NHIỀU gói khác nhau từ migration 64) — chọn 1 gói tự điền "Học phí";
+  // "— Tự nhập —" giữ nguyên số đang gõ (cho trường hợp giá thoả thuận riêng
+  // không khớp gói nào có sẵn).
+  function refreshEsCoursePlanOptions(){
+    const duration = document.getElementById("es-cycle-duration").value;
+    const plans = esPlansForDuration(duration);
+    const sel = document.getElementById("es-course-plan");
+    sel.innerHTML = `<option value="">— Tự nhập —</option>` + plans.map(p=>`<option value="${p.id}">${escHtmlAdmin(p.name)} (${Number(p.tuition_amount).toLocaleString("vi-VN")}đ)</option>`).join("");
+    if(plans.length){
+      sel.value = String(plans[0].id);
+      document.getElementById("es-tuition").value = plans[0].tuition_amount;
+    }
+  }
+  document.getElementById("es-course-plan").addEventListener("change", ()=>{
+    const plan = esCoursePlans.find(p=>String(p.id)===document.getElementById("es-course-plan").value);
+    if(plan) document.getElementById("es-tuition").value = plan.tuition_amount;
+    recomputeEsSummary();
+  });
+
   document.getElementById("es-cycle-start").addEventListener("change", updateCycleEndDisplay);
   document.getElementById("es-cycle-duration").addEventListener("change", ()=>{
     updateCycleEndDisplay();
-    document.getElementById("es-tuition").value = esPlanFor(document.getElementById("es-cycle-duration").value);
+    refreshEsCoursePlanOptions();
     recomputeEsSummary();
   });
   document.getElementById("es-renew-today").addEventListener("click", ()=>{
     document.getElementById("es-cycle-start").value = new Date().toISOString().slice(0,10);
     updateCycleEndDisplay();
-    document.getElementById("es-tuition").value = esPlanFor(document.getElementById("es-cycle-duration").value);
+    refreshEsCoursePlanOptions();
     recomputeEsSummary();
   });
   updateCycleEndDisplay();
 
-  document.getElementById("es-tuition").value = esPlanFor(document.getElementById("es-cycle-duration").value);
+  refreshEsCoursePlanOptions();
   document.getElementById("es-paid-at").value = new Date().toISOString().slice(0,10);
 
   // Khuyến mãi/Thưởng giới thiệu CHỈ HIỂN THỊ số tiền giảm (tự tính từ % hoặc
@@ -3012,6 +3040,8 @@ async function openEditStudent(id){
     document.getElementById("es-cycle-start").value = row.start_date;
     document.getElementById("es-cycle-start").disabled = true;
     updateCycleEndDisplay();
+    refreshEsCoursePlanOptions();
+    document.getElementById("es-course-plan").disabled = true;
     document.getElementById("es-tuition").value = row.tuition_amount;
     document.getElementById("es-tuition").disabled = true;
     document.getElementById("es-promotion").value = row.promotion_id || "";
@@ -3036,6 +3066,7 @@ async function openEditStudent(id){
     esEditingId = null;
     document.getElementById("es-cycle-duration").disabled = false;
     document.getElementById("es-cycle-start").disabled = false;
+    document.getElementById("es-course-plan").disabled = false;
     document.getElementById("es-tuition").disabled = false;
     document.getElementById("es-promotion").disabled = false;
     document.getElementById("es-promotion").value = "";
@@ -3048,7 +3079,7 @@ async function openEditStudent(id){
     document.getElementById("es-cycle-start").value = new Date().toISOString().slice(0,10);
     document.getElementById("es-cycle-duration").value = "month";
     updateCycleEndDisplay();
-    document.getElementById("es-tuition").value = esPlanFor("month");
+    refreshEsCoursePlanOptions();
     document.getElementById("es-paid-at").value = new Date().toISOString().slice(0,10);
     document.getElementById("es-summarize").textContent = "💾 Lưu";
     document.getElementById("es-edit-notice").style.display = "none";
@@ -3064,16 +3095,19 @@ async function openEditStudent(id){
     if(!startDate){ resultEl.style.color = "var(--red)"; resultEl.textContent = "Cần chọn ngày bắt đầu."; return; }
     const endDate = computeCycleEndDate(startDate, duration);
 
-    // Chặn tạo trùng: 1 học sinh không thể có 2 dòng lịch sử CÙNG chu kỳ +
-    // CÙNG ngày bắt đầu — bấm "Lưu" thêm lần nữa mà không đổi chu kỳ/ngày sẽ
-    // bị chặn ở đây, dùng nút "Sửa" trên dòng đã có để cập nhật thay vì tạo
-    // dòng mới trùng. Không áp dụng khi đang SỬA (esEditingId) vì đó chính là
-    // dòng đang được cập nhật, không phải dòng mới.
+    // Chặn tạo trùng: 1 học sinh không thể có 2 dòng lịch sử CÓ KHOẢNG THỜI
+    // GIAN CHỒNG LẤN nhau (không chỉ trùng NGUYÊN VĂN ngày bắt đầu — 2 dòng
+    // bắt đầu KHÁC ngày nhau vẫn có thể trùng khoảng, vd 1/1→1/7 và 15/1→15/7
+    // đều là chu kỳ 6 tháng đè lên nhau). So sánh chuỗi ISO "YYYY-MM-DD" theo
+    // thứ tự chữ cái cho đúng thứ tự thời gian. Bỏ qua dòng đã "Đã huỷ"
+    // (`cancelled`) — không tính là chiếm dụng thời gian thật. Không áp dụng
+    // khi đang SỬA (esEditingId) vì Chu kỳ/Ngày bắt đầu bị khoá, không đổi
+    // được nên không thể tạo chồng lấn mới.
     if(!esEditingId){
-      const dup = esEnrollments.find(e=>e.start_date===startDate && e.cycle_duration===duration);
-      if(dup){
+      const overlap = esEnrollments.find(e => e.status !== "cancelled" && startDate <= e.end_date && e.start_date <= endDate);
+      if(overlap){
         resultEl.style.color = "var(--red)";
-        resultEl.textContent = `Đã có lịch sử cho chu kỳ này (bắt đầu ${new Date(startDate+"T00:00:00").toLocaleDateString("vi-VN")}) — dùng nút "Sửa" trên dòng đó để cập nhật.`;
+        resultEl.textContent = `Chu kỳ này (${new Date(startDate+"T00:00:00").toLocaleDateString("vi-VN")} → ${new Date(endDate+"T00:00:00").toLocaleDateString("vi-VN")}) chồng lấn với 1 dòng lịch sử đã có (${new Date(overlap.start_date+"T00:00:00").toLocaleDateString("vi-VN")} → ${new Date(overlap.end_date+"T00:00:00").toLocaleDateString("vi-VN")}) — dùng nút "Sửa" trên dòng đó để cập nhật thay vì tạo dòng mới.`;
         return;
       }
     }
@@ -6276,13 +6310,14 @@ function courseReferralOptions(studentId, selectedId, allItems){
 // Đúng 4 dòng cố định khớp enum cycle_duration — KHÔNG có nút "+ Thêm"/Xoá,
 // chỉ sửa giá + bật-tắt từng dòng tại chỗ (khác khuôn CRUD fieldForm/modal
 // của các tab khác vì đây là 1 bảng giá cố định, không phải danh mục tự do).
-const COURSE_PLAN_LABEL = { week: "1 tuần", month: "1 tháng", "6months": "6 tháng", year: "1 năm" };
-const COURSE_PLAN_ORDER = ["week", "month", "6months", "year"];
+// Danh mục gói học phí ĐẦY ĐỦ (thêm/sửa/xoá — migration 64, đúng khuôn CRUD
+// tab "🎁 Khuyến mãi" bên dưới) — có thể có NHIỀU gói cho CÙNG 1 chu kỳ.
+const COURSE_PLAN_DURATION_LABEL = { week: "1 tuần", month: "1 tháng", "6months": "6 tháng", year: "1 năm" };
 
 async function loadCoursePlans(){
-  const { data, error } = await fetchAllPages(() => sb.from("course_plans").select("*"));
+  const { data, error } = await fetchAllPages(() => sb.from("course_plans").select("*").order("name"));
   if(error){
-    document.getElementById("course-plans-list-body").innerHTML = `<tr><td colspan="4">Lỗi tải dữ liệu: ${escHtmlAdmin(error.message)} — đã chạy migration 62_migration_add_course_plans.sql trên Supabase chưa?</td></tr>`;
+    document.getElementById("course-plans-list-body").innerHTML = `<tr><td colspan="5">Lỗi tải dữ liệu: ${escHtmlAdmin(error.message)} — đã chạy migration 62_migration_add_course_plans.sql và 64_migration_add_course_plan_name_and_multi.sql trên Supabase chưa?</td></tr>`;
     return;
   }
   COURSE_PLANS = data || [];
@@ -6290,31 +6325,95 @@ async function loadCoursePlans(){
 }
 
 function renderCoursePlansTable(){
-  const sorted = [...COURSE_PLANS].sort((a,b)=> COURSE_PLAN_ORDER.indexOf(a.cycle_duration) - COURSE_PLAN_ORDER.indexOf(b.cycle_duration));
-  document.getElementById("course-plans-list-body").innerHTML = sorted.map(p=>`
-    <tr>
-      <td>${escHtmlAdmin(COURSE_PLAN_LABEL[p.cycle_duration] || p.cycle_duration)}</td>
-      <td><input type="number" min="0" id="cp-amount-${p.id}" value="${p.tuition_amount||0}" style="max-width:160px;"></td>
-      <td><input type="checkbox" id="cp-active-${p.id}" ${p.active!==false?"checked":""} style="width:auto;"></td>
+  document.getElementById("course-plans-count").textContent = COURSE_PLANS.length;
+  document.getElementById("course-plans-list-body").innerHTML = COURSE_PLANS.map(p=>{
+    const statusHtml = p.active!==false
+      ? `<span class="badge" style="background:var(--green-light);color:var(--green);">✅ Đang bán</span>`
+      : `<span class="badge" style="background:var(--red-light);color:var(--red);">⏸ Đã tắt</span>`;
+    return `<tr>
+      <td>${escHtmlAdmin(p.name || "")}</td>
+      <td>${escHtmlAdmin(COURSE_PLAN_DURATION_LABEL[p.cycle_duration] || p.cycle_duration)}</td>
+      <td>${Number(p.tuition_amount||0).toLocaleString("vi-VN")}đ</td>
+      <td>${statusHtml}</td>
       <td style="white-space:nowrap;">
-        <button class="btn-sm" onclick="saveCoursePlanRow(${p.id})">Lưu</button>
-        <span id="cp-saved-${p.id}" style="color:var(--green);font-size:12px;margin-left:6px;"></span>
+        <button class="btn-sm" onclick="openEditCoursePlan(${p.id})">Sửa</button>
+        <button class="btn-sm danger" onclick="deleteCoursePlanItem(${p.id})">Xoá</button>
       </td>
-    </tr>`).join("") || `<tr><td colspan="4">Chưa có dữ liệu — đã chạy migration 62 chưa?</td></tr>`;
+    </tr>`;
+  }).join("") || `<tr><td colspan="5">Chưa có gói học phí nào — bấm "+ Thêm gói học phí" để tạo mới.</td></tr>`;
 }
 
-window.saveCoursePlanRow = async function(id){
-  const amount = parseFloat(document.getElementById(`cp-amount-${id}`).value) || 0;
-  const active = document.getElementById(`cp-active-${id}`).checked;
-  const { data, error } = await sb.from("course_plans").update({
-    tuition_amount: amount, active, updated_at: new Date().toISOString(), updated_by: CURRENT_ADMIN_ID
-  }).eq("id", id).select().maybeSingle();
+function coursePlanFieldForm(record){
+  const r = record || { name:"", cycle_duration:"month", tuition_amount:0, active:true };
+  return `
+    <div class="field-row"><label>Tên gói</label><input data-f="name" value="${escHtmlAdmin(r.name||"")}" placeholder="Vd: Gói tiêu chuẩn"></div>
+    <div class="field-row"><label>Chu kỳ</label>
+      <select data-f="cycle_duration">
+        <option value="week" ${r.cycle_duration==='week'?'selected':''}>1 tuần</option>
+        <option value="month" ${r.cycle_duration==='month'?'selected':''}>1 tháng</option>
+        <option value="6months" ${r.cycle_duration==='6months'?'selected':''}>6 tháng</option>
+        <option value="year" ${r.cycle_duration==='year'?'selected':''}>1 năm</option>
+      </select>
+    </div>
+    <div class="field-row"><label>Học phí (đ)</label><input type="number" min="0" data-f="tuition_amount" value="${r.tuition_amount||0}"></div>
+    <div class="field-row"><label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" data-f="active" ${r.active!==false?"checked":""} style="width:auto;"> Đang bán (chọn được khi ghi nhận học phí cho học sinh)</label></div>
+  `;
+}
+
+function wireCoursePlanForm(record){
+  document.getElementById("overlay").classList.add("show");
+  document.getElementById("m-close").onclick = closeModal;
+  document.getElementById("m-cancel").onclick = closeModal;
+  document.getElementById("item-form").onsubmit = async (e)=>{
+    e.preventDefault();
+    const form = e.target;
+    const payload = {};
+    form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.type === "checkbox" ? el.checked : el.value; });
+    payload.tuition_amount = parseFloat(payload.tuition_amount) || 0;
+    payload.updated_at = new Date().toISOString();
+    payload.updated_by = CURRENT_ADMIN_ID;
+    if(!payload.name){ alert("Cần nhập Tên gói."); return; }
+    let data, error;
+    if(record){
+      ({ data, error } = await sb.from("course_plans").update(payload).eq("id", record.id).select().maybeSingle());
+    } else {
+      ({ data, error } = await sb.from("course_plans").insert(payload).select().maybeSingle());
+    }
+    if(error){ alert("Lỗi: " + error.message); return; }
+    if(record){
+      const idx = COURSE_PLANS.findIndex(it=>it.id===record.id);
+      if(idx>-1 && data) COURSE_PLANS[idx] = data;
+    } else if(data){
+      COURSE_PLANS.push(data);
+    }
+    closeModal();
+    renderCoursePlansTable();
+  };
+}
+
+document.getElementById("btn-add-course-plan").addEventListener("click", ()=>{
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Thêm gói học phí</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="item-form">${coursePlanFieldForm(null)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Thêm</button></div>
+    </form>`;
+  wireCoursePlanForm(null);
+});
+window.openEditCoursePlan = function(id){
+  const record = COURSE_PLANS.find(i=>i.id===id);
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Sửa gói học phí</h2><button class="modal-close" id="m-close">&times;</button></div>
+    <form id="item-form">${coursePlanFieldForm(record)}
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Lưu</button></div>
+    </form>`;
+  wireCoursePlanForm(record);
+};
+window.deleteCoursePlanItem = async function(id){
+  if(!confirm("Xoá gói học phí này? (Lịch sử học phí đã dùng gói này KHÔNG bị ảnh hưởng, chỉ không chọn lại được nữa.)")) return;
+  const { error } = await sb.from("course_plans").delete().eq("id", id);
   if(error){ alert("Lỗi: " + error.message); return; }
-  const idx = COURSE_PLANS.findIndex(p=>p.id===id);
-  if(idx>-1 && data) COURSE_PLANS[idx] = data;
-  const savedEl = document.getElementById(`cp-saved-${id}`);
-  savedEl.textContent = "Đã lưu ✓";
-  setTimeout(()=>{ if(savedEl) savedEl.textContent = ""; }, 2000);
+  COURSE_PLANS = COURSE_PLANS.filter(it=>it.id!==id);
+  renderCoursePlansTable();
 };
 
 // ---------- Khuyến mãi ----------
