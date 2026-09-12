@@ -217,7 +217,7 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
       <button id="sec-dashboard" data-group="users" class="active">🎓 Học sinh</button>
       <button id="sec-parents" data-group="users">👪 Phụ huynh</button>
       <button id="sec-teachers" data-group="users">🧑‍🏫 Giáo viên</button>
-      <button id="sec-courses" data-group="users">💰 Khóa học &amp; học phí</button>
+      <button id="sec-course-plans" data-group="users">💰 Bảng giá học phí</button>
       <button id="sec-promotions" data-group="users">🎁 Khuyến mãi</button>
       <button id="sec-referrals" data-group="users">🤝 Giới thiệu bạn</button>
       <button id="sec-admins" data-group="users" style="display:none;">🛡️ Quản trị viên</button>
@@ -728,29 +728,27 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
       </div>
     </div>
 
-    <div id="courses-section" style="display:none;">
+    <div id="course-plans-section" style="display:none;">
       <div class="card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:10px;">
-          <h3 style="margin:0;">Khóa học &amp; học phí (<span id="courses-count">0</span>)</h3>
-          <button class="btn btn-primary" id="btn-add-course">+ Thêm khóa học</button>
+          <h3 style="margin:0;">Bảng giá học phí theo chu kỳ</h3>
         </div>
         <div style="font-size:12px;color:var(--text-2);margin-bottom:10px;">
-          Lịch sử từng khóa học + học phí của mỗi học sinh (migration 61) — bổ
-          sung cho "Chu kỳ học" hiện tại trên hồ sơ học sinh (chỉ lưu 1 chu kỳ
-          DUY NHẤT). Lưu 1 khóa học ở đây sẽ TỰ ĐỘNG cập nhật lại chu kỳ hiện
-          tại của học sinh đó (giống nút "Gia hạn từ hôm nay"). Trạng thái
-          <b>Đã đóng đủ học phí</b> = học sinh chính thức, <b>Học thử</b> =
-          chưa đóng, dùng để phân biệt nhanh ở 2 thẻ trên tab "🎓 Học sinh".
-        </div>
-        <div style="margin-bottom:10px;">
-          <input id="courses-search" placeholder="Tìm theo email học sinh…" style="max-width:280px;">
+          Mỗi học sinh có lịch học RIÊNG (hệ thống học online, không phải lớp
+          học) — bảng này chỉ ĐỊNH NGHĨA mức học phí mặc định cho mỗi chu kỳ
+          (dùng chung cho mọi ngôn ngữ/trình độ). Việc ghi nhận chu kỳ + học
+          phí + khuyến mãi/thưởng giới thiệu THEO TỪNG học sinh làm ngay trong
+          modal "Sửa học sinh" (mục "Chu kỳ học & học phí", tab 🎓 Học sinh) —
+          học phí ở đó tự điền theo bảng giá này, vẫn sửa tay được cho từng
+          trường hợp riêng. Tắt "Đang bán" nếu tạm ngừng nhận chu kỳ đó (không
+          ẩn khỏi dropdown chọn chu kỳ, chỉ mang tính ghi chú).
         </div>
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>Học sinh</th><th>Chu kỳ</th><th>Trạng thái</th><th>Học phí gốc</th><th>Giảm giá</th><th>Thành tiền</th><th>Đã đóng</th><th>Ngày đóng</th><th></th>
+              <th>Chu kỳ</th><th>Học phí (đ)</th><th>Đang bán</th><th></th>
             </tr></thead>
-            <tbody id="courses-list-body"></tbody>
+            <tbody id="course-plans-list-body"></tbody>
           </table>
         </div>
       </div>
@@ -2061,13 +2059,13 @@ document.getElementById("btn-import").addEventListener("click", async ()=>{
 // "📚 Quản trị nội dung" bị mở nhầm thẳng vào tab Từ vựng, tải nặng ngay dù
 // người dùng chỉ đang muốn xem tổng quan (báo cáo "chuyển tab nội dung chậm"
 // 2026-09-11).
-const ALL_SECTIONS = ["dashboard", "content-dash", "vocab", "grammar", "reading", "listening", "dialogue", "math", "landing", "affiliate", "levels", "parents", "teachers", "courses", "promotions", "referrals", "admins"];
+const ALL_SECTIONS = ["dashboard", "content-dash", "vocab", "grammar", "reading", "listening", "dialogue", "math", "landing", "affiliate", "levels", "parents", "teachers", "course-plans", "promotions", "referrals", "admins"];
 // Nhóm dashboard lớn (2 cấp điều hướng): "users" = Quản trị người dùng (Học sinh,
 // Phụ huynh & Giáo viên, Khóa học & học phí/Khuyến mãi/Giới thiệu bạn — migration
 // 61, Quản trị viên — mục 13.36), "content" = Quản trị nội dung (dashboard tổng
 // quan + 6 tab soạn bài cũ, giữ nguyên logic bên trong, chỉ gom lại 1 nhóm cho
 // gọn).
-const SECTION_GROUP = { dashboard: "users", parents: "users", teachers: "users", courses: "users", promotions: "users", referrals: "users", admins: "users", "content-dash": "content", vocab: "content", grammar: "content", reading: "content", listening: "content", dialogue: "content", math: "content", landing: "content", affiliate: "content", levels: "content" };
+const SECTION_GROUP = { dashboard: "users", parents: "users", teachers: "users", "course-plans": "users", promotions: "users", referrals: "users", admins: "users", "content-dash": "content", vocab: "content", grammar: "content", reading: "content", listening: "content", dialogue: "content", math: "content", landing: "content", affiliate: "content", levels: "content" };
 // true khi tài khoản đang đăng nhập là super_admin — gán trong afterLogin()
 // (mục 13.36). Tab "🛡️ Quản trị viên" chỉ hiện khi cờ này bật; kiểm tra lại 1
 // lần nữa ở loadAdmins() phòng khi bị vào thẳng qua devtools, và RLS phía
@@ -2105,7 +2103,7 @@ function switchSection(active){
   else if(active === "levels") loadLanguageLevels();
   else if(active === "parents") loadParents();
   else if(active === "teachers") loadTeachers();
-  else if(active === "courses") loadCourseEnrollments();
+  else if(active === "course-plans") loadCoursePlans();
   else if(active === "promotions") loadPromotions();
   else if(active === "referrals") loadReferralRewards();
   else if(active === "admins") loadAdmins();
@@ -2122,7 +2120,7 @@ document.getElementById("sec-affiliate").addEventListener("click", ()=> switchSe
 document.getElementById("sec-levels").addEventListener("click", ()=> switchSection("levels"));
 document.getElementById("sec-parents").addEventListener("click", ()=> switchSection("parents"));
 document.getElementById("sec-teachers").addEventListener("click", ()=> switchSection("teachers"));
-document.getElementById("sec-courses").addEventListener("click", ()=> switchSection("courses"));
+document.getElementById("sec-course-plans").addEventListener("click", ()=> switchSection("course-plans"));
 document.getElementById("sec-promotions").addEventListener("click", ()=> switchSection("promotions"));
 document.getElementById("sec-referrals").addEventListener("click", ()=> switchSection("referrals"));
 document.getElementById("sec-admins").addEventListener("click", ()=> switchSection("admins"));
@@ -2708,6 +2706,7 @@ document.querySelectorAll(".dash-sortable").forEach(th=>{
 async function openEditStudent(id){
   const s = DASH_STUDENTS.find(x => x.id === id);
   if(!s) return;
+  await ensureStudentOptions(); // để courseReferralOptions() hiện đúng email học sinh được giới thiệu thay vì raw id
 
   // Tải kèm: mọi tài khoản khác (để chọn làm phụ huynh/giáo viên) + liên kết
   // hiện tại của đúng học sinh này + danh sách quản trị viên (để LOẠI TRỪ khỏi
@@ -2716,16 +2715,30 @@ async function openEditStudent(id){
   // trị viên). Đơn giản hoá: nếu 1 học sinh lỡ có NHIỀU dòng liên kết (hiếm,
   // dữ liệu cũ), chỉ hiện/set dòng ĐẦU TIÊN — dropdown 1 lựa chọn không hợp để
   // sửa quan hệ nhiều-nhiều đầy đủ.
-  const [{ data: allProfilesRaw }, { data: parentLinks }, { data: teacherLinks }, { data: adminRows }] = await Promise.all([
+  const [{ data: allProfilesRaw }, { data: parentLinks }, { data: teacherLinks }, { data: adminRows }, { data: activePromosRaw }, { data: pendingRewardsRaw }, { data: activePlansRaw }, { data: enrollmentsRaw }] = await Promise.all([
     sb.from("profiles").select("id,email,role").neq("id", id).order("email"),
     sb.from("parent_links").select("parent_id").eq("student_id", id),
     sb.from("teacher_links").select("teacher_id").eq("student_id", id),
-    sb.from("admins").select("user_id")
+    sb.from("admins").select("user_id"),
+    sb.from("promotions").select("*").eq("active", true),
+    sb.from("referral_rewards").select("*").eq("referrer_student_id", id).eq("status", "pending").eq("reward_type", "discount"),
+    sb.from("course_plans").select("*"),
+    sb.from("course_enrollments").select("*").eq("student_id", id).order("start_date", { ascending: false })
   ]);
   const adminIds = new Set((adminRows||[]).map(a=>a.user_id));
   const allProfiles = (allProfilesRaw||[]).filter(p=> !adminIds.has(p.id));
   const currentParentId = (parentLinks && parentLinks[0] && parentLinks[0].parent_id) || "";
   const currentTeacherId = (teacherLinks && teacherLinks[0] && teacherLinks[0].teacher_id) || "";
+  // Học phí/khuyến mãi/thưởng giới thiệu (migration 61+62) — tải RIÊNG cho
+  // modal này (không đụng các biến toàn cục PROMOTION_ITEMS/REFERRAL_ITEMS/
+  // COURSE_PLANS của 3 tab "🎁 Khuyến mãi"/"🤝 Giới thiệu bạn"/"💰 Bảng giá học
+  // phí" — tránh 2 nơi ghi đè dữ liệu của nhau). Lỗi (vd chưa chạy migration
+  // 62) → coi như rỗng, không chặn mở modal, chỉ học phí mặc định hiện 0đ.
+  const esActivePromos = activePromosRaw || [];
+  const esPendingRewards = pendingRewardsRaw || [];
+  const esCoursePlans = activePlansRaw || [];
+  let esEnrollments = enrollmentsRaw || [];
+  const esPlanFor = (duration) => { const p = esCoursePlans.find(x=>x.cycle_duration===duration); return p ? Number(p.tuition_amount)||0 : 0; };
 
   const ROLE_LABEL = { parent: "phụ huynh", teacher: "giáo viên", student: "học sinh" };
   const personOptions = (currentId) => `<option value="">— Không có —</option>` + (allProfiles||[]).map(p=>{
@@ -2758,6 +2771,59 @@ async function openEditStudent(id){
         </div>
         <input type="hidden" data-f="cycle_end_date" id="es-cycle-end">
       </div>
+
+      <div class="field-row" style="background:var(--bg-2);border-radius:8px;padding:10px;margin:6px 0;">
+        <label style="font-weight:700;">💰 Học phí cho chu kỳ này</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
+          <span style="font-size:12px;color:var(--text-2);">Học phí (đ):</span>
+          <input type="number" min="0" id="es-tuition" style="max-width:140px;">
+          <span style="font-size:12px;color:var(--text-2);">Khuyến mãi:</span>
+          <select id="es-promotion" style="max-width:220px;">
+            <option value="">— Không áp dụng —</option>
+            ${esActivePromos.map(p=>{
+              const label = p.discount_type === "percent" ? `${p.name} (giảm ${p.discount_value}%)` : `${p.name} (giảm ${Number(p.discount_value).toLocaleString("vi-VN")}đ)`;
+              return `<option value="${p.id}">${escHtmlAdmin(label)}</option>`;
+            }).join("")}
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
+          <span style="font-size:12px;color:var(--text-2);">Thưởng giới thiệu:</span>
+          <select id="es-referral" style="max-width:260px;">${courseReferralOptions(id, "", esPendingRewards)}</select>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
+          <span style="font-size:12px;color:var(--text-2);">Số tiền giảm (đ, tự tính — có thể sửa tay):</span>
+          <input type="number" min="0" id="es-discount" style="max-width:140px;">
+          <span style="font-size:12px;color:var(--text-2);">Thành tiền:</span>
+          <span id="es-final-display" style="font-weight:700;color:var(--navy2);"></span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
+          <span style="font-size:12px;color:var(--text-2);">Trạng thái:</span>
+          <select id="es-course-status" style="max-width:200px;">
+            <option value="trial">Học thử (chưa cam kết)</option>
+            <option value="unpaid">Đã đăng ký — chưa đóng đủ</option>
+            <option value="paid">Đã đóng đủ học phí</option>
+            <option value="cancelled">Đã huỷ</option>
+          </select>
+          <span style="font-size:12px;color:var(--text-2);">Đã đóng (đ):</span>
+          <input type="number" min="0" id="es-amount-paid" value="0" style="max-width:140px;">
+          <span style="font-size:12px;color:var(--text-2);">Ngày đóng:</span>
+          <input type="date" id="es-paid-at" style="max-width:150px;">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button type="button" class="btn btn-primary btn-sm" id="es-save-tuition">💾 Lưu chu kỳ &amp; học phí</button>
+          <span id="es-tuition-result" style="font-size:12px;"></span>
+        </div>
+        <div style="margin-top:10px;">
+          <div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:4px;">Lịch sử khóa học của học sinh này</div>
+          <div class="table-wrap">
+            <table style="font-size:12px;">
+              <thead><tr><th>Chu kỳ</th><th>Trạng thái</th><th>Học phí</th><th>Giảm</th><th>Thành tiền</th><th>Đã đóng</th><th>Ngày đóng</th><th></th></tr></thead>
+              <tbody id="es-history-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div class="field-row">
         <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
           <input type="checkbox" data-f="disabled" ${s.disabled?"checked":""} style="width:auto;">
@@ -2787,8 +2853,136 @@ async function openEditStudent(id){
   document.getElementById("es-renew-today").addEventListener("click", ()=>{
     document.getElementById("es-cycle-start").value = new Date().toISOString().slice(0,10);
     updateCycleEndDisplay();
+    document.getElementById("es-tuition").value = esPlanFor(document.getElementById("es-cycle-duration").value);
+    recomputeEsDiscount();
   });
   updateCycleEndDisplay();
+
+  // ---------- Chu kỳ học & học phí (migration 61+62) ----------
+  document.getElementById("es-tuition").value = esPlanFor(document.getElementById("es-cycle-duration").value);
+  document.getElementById("es-paid-at").value = new Date().toISOString().slice(0,10);
+
+  const updateEsFinalDisplay = () => {
+    const tuition = parseFloat(document.getElementById("es-tuition").value) || 0;
+    const discount = parseFloat(document.getElementById("es-discount").value) || 0;
+    document.getElementById("es-final-display").textContent = Math.max(0, tuition - discount).toLocaleString("vi-VN") + "đ";
+  };
+  // Tự tính "Số tiền giảm" từ khuyến mãi + thưởng giới thiệu đang chọn — chỉ
+  // chạy khi đổi học phí/khuyến mãi/thưởng, KHÔNG chạy khi admin tự sửa tay ô
+  // "Số tiền giảm" (ô đó chỉ cập nhật lại "Thành tiền", đúng pattern đã dùng
+  // ở tab Từ vựng/Affiliate).
+  function recomputeEsDiscount(){
+    const tuition = parseFloat(document.getElementById("es-tuition").value) || 0;
+    const promo = esActivePromos.find(p=>String(p.id)===document.getElementById("es-promotion").value);
+    const reward = esPendingRewards.find(r=>String(r.id)===document.getElementById("es-referral").value);
+    let discount = 0;
+    if(promo) discount += promo.discount_type === "percent" ? tuition * Number(promo.discount_value) / 100 : Number(promo.discount_value);
+    if(reward) discount += reward.discount_value_type === "percent" ? tuition * Number(reward.reward_value) / 100 : Number(reward.reward_value);
+    document.getElementById("es-discount").value = Math.round(discount);
+    updateEsFinalDisplay();
+  }
+  document.getElementById("es-cycle-duration").addEventListener("change", ()=>{
+    document.getElementById("es-tuition").value = esPlanFor(document.getElementById("es-cycle-duration").value);
+    recomputeEsDiscount();
+  });
+  document.getElementById("es-tuition").addEventListener("input", recomputeEsDiscount);
+  document.getElementById("es-promotion").addEventListener("change", recomputeEsDiscount);
+  document.getElementById("es-referral").addEventListener("change", recomputeEsDiscount);
+  document.getElementById("es-discount").addEventListener("input", updateEsFinalDisplay);
+  recomputeEsDiscount();
+
+  const COURSE_STATUS_LABEL_ES = { trial: "Học thử", unpaid: "Chưa đóng đủ", paid: "Đã đóng đủ", cancelled: "Đã huỷ" };
+  function renderEsHistory(){
+    document.getElementById("es-history-body").innerHTML = esEnrollments.map(r=>`
+      <tr>
+        <td>${new Date(r.start_date+"T00:00:00").toLocaleDateString("vi-VN")} → ${new Date(r.end_date+"T00:00:00").toLocaleDateString("vi-VN")}</td>
+        <td>${escHtmlAdmin(COURSE_STATUS_LABEL_ES[r.status]||r.status)}</td>
+        <td>${Number(r.tuition_amount).toLocaleString("vi-VN")}đ</td>
+        <td>${Number(r.discount_amount).toLocaleString("vi-VN")}đ</td>
+        <td>${Number(r.final_amount).toLocaleString("vi-VN")}đ</td>
+        <td>${Number(r.amount_paid).toLocaleString("vi-VN")}đ</td>
+        <td>${r.paid_at ? new Date(r.paid_at).toLocaleDateString("vi-VN") : "—"}</td>
+        <td><button type="button" class="btn-sm danger" onclick="deleteEsEnrollment(${r.id})">Xoá</button></td>
+      </tr>`).join("") || `<tr><td colspan="8">Chưa có lịch sử — bấm "Lưu chu kỳ &amp; học phí" để ghi nhận lần đầu.</td></tr>`;
+  }
+  renderEsHistory();
+
+  window.deleteEsEnrollment = async function(enrollId){
+    if(!confirm("Xoá dòng lịch sử học phí này? (Không hoàn tác trạng thái thưởng giới thiệu đã áp dụng, chỉ xoá bản ghi.)")) return;
+    const { error } = await sb.from("course_enrollments").delete().eq("id", enrollId);
+    if(error){ alert("Lỗi: " + error.message); return; }
+    esEnrollments = esEnrollments.filter(e=>e.id!==enrollId);
+    renderEsHistory();
+  };
+
+  document.getElementById("es-save-tuition").addEventListener("click", async ()=>{
+    const resultEl = document.getElementById("es-tuition-result");
+    const startDate = document.getElementById("es-cycle-start").value;
+    const duration = document.getElementById("es-cycle-duration").value;
+    if(!startDate){ resultEl.style.color = "var(--red)"; resultEl.textContent = "Cần chọn ngày bắt đầu."; return; }
+    const endDate = computeCycleEndDate(startDate, duration);
+    const promotionId = document.getElementById("es-promotion").value ? parseInt(document.getElementById("es-promotion").value, 10) : null;
+    const referralRewardId = document.getElementById("es-referral").value ? parseInt(document.getElementById("es-referral").value, 10) : null;
+    const tuitionAmount = parseFloat(document.getElementById("es-tuition").value) || 0;
+    const discountAmount = parseFloat(document.getElementById("es-discount").value) || 0;
+    const paidAtVal = document.getElementById("es-paid-at").value;
+    const payload = {
+      student_id: id,
+      cycle_duration: duration,
+      start_date: startDate,
+      end_date: endDate,
+      status: document.getElementById("es-course-status").value,
+      tuition_amount: tuitionAmount,
+      discount_amount: discountAmount,
+      final_amount: Math.max(0, tuitionAmount - discountAmount),
+      amount_paid: parseFloat(document.getElementById("es-amount-paid").value) || 0,
+      paid_at: paidAtVal ? new Date(paidAtVal + "T00:00:00").toISOString() : null,
+      promotion_id: promotionId,
+      referral_reward_id: referralRewardId,
+      updated_at: new Date().toISOString(),
+      updated_by: CURRENT_ADMIN_ID
+    };
+    const { data, error } = await sb.from("course_enrollments").insert(payload).select().maybeSingle();
+    if(error){ resultEl.style.color = "var(--red)"; resultEl.textContent = "Lỗi: " + error.message; return; }
+
+    // Thưởng giới thiệu dạng giảm giá, nếu chọn và đang "pending" -> đánh dấu
+    // đã dùng ngay, tránh áp lại lần nữa cho 1 lần đóng học phí khác sau này.
+    if(referralRewardId){
+      const reward = esPendingRewards.find(r=>r.id===referralRewardId);
+      if(reward && reward.status === "pending"){
+        const { error: rewardErr } = await sb.from("referral_rewards").update({ status: "applied", applied_at: new Date().toISOString(), updated_at: new Date().toISOString(), updated_by: CURRENT_ADMIN_ID }).eq("id", reward.id);
+        if(!rewardErr){
+          reward.status = "applied";
+          document.getElementById("es-referral").innerHTML = courseReferralOptions(id, "", esPendingRewards);
+        }
+      }
+    }
+
+    // Đồng bộ lại chu kỳ HIỆN TẠI trên profiles — y hệt nút "Gia hạn từ hôm
+    // nay" — để KPI "Sắp hết chu kỳ" + cron nhắc học (worker.js) vẫn hoạt
+    // động đúng, không cần sửa gì ở 2 nơi đó.
+    await sb.from("profiles").update({
+      cycle_start_date: startDate, cycle_end_date: endDate, cycle_duration: duration
+    }).eq("id", id);
+
+    if(data) esEnrollments.unshift(data);
+    renderEsHistory();
+
+    // Patch trực tiếp DASH_STUDENTS trong bộ nhớ (thay vì tải lại cả trang) —
+    // để 2 thẻ KPI "Đã đóng học phí"/"Đang học thử" đúng ngay lập tức.
+    const dashRow = DASH_STUDENTS.find(x=>x.id===id);
+    if(dashRow){
+      dashRow.cycle_start_date = startDate;
+      dashRow.cycle_end_date = endDate;
+      dashRow.cycle_duration = duration;
+      dashRow.latest_enrollment_status = payload.status;
+      refreshStudentStats();
+    }
+
+    resultEl.style.color = "var(--green)";
+    resultEl.textContent = "Đã lưu ✓";
+    setTimeout(()=>{ if(resultEl) resultEl.textContent = ""; }, 2500);
+  });
 
   document.getElementById("edit-student-form").onsubmit = async (e)=>{
     e.preventDefault();
@@ -5851,18 +6045,26 @@ window.deleteLevelItem = async function(id){
 };
 
 // ============================================================
-// Tab "💰 Khóa học & học phí" / "🎁 Khuyến mãi" / "🤝 Giới thiệu bạn"
-// (migration 61 — course_enrollments/promotions/referral_rewards). Bổ sung
-// LỊCH SỬ nhiều khóa học + tài chính cho mỗi học sinh, thay vì chỉ 1 chu kỳ
-// DUY NHẤT trên profiles.cycle_*. KHÔNG xoá/đổi 3 cột đó hay nút "Gia hạn từ
-// hôm nay" ở openEditStudent() — mỗi lần lưu 1 khóa học ở đây, TỰ ĐỘNG đồng
-// bộ lại 3 cột đó (y hệt cách nút "Gia hạn" đang làm) để KPI "Sắp hết chu kỳ"
-// + cron nhắc học (worker.js) không bị ảnh hưởng gì.
+// Tab "💰 Bảng giá học phí" / "🎁 Khuyến mãi" / "🤝 Giới thiệu bạn"
+// (migration 61+62 — course_plans/course_enrollments/promotions/
+// referral_rewards). SỬA LẠI THIẾT KẾ (2026-09-12) theo góp ý: đây là hệ
+// thống học online, mỗi học sinh có lịch học RIÊNG (không phải lớp học nhiều
+// học sinh cùng đăng ký 1 khóa) — nên "Khóa học" chỉ còn là 1 bảng GIÁ dùng
+// chung theo chu kỳ (`course_plans`, KHÔNG gắn học sinh cụ thể). Việc ghi
+// nhận học phí THEO TỪNG học sinh (chọn chu kỳ → ra học phí → áp khuyến mãi/
+// thưởng → tính tiền cuối, tạo 1 dòng lịch sử `course_enrollments`) chuyển
+// vào modal "Sửa học sinh" (`openEditStudent()`, xem khối
+// "Chu kỳ học & học phí" bên dưới) — KHÔNG còn tab phẳng chọn học sinh từ
+// dropdown như bản trước (đã gỡ bỏ hoàn toàn, xem lịch sử git nếu cần tham
+// khảo lại `courseFieldForm`/`wireCourseForm` cũ). KHÔNG xoá/đổi ý nghĩa 3
+// cột `cycle_*` trên `profiles` hay nút "Gia hạn từ hôm nay" — mỗi lần lưu 1
+// dòng lịch sử học phí mới, TỰ ĐỘNG đồng bộ lại 3 cột đó để KPI "Sắp hết chu
+// kỳ" + cron nhắc học (worker.js) không bị ảnh hưởng gì.
 // ============================================================
-let COURSE_ITEMS = [];
 let PROMOTION_ITEMS = [];
 let REFERRAL_ITEMS = [];
 let STUDENT_OPTIONS = [];
+let COURSE_PLANS = [];
 
 async function ensureStudentOptions(){
   if(STUDENT_OPTIONS.length) return;
@@ -5877,57 +6079,14 @@ function studentSelectOptions(selectedId){
   return `<option value="">— Chọn học sinh —</option>` + STUDENT_OPTIONS.map(s=>`<option value="${s.id}" ${s.id===selectedId?"selected":""}>${escHtmlAdmin(s.email)}</option>`).join("");
 }
 
-// ---------- Khóa học & học phí ----------
-
-async function loadCourseEnrollments(){
-  await ensureStudentOptions();
-  const [courseRes, promoRes, refRes] = await Promise.all([
-    fetchAllPages(() => sb.from("course_enrollments").select("*").order("start_date", { ascending: false })),
-    fetchAllPages(() => sb.from("promotions").select("*")),
-    fetchAllPages(() => sb.from("referral_rewards").select("*"))
-  ]);
-  if(courseRes.error){
-    document.getElementById("courses-list-body").innerHTML = `<tr><td colspan="9">Lỗi tải dữ liệu: ${escHtmlAdmin(courseRes.error.message)} — đã chạy migration 61_migration_add_courses_tuition.sql trên Supabase chưa?</td></tr>`;
-    return;
-  }
-  COURSE_ITEMS = courseRes.data || [];
-  PROMOTION_ITEMS = promoRes.data || [];
-  REFERRAL_ITEMS = refRes.data || [];
-  renderCoursesTable();
-}
-
-const COURSE_STATUS_LABEL = { trial: "Học thử", unpaid: "Chưa đóng đủ", paid: "Đã đóng đủ", cancelled: "Đã huỷ" };
-
-function renderCoursesTable(){
-  const q = (document.getElementById("courses-search").value || "").trim().toLowerCase();
-  const filtered = COURSE_ITEMS.filter(r => !q || studentEmailOf(r.student_id).toLowerCase().includes(q));
-  document.getElementById("courses-count").textContent = COURSE_ITEMS.length;
-  document.getElementById("courses-list-body").innerHTML = filtered.map(r=>{
-    const badgeStyle = r.status === "paid" ? "background:var(--green-light);color:var(--green);"
-      : (r.status === "unpaid" || r.status === "trial") ? "background:var(--red-light);color:var(--red);"
-      : "background:var(--bg-2);color:var(--text-2);";
-    return `<tr>
-      <td>${escHtmlAdmin(studentEmailOf(r.student_id))}</td>
-      <td>${new Date(r.start_date+"T00:00:00").toLocaleDateString("vi-VN")} → ${new Date(r.end_date+"T00:00:00").toLocaleDateString("vi-VN")}</td>
-      <td><span class="badge" style="${badgeStyle}">${escHtmlAdmin(COURSE_STATUS_LABEL[r.status]||r.status)}</span></td>
-      <td>${Number(r.tuition_amount).toLocaleString("vi-VN")}đ</td>
-      <td>${Number(r.discount_amount).toLocaleString("vi-VN")}đ</td>
-      <td>${Number(r.final_amount).toLocaleString("vi-VN")}đ</td>
-      <td>${Number(r.amount_paid).toLocaleString("vi-VN")}đ</td>
-      <td>${r.paid_at ? new Date(r.paid_at).toLocaleDateString("vi-VN") : "—"}</td>
-      <td style="white-space:nowrap;">
-        <button class="btn-sm" onclick="openEditCourse(${r.id})">Sửa</button>
-        <button class="btn-sm danger" onclick="deleteCourseItem(${r.id})">Xoá</button>
-      </td>
-    </tr>`;
-  }).join("") || `<tr><td colspan="9">Chưa có khóa học nào — bấm "+ Thêm khóa học" để tạo mới.</td></tr>`;
-}
-document.getElementById("courses-search").addEventListener("input", renderCoursesTable);
-
 // Chỉ hiện thưởng giới thiệu ĐANG "pending" VÀ dạng "discount" CỦA ĐÚNG học
-// sinh đang chọn — thưởng dạng "cash" không giảm học phí, không hiện ở đây.
-function courseReferralOptions(studentId, selectedId){
-  const items = STUDENT_OPTIONS.length ? REFERRAL_ITEMS.filter(r=>r.referrer_student_id===studentId && r.status==="pending" && r.reward_type==="discount") : [];
+// sinh đang chọn (referrer) — thưởng dạng "cash" không giảm học phí, không
+// hiện ở đây. Dùng ở modal "Sửa học sinh" (mục Chu kỳ học & học phí) với
+// `allItems` là danh sách referral_rewards đã tải RIÊNG cho modal đó (KHÔNG
+// dùng chung biến toàn cục `REFERRAL_ITEMS` của tab "🤝 Giới thiệu bạn", để
+// tránh 2 nơi ghi đè dữ liệu của nhau).
+function courseReferralOptions(studentId, selectedId, allItems){
+  const items = (allItems||[]).filter(r=>r.referrer_student_id===studentId && r.status==="pending" && r.reward_type==="discount");
   const opts = items.map(r=>{
     const label = r.discount_value_type === "percent" ? `Giảm ${r.reward_value}%` : `Giảm ${Number(r.reward_value).toLocaleString("vi-VN")}đ`;
     return `<option value="${r.id}" ${String(r.id)===String(selectedId)?"selected":""}>${escHtmlAdmin(label)} (giới thiệu ${escHtmlAdmin(studentEmailOf(r.referred_student_id))})</option>`;
@@ -5935,164 +6094,49 @@ function courseReferralOptions(studentId, selectedId){
   return `<option value="">— Không áp dụng —</option>` + opts;
 }
 
-function courseFieldForm(record){
-  const r = record || { student_id:"", cycle_duration:"month", start_date: new Date().toISOString().slice(0,10), status:"trial", tuition_amount:0, discount_amount:0, promotion_id:"", referral_reward_id:"", amount_paid:0, paid_at:"", note:"" };
-  const promoOptions = PROMOTION_ITEMS.filter(p=>p.active).map(p=>{
-    const label = p.discount_type === "percent" ? `${p.name} (giảm ${p.discount_value}%)` : `${p.name} (giảm ${Number(p.discount_value).toLocaleString("vi-VN")}đ)`;
-    return `<option value="${p.id}" ${String(p.id)===String(r.promotion_id)?"selected":""}>${escHtmlAdmin(label)}</option>`;
-  }).join("");
-  return `
-    <div class="field-row"><label>Học sinh</label><select data-f="student_id" id="ce-student">${studentSelectOptions(r.student_id)}</select></div>
-    <div class="field-row"><label>Chu kỳ</label>
-      <select data-f="cycle_duration" id="ce-duration">
-        <option value="week" ${r.cycle_duration==='week'?'selected':''}>1 tuần</option>
-        <option value="month" ${r.cycle_duration==='month'?'selected':''}>1 tháng</option>
-        <option value="6months" ${r.cycle_duration==='6months'?'selected':''}>6 tháng</option>
-        <option value="year" ${r.cycle_duration==='year'?'selected':''}>1 năm</option>
-      </select>
-    </div>
-    <div class="field-row"><label>Ngày bắt đầu</label><input type="date" data-f="start_date" id="ce-start" value="${r.start_date}"></div>
-    <div class="field-row"><label>Ngày kết thúc (tự tính)</label><span id="ce-end-display" style="font-weight:700;color:var(--navy2);"></span></div>
-    <div class="field-row"><label>Trạng thái</label>
-      <select data-f="status" id="ce-status">
-        <option value="trial" ${r.status==='trial'?'selected':''}>Học thử (chưa cam kết)</option>
-        <option value="unpaid" ${r.status==='unpaid'?'selected':''}>Đã đăng ký — chưa đóng đủ</option>
-        <option value="paid" ${r.status==='paid'?'selected':''}>Đã đóng đủ học phí</option>
-        <option value="cancelled" ${r.status==='cancelled'?'selected':''}>Đã huỷ</option>
-      </select>
-    </div>
-    <div class="field-row"><label>Học phí gốc (đ)</label><input type="number" min="0" data-f="tuition_amount" id="ce-tuition" value="${r.tuition_amount||0}"></div>
-    <div class="field-row"><label>Khuyến mãi áp dụng</label><select id="ce-promotion" data-f="promotion_id"><option value="">— Không áp dụng —</option>${promoOptions}</select></div>
-    <div class="field-row"><label>Thưởng giới thiệu áp dụng (giảm giá)</label><select id="ce-referral" data-f="referral_reward_id">${courseReferralOptions(r.student_id, r.referral_reward_id)}</select></div>
-    <div class="field-row"><label>Số tiền giảm (đ — tự tính từ khuyến mãi/thưởng ở trên, có thể sửa tay)</label><input type="number" min="0" data-f="discount_amount" id="ce-discount" value="${r.discount_amount||0}"></div>
-    <div class="field-row"><label>Thành tiền (tự tính)</label><span id="ce-final-display" style="font-weight:700;color:var(--navy2);"></span></div>
-    <div class="field-row"><label>Đã đóng (đ)</label><input type="number" min="0" data-f="amount_paid" id="ce-paid" value="${r.amount_paid||0}"></div>
-    <div class="field-row"><label>Ngày đóng</label><input type="date" data-f="paid_at" id="ce-paid-at" value="${r.paid_at ? new Date(r.paid_at).toISOString().slice(0,10) : ''}"></div>
-    <div class="field-row"><label>Ghi chú</label><textarea data-f="note">${escHtmlAdmin(r.note||"")}</textarea></div>
-  `;
+// ---------- Bảng giá học phí (course_plans, migration 62) ----------
+// Đúng 4 dòng cố định khớp enum cycle_duration — KHÔNG có nút "+ Thêm"/Xoá,
+// chỉ sửa giá + bật-tắt từng dòng tại chỗ (khác khuôn CRUD fieldForm/modal
+// của các tab khác vì đây là 1 bảng giá cố định, không phải danh mục tự do).
+const COURSE_PLAN_LABEL = { week: "1 tuần", month: "1 tháng", "6months": "6 tháng", year: "1 năm" };
+const COURSE_PLAN_ORDER = ["week", "month", "6months", "year"];
+
+async function loadCoursePlans(){
+  const { data, error } = await fetchAllPages(() => sb.from("course_plans").select("*"));
+  if(error){
+    document.getElementById("course-plans-list-body").innerHTML = `<tr><td colspan="4">Lỗi tải dữ liệu: ${escHtmlAdmin(error.message)} — đã chạy migration 62_migration_add_course_plans.sql trên Supabase chưa?</td></tr>`;
+    return;
+  }
+  COURSE_PLANS = data || [];
+  renderCoursePlansTable();
 }
 
-function wireCourseForm(record){
-  document.getElementById("overlay").classList.add("show");
-  document.getElementById("m-close").onclick = closeModal;
-  document.getElementById("m-cancel").onclick = closeModal;
-
-  const updateEndDisplay = () => {
-    const start = document.getElementById("ce-start").value;
-    const duration = document.getElementById("ce-duration").value;
-    document.getElementById("ce-end-display").textContent = start ? new Date(computeCycleEndDate(start, duration)+"T00:00:00").toLocaleDateString("vi-VN") : "—";
-  };
-  const updateFinalDisplay = () => {
-    const tuition = parseFloat(document.getElementById("ce-tuition").value) || 0;
-    const discount = parseFloat(document.getElementById("ce-discount").value) || 0;
-    document.getElementById("ce-final-display").textContent = Math.max(0, tuition - discount).toLocaleString("vi-VN") + "đ";
-  };
-  // Tự tính lại "Số tiền giảm" từ khuyến mãi + thưởng giới thiệu đang chọn —
-  // chỉ chạy khi đổi học phí/khuyến mãi/thưởng, KHÔNG chạy khi admin tự sửa
-  // tay ô "Số tiền giảm" (ô đó chỉ cập nhật lại "Thành tiền").
-  const recomputeDiscount = () => {
-    const tuition = parseFloat(document.getElementById("ce-tuition").value) || 0;
-    const promo = PROMOTION_ITEMS.find(p=>String(p.id)===document.getElementById("ce-promotion").value);
-    const reward = REFERRAL_ITEMS.find(r=>String(r.id)===document.getElementById("ce-referral").value);
-    let discount = 0;
-    if(promo) discount += promo.discount_type === "percent" ? tuition * Number(promo.discount_value) / 100 : Number(promo.discount_value);
-    if(reward) discount += reward.discount_value_type === "percent" ? tuition * Number(reward.reward_value) / 100 : Number(reward.reward_value);
-    document.getElementById("ce-discount").value = Math.round(discount);
-    updateFinalDisplay();
-  };
-
-  document.getElementById("ce-start").addEventListener("change", updateEndDisplay);
-  document.getElementById("ce-duration").addEventListener("change", updateEndDisplay);
-  document.getElementById("ce-tuition").addEventListener("input", recomputeDiscount);
-  document.getElementById("ce-promotion").addEventListener("change", recomputeDiscount);
-  document.getElementById("ce-referral").addEventListener("change", recomputeDiscount);
-  document.getElementById("ce-discount").addEventListener("input", updateFinalDisplay);
-  document.getElementById("ce-student").addEventListener("change", (e)=>{
-    document.getElementById("ce-referral").innerHTML = courseReferralOptions(e.target.value, "");
-    recomputeDiscount();
-  });
-  updateEndDisplay();
-  updateFinalDisplay();
-
-  document.getElementById("item-form").onsubmit = async (e)=>{
-    e.preventDefault();
-    const form = e.target;
-    const payload = {};
-    form.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.value; });
-    if(!payload.student_id || !payload.start_date){ alert("Cần chọn Học sinh và Ngày bắt đầu."); return; }
-    payload.tuition_amount = parseFloat(payload.tuition_amount) || 0;
-    payload.discount_amount = parseFloat(payload.discount_amount) || 0;
-    payload.final_amount = Math.max(0, payload.tuition_amount - payload.discount_amount);
-    payload.amount_paid = parseFloat(payload.amount_paid) || 0;
-    payload.promotion_id = payload.promotion_id ? parseInt(payload.promotion_id, 10) : null;
-    payload.referral_reward_id = payload.referral_reward_id ? parseInt(payload.referral_reward_id, 10) : null;
-    payload.paid_at = payload.paid_at ? new Date(payload.paid_at + "T00:00:00").toISOString() : null;
-    payload.end_date = computeCycleEndDate(payload.start_date, payload.cycle_duration);
-    payload.note = payload.note || null;
-    payload.updated_at = new Date().toISOString();
-    payload.updated_by = CURRENT_ADMIN_ID;
-
-    let data, error;
-    if(record){
-      ({ data, error } = await sb.from("course_enrollments").update(payload).eq("id", record.id).select().maybeSingle());
-    } else {
-      ({ data, error } = await sb.from("course_enrollments").insert(payload).select().maybeSingle());
-    }
-    if(error){ alert("Lỗi: " + error.message); return; }
-
-    // Thưởng giới thiệu dạng giảm giá, nếu chọn và đang "pending" -> đánh dấu
-    // đã dùng ngay, tránh áp lại lần nữa cho 1 khóa học khác sau này.
-    if(payload.referral_reward_id){
-      const reward = REFERRAL_ITEMS.find(r=>r.id===payload.referral_reward_id);
-      if(reward && reward.status === "pending"){
-        const { error: rewardErr } = await sb.from("referral_rewards").update({ status: "applied", applied_at: new Date().toISOString(), updated_at: new Date().toISOString(), updated_by: CURRENT_ADMIN_ID }).eq("id", reward.id);
-        if(!rewardErr){ reward.status = "applied"; reward.applied_at = new Date().toISOString(); }
-      }
-    }
-
-    // Đồng bộ lại chu kỳ học HIỆN TẠI trên profiles — y hệt nút "Gia hạn từ
-    // hôm nay" ở modal Sửa học sinh — để KPI "Sắp hết chu kỳ" + cron nhắc học
-    // vẫn hoạt động đúng mà không cần sửa gì ở 2 nơi đó.
-    await sb.from("profiles").update({
-      cycle_start_date: payload.start_date,
-      cycle_end_date: payload.end_date,
-      cycle_duration: payload.cycle_duration
-    }).eq("id", payload.student_id);
-
-    if(record){
-      const idx = COURSE_ITEMS.findIndex(it=>it.id===record.id);
-      if(idx>-1 && data) COURSE_ITEMS[idx] = data;
-    } else if(data){
-      COURSE_ITEMS.push(data);
-    }
-    closeModal();
-    renderCoursesTable();
-  };
+function renderCoursePlansTable(){
+  const sorted = [...COURSE_PLANS].sort((a,b)=> COURSE_PLAN_ORDER.indexOf(a.cycle_duration) - COURSE_PLAN_ORDER.indexOf(b.cycle_duration));
+  document.getElementById("course-plans-list-body").innerHTML = sorted.map(p=>`
+    <tr>
+      <td>${escHtmlAdmin(COURSE_PLAN_LABEL[p.cycle_duration] || p.cycle_duration)}</td>
+      <td><input type="number" min="0" id="cp-amount-${p.id}" value="${p.tuition_amount||0}" style="max-width:160px;"></td>
+      <td><input type="checkbox" id="cp-active-${p.id}" ${p.active!==false?"checked":""} style="width:auto;"></td>
+      <td style="white-space:nowrap;">
+        <button class="btn-sm" onclick="saveCoursePlanRow(${p.id})">Lưu</button>
+        <span id="cp-saved-${p.id}" style="color:var(--green);font-size:12px;margin-left:6px;"></span>
+      </td>
+    </tr>`).join("") || `<tr><td colspan="4">Chưa có dữ liệu — đã chạy migration 62 chưa?</td></tr>`;
 }
 
-document.getElementById("btn-add-course").addEventListener("click", ()=>{
-  document.getElementById("modal").innerHTML = `
-    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Thêm khóa học</h2><button class="modal-close" id="m-close">&times;</button></div>
-    <form id="item-form">${courseFieldForm(null)}
-      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Thêm</button></div>
-    </form>`;
-  wireCourseForm(null);
-});
-window.openEditCourse = function(id){
-  const record = COURSE_ITEMS.find(i=>i.id===id);
-  document.getElementById("modal").innerHTML = `
-    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Sửa khóa học</h2><button class="modal-close" id="m-close">&times;</button></div>
-    <form id="item-form">${courseFieldForm(record)}
-      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="m-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Lưu</button></div>
-    </form>`;
-  wireCourseForm(record);
-};
-window.deleteCourseItem = async function(id){
-  if(!confirm("Xoá khóa học này? (Không hoàn tác lại trạng thái thưởng giới thiệu đã áp dụng, chỉ xoá bản ghi khóa học.)")) return;
-  const { error } = await sb.from("course_enrollments").delete().eq("id", id);
+window.saveCoursePlanRow = async function(id){
+  const amount = parseFloat(document.getElementById(`cp-amount-${id}`).value) || 0;
+  const active = document.getElementById(`cp-active-${id}`).checked;
+  const { data, error } = await sb.from("course_plans").update({
+    tuition_amount: amount, active, updated_at: new Date().toISOString(), updated_by: CURRENT_ADMIN_ID
+  }).eq("id", id).select().maybeSingle();
   if(error){ alert("Lỗi: " + error.message); return; }
-  COURSE_ITEMS = COURSE_ITEMS.filter(it=>it.id!==id);
-  renderCoursesTable();
+  const idx = COURSE_PLANS.findIndex(p=>p.id===id);
+  if(idx>-1 && data) COURSE_PLANS[idx] = data;
+  const savedEl = document.getElementById(`cp-saved-${id}`);
+  savedEl.textContent = "Đã lưu ✓";
+  setTimeout(()=>{ if(savedEl) savedEl.textContent = ""; }, 2000);
 };
 
 // ---------- Khuyến mãi ----------
