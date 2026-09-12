@@ -2827,38 +2827,53 @@ async function openEditStudent(id){
           <span style="font-size:12px;color:var(--text-2);">Học phí (đ):</span>
           <input type="number" min="0" id="es-tuition" style="max-width:160px;">
         </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-          <span style="font-size:12px;color:var(--text-2);">Khuyến mãi:</span>
-          <select id="es-promotion" style="max-width:220px;"><option value="">— Không áp dụng —</option>${promoSelectOptions}</select>
-          <span style="font-size:12px;color:var(--text-2);">Thành tiền:</span>
-          <span id="es-promo-amount" style="font-weight:600;">0đ</span>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-          <span style="font-size:12px;color:var(--text-2);">Thưởng giới thiệu:</span>
-          <span id="es-referral-cell">${referralRowControl}</span>
-          <span style="font-size:12px;color:var(--text-2);">Thành tiền:</span>
-          <span id="es-referral-amount" style="font-weight:600;">0đ</span>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-          <span style="font-size:12px;color:var(--text-2);">Giảm khác — Lý do:</span>
-          <input type="text" id="es-other-reason" placeholder="Vd: hỗ trợ hoàn cảnh khó khăn..." style="max-width:200px;">
-          <span style="font-size:12px;color:var(--text-2);">Số tiền:</span>
-          <input type="number" min="0" id="es-other-amount" value="0" style="max-width:120px;">
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-          <span style="font-size:12px;color:var(--text-2);">Trạng thái:</span>
-          <select id="es-course-status" style="max-width:200px;">
-            <option value="trial">Học thử (chưa cam kết)</option>
-            <option value="unpaid">Đã đăng ký — chưa đóng đủ</option>
-            <option value="paid">Đã đóng đủ học phí</option>
-            <option value="cancelled">Đã huỷ</option>
-          </select>
-          <span style="font-size:12px;color:var(--text-2);">Đã đóng (đ):</span>
-          <input type="number" min="0" id="es-amount-paid" value="0" style="max-width:140px;">
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;margin:10px 0;">
-          <span style="font-size:12px;color:var(--text-2);">Ngày đóng:</span>
-          <input type="date" id="es-paid-at" style="max-width:160px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;align-items:center;margin:6px 0 10px;">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="font-size:12px;color:var(--text-2);white-space:nowrap;">Khuyến mãi:</span>
+            <select id="es-promotion" style="flex:1;min-width:0;"><option value="">— Không áp dụng —</option>${promoSelectOptions}</select>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="font-size:12px;color:var(--text-2);white-space:nowrap;">Thành tiền:</span>
+            <span id="es-promo-amount" style="font-weight:600;">0đ</span>
+          </div>
+
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="font-size:12px;color:var(--text-2);white-space:nowrap;">Thưởng giới thiệu:</span>
+            <span id="es-referral-cell" style="flex:1;min-width:0;">${referralRowControl}</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="font-size:12px;color:var(--text-2);white-space:nowrap;">Thành tiền:</span>
+            <span id="es-referral-amount" style="font-weight:600;">0đ</span>
+          </div>
+
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="font-size:12px;color:var(--text-2);white-space:nowrap;">Giảm khác — Lý do:</span>
+            <input type="text" id="es-other-reason" placeholder="Vd: hỗ trợ hoàn cảnh khó khăn..." style="flex:1;min-width:0;">
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="font-size:12px;color:var(--text-2);white-space:nowrap;">Số tiền:</span>
+            <input type="number" min="0" id="es-other-amount" value="0" style="flex:1;min-width:0;">
+          </div>
+
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="font-size:12px;color:var(--text-2);white-space:nowrap;">Trạng thái:</span>
+            <select id="es-course-status" style="flex:1;min-width:0;">
+              <option value="trial">Học thử (chưa cam kết)</option>
+              <option value="unpaid">Đã đăng ký — chưa đóng đủ</option>
+              <option value="paid">Đã đóng đủ học phí</option>
+              <option value="cancelled">Đã huỷ</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="font-size:12px;color:var(--text-2);white-space:nowrap;">Đã đóng (đ):</span>
+            <input type="number" min="0" id="es-amount-paid" value="0" style="flex:1;min-width:0;">
+          </div>
+
+          <div></div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="font-size:12px;color:var(--text-2);white-space:nowrap;">Ngày đóng:</span>
+            <input type="date" id="es-paid-at" style="flex:1;min-width:0;">
+          </div>
         </div>
         <div id="es-edit-notice" style="display:none;align-items:center;gap:8px;background:var(--amber-light);color:var(--amber);border-radius:6px;padding:6px 10px;margin-bottom:8px;font-size:12px;">
           <span>Đang sửa 1 dòng lịch sử đã lưu — Chu kỳ/Học phí/Khuyến mãi/Thưởng giới thiệu giữ nguyên, chỉ sửa được Giảm khác/Trạng thái/Đã đóng/Ngày đóng.</span>
