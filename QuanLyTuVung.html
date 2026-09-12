@@ -58,8 +58,6 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
 .es-tab-bar{display:flex;gap:6px;margin-bottom:14px;}
 .es-tab-btn{padding:6px 14px;border:1px solid var(--border);background:var(--bg-page);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-2);}
 .es-tab-btn.active{background:var(--navy2);color:#fff;border-color:var(--navy2);}
-.es-money-grid{display:grid;grid-template-columns:1fr 150px;gap:8px 12px;align-items:center;}
-.es-money-grid label{font-size:12px;color:var(--text-2);}
 .modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
 .modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-3);}
 .field-row{margin-bottom:12px;}
@@ -2829,31 +2827,34 @@ async function openEditStudent(id){
           <span style="font-size:12px;color:var(--text-2);">Học phí (đ):</span>
           <input type="number" min="0" id="es-tuition" style="max-width:160px;">
         </div>
-        <div class="es-money-grid">
-          <label>Khuyến mãi</label>
-          <label style="text-align:right;">Số tiền giảm</label>
-          <select id="es-promotion"><option value="">— Không áp dụng —</option>${promoSelectOptions}</select>
-          <span id="es-promo-amount" style="text-align:right;font-weight:600;">0đ</span>
-
-          <label>Thưởng giới thiệu</label>
-          <label style="text-align:right;">Số tiền giảm</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+          <span style="font-size:12px;color:var(--text-2);">Khuyến mãi:</span>
+          <select id="es-promotion" style="max-width:220px;"><option value="">— Không áp dụng —</option>${promoSelectOptions}</select>
+          <span style="font-size:12px;color:var(--text-2);">Thành tiền:</span>
+          <span id="es-promo-amount" style="font-weight:600;">0đ</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+          <span style="font-size:12px;color:var(--text-2);">Thưởng giới thiệu:</span>
           <span id="es-referral-cell">${referralRowControl}</span>
-          <span id="es-referral-amount" style="text-align:right;font-weight:600;">0đ</span>
-
-          <label>Giảm khác — Lý do</label>
-          <label style="text-align:right;">Số tiền</label>
-          <input type="text" id="es-other-reason" placeholder="Vd: hỗ trợ hoàn cảnh khó khăn...">
-          <input type="number" min="0" id="es-other-amount" value="0" style="text-align:right;">
-
-          <label>Trạng thái</label>
-          <label style="text-align:right;">Đã đóng (đ)</label>
-          <select id="es-course-status">
+          <span style="font-size:12px;color:var(--text-2);">Thành tiền:</span>
+          <span id="es-referral-amount" style="font-weight:600;">0đ</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+          <span style="font-size:12px;color:var(--text-2);">Giảm khác — Lý do:</span>
+          <input type="text" id="es-other-reason" placeholder="Vd: hỗ trợ hoàn cảnh khó khăn..." style="max-width:200px;">
+          <span style="font-size:12px;color:var(--text-2);">Số tiền:</span>
+          <input type="number" min="0" id="es-other-amount" value="0" style="max-width:120px;">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+          <span style="font-size:12px;color:var(--text-2);">Trạng thái:</span>
+          <select id="es-course-status" style="max-width:200px;">
             <option value="trial">Học thử (chưa cam kết)</option>
             <option value="unpaid">Đã đăng ký — chưa đóng đủ</option>
             <option value="paid">Đã đóng đủ học phí</option>
             <option value="cancelled">Đã huỷ</option>
           </select>
-          <input type="number" min="0" id="es-amount-paid" value="0" style="text-align:right;">
+          <span style="font-size:12px;color:var(--text-2);">Đã đóng (đ):</span>
+          <input type="number" min="0" id="es-amount-paid" value="0" style="max-width:140px;">
         </div>
         <div style="display:flex;gap:8px;align-items:center;margin:10px 0;">
           <span style="font-size:12px;color:var(--text-2);">Ngày đóng:</span>
@@ -2866,7 +2867,7 @@ async function openEditStudent(id){
         <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
           <span>Số tiền phải đóng: <b id="es-amount-due" style="color:var(--navy2);">0đ</b></span>
           <span>Số tiền còn đóng: <b id="es-amount-remaining" style="color:var(--navy2);">0đ</b></span>
-          <button type="button" class="btn btn-primary btn-sm" id="es-summarize">Lưu</button>
+          <button type="button" class="btn btn-primary btn-sm" id="es-summarize" title="Lưu" aria-label="Lưu">➕</button>
           <span id="es-tuition-result" style="font-size:12px;"></span>
         </div>
         <div style="margin-top:12px;">
@@ -3012,7 +3013,7 @@ async function openEditStudent(id){
           <button type="button" class="btn-sm" onclick="editEsEnrollment(${r.id})">Sửa</button>
           <button type="button" class="btn-sm danger" onclick="deleteEsEnrollment(${r.id})">Xoá</button>
         </td>
-      </tr>`).join("") || `<tr><td colspan="11">Chưa có lịch sử — bấm "Lưu" để ghi nhận lần đầu.</td></tr>`;
+      </tr>`).join("") || `<tr><td colspan="11">Chưa có lịch sử — bấm nút ➕ bên trên để ghi nhận lần đầu.</td></tr>`;
   }
   renderEsHistory();
 
@@ -3054,7 +3055,10 @@ async function openEditStudent(id){
     document.getElementById("es-amount-paid").value = row.amount_paid;
     document.getElementById("es-paid-at").value = row.paid_at ? new Date(row.paid_at).toISOString().slice(0,10) : "";
 
-    document.getElementById("es-summarize").textContent = "Cập nhật";
+    const esSummarizeBtn = document.getElementById("es-summarize");
+    esSummarizeBtn.textContent = "💾";
+    esSummarizeBtn.title = "Cập nhật";
+    esSummarizeBtn.setAttribute("aria-label", "Cập nhật");
     document.getElementById("es-edit-notice").style.display = "flex";
     document.getElementById("es-tuition-result").textContent = "";
     recomputeEsSummary();
@@ -3081,7 +3085,10 @@ async function openEditStudent(id){
     updateCycleEndDisplay();
     refreshEsCoursePlanOptions();
     document.getElementById("es-paid-at").value = new Date().toISOString().slice(0,10);
-    document.getElementById("es-summarize").textContent = "Lưu";
+    const esSummarizeBtnReset = document.getElementById("es-summarize");
+    esSummarizeBtnReset.textContent = "➕";
+    esSummarizeBtnReset.title = "Lưu";
+    esSummarizeBtnReset.setAttribute("aria-label", "Lưu");
     document.getElementById("es-edit-notice").style.display = "none";
     document.getElementById("es-tuition-result").textContent = "";
     recomputeEsSummary();
