@@ -2866,7 +2866,7 @@ async function openEditStudent(id){
         <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
           <span>Số tiền phải đóng: <b id="es-amount-due" style="color:var(--navy2);">0đ</b></span>
           <span>Số tiền còn đóng: <b id="es-amount-remaining" style="color:var(--navy2);">0đ</b></span>
-          <button type="button" class="btn btn-primary btn-sm" id="es-summarize">💾 Lưu</button>
+          <button type="button" class="btn btn-primary btn-sm" id="es-summarize">Lưu</button>
           <span id="es-tuition-result" style="font-size:12px;"></span>
         </div>
         <div style="margin-top:12px;">
@@ -3054,7 +3054,7 @@ async function openEditStudent(id){
     document.getElementById("es-amount-paid").value = row.amount_paid;
     document.getElementById("es-paid-at").value = row.paid_at ? new Date(row.paid_at).toISOString().slice(0,10) : "";
 
-    document.getElementById("es-summarize").textContent = "💾 Cập nhật";
+    document.getElementById("es-summarize").textContent = "Cập nhật";
     document.getElementById("es-edit-notice").style.display = "flex";
     document.getElementById("es-tuition-result").textContent = "";
     recomputeEsSummary();
@@ -3081,7 +3081,7 @@ async function openEditStudent(id){
     updateCycleEndDisplay();
     refreshEsCoursePlanOptions();
     document.getElementById("es-paid-at").value = new Date().toISOString().slice(0,10);
-    document.getElementById("es-summarize").textContent = "💾 Lưu";
+    document.getElementById("es-summarize").textContent = "Lưu";
     document.getElementById("es-edit-notice").style.display = "none";
     document.getElementById("es-tuition-result").textContent = "";
     recomputeEsSummary();
