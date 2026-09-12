@@ -54,6 +54,12 @@ textarea{width:100%;min-height:160px;padding:10px;border:1px solid var(--border)
 .overlay{display:none;position:fixed;inset:0;background:rgba(20,30,48,0.55);z-index:50;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px;}
 .overlay.show{display:flex;}
 .modal{background:#fff;border-radius:12px;width:100%;max-width:560px;padding:24px 28px;box-shadow:0 12px 40px rgba(0,0,0,.25);}
+.modal.modal-wide{max-width:820px;}
+.es-tab-bar{display:flex;gap:6px;margin-bottom:14px;}
+.es-tab-btn{padding:6px 14px;border:1px solid var(--border);background:var(--bg-page);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-2);}
+.es-tab-btn.active{background:var(--navy2);color:#fff;border-color:var(--navy2);}
+.es-money-grid{display:grid;grid-template-columns:1fr 150px;gap:8px 12px;align-items:center;}
+.es-money-grid label{font-size:12px;color:var(--text-2);}
 .modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
 .modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--text-3);}
 .field-row{margin-bottom:12px;}
@@ -1802,7 +1808,7 @@ function wireItemForm(record){
     renderTable();
   };
 }
-function closeModal(){ document.getElementById("overlay").classList.remove("show"); }
+function closeModal(){ document.getElementById("overlay").classList.remove("show"); document.getElementById("modal").classList.remove("modal-wide"); }
 document.getElementById("overlay").addEventListener("click", e=>{ if(e.target.id==="overlay") closeModal(); });
 document.getElementById("btn-add").addEventListener("click", openAdd);
 
@@ -2747,95 +2753,141 @@ async function openEditStudent(id){
   }).join("");
 
   const langOptions = LANGS_ORDER.map(code => `<option value="${code}" ${code===s.selected_language?"selected":""}>${escHtmlAdmin(LANGS_CFG[code].adminLabel || code)}</option>`).join("");
+
+  const promoSelectOptions = esActivePromos.map(p=>{
+    const label = p.discount_type === "percent" ? `${p.name} (${p.discount_value}%)` : `${p.name} (${Number(p.discount_value).toLocaleString("vi-VN")}đ)`;
+    return `<option value="${p.id}">${escHtmlAdmin(label)}</option>`;
+  }).join("");
+  // Chỉ hiện dropdown Thưởng giới thiệu nếu CÓ thưởng đang chờ — dropdown rỗng
+  // không có ý nghĩa gì, gây rối giao diện không cần thiết.
+  const referralRowControl = esPendingRewards.length
+    ? `<select id="es-referral" style="width:100%;">${courseReferralOptions(id, "", esPendingRewards)}</select>`
+    : `<span style="color:var(--text-3);font-style:italic;">Không có thưởng đang chờ áp dụng</span>`;
+
+  document.getElementById("modal").classList.add("modal-wide");
   document.getElementById("modal").innerHTML = `
     <div class="modal-head"><h2 style="margin:0;font-size:16px;">Sửa hồ sơ — ${escHtmlAdmin(s.email)}</h2><button class="modal-close" id="es-close">&times;</button></div>
-    <form id="edit-student-form">
-      <div class="field-row"><label>Số điện thoại</label><input data-f="phone" value="${(s.phone||'').replace(/"/g,'&quot;')}"></div>
-      <div class="field-row"><label>Địa chỉ</label><input data-f="address" value="${(s.address||'').replace(/"/g,'&quot;')}"></div>
-      <div class="field-row"><label>Ngôn ngữ đang chọn</label><select data-f="selected_language">${langOptions}</select></div>
-      <div class="field-row"><label>Phụ huynh</label><select id="es-parent">${personOptions(currentParentId)}</select></div>
-      <div class="field-row"><label>Giáo viên phụ trách</label><select id="es-teacher">${personOptions(currentTeacherId)}</select></div>
+    <div class="es-tab-bar">
+      <button type="button" class="es-tab-btn active" id="es-tab-info">📋 Thông tin</button>
+      <button type="button" class="es-tab-btn" id="es-tab-cycle">💰 Chu kỳ học</button>
+    </div>
+
+    <div id="es-panel-info">
+      <form id="edit-info-form">
+        <div class="field-row"><label>Số điện thoại</label><input data-f="phone" value="${(s.phone||'').replace(/"/g,'&quot;')}"></div>
+        <div class="field-row"><label>Địa chỉ</label><input data-f="address" value="${(s.address||'').replace(/"/g,'&quot;')}"></div>
+        <div class="field-row"><label>Ngôn ngữ đang chọn</label><select data-f="selected_language">${langOptions}</select></div>
+        <div class="field-row"><label>Phụ huynh</label><select id="es-parent">${personOptions(currentParentId)}</select></div>
+        <div class="field-row"><label>Giáo viên phụ trách</label><select id="es-teacher">${personOptions(currentTeacherId)}</select></div>
+        <div class="field-row">
+          <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
+            <input type="checkbox" data-f="disabled" ${s.disabled?"checked":""} style="width:auto;">
+            Vô hiệu hoá tài khoản này (không cho đăng nhập)
+          </label>
+        </div>
+        <div class="result-msg" id="edit-student-result"></div>
+        <div class="modal-actions"><button type="button" class="btn btn-ghost" id="es-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Lưu thông tin</button></div>
+      </form>
+    </div>
+
+    <div id="es-panel-cycle" style="display:none;">
       <div class="field-row">
         <label>Chu kỳ học</label>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <select data-f="cycle_duration" id="es-cycle-duration" style="width:auto;">
+          <select id="es-cycle-duration" style="width:auto;">
             <option value="week" ${(s.cycle_duration||'month')==='week'?'selected':''}>1 tuần</option>
             <option value="month" ${(s.cycle_duration||'month')==='month'?'selected':''}>1 tháng</option>
             <option value="6months" ${(s.cycle_duration||'month')==='6months'?'selected':''}>6 tháng</option>
             <option value="year" ${(s.cycle_duration||'month')==='year'?'selected':''}>1 năm</option>
           </select>
-          <input type="date" data-f="cycle_start_date" id="es-cycle-start" value="${s.cycle_start_date || new Date(s.created_at).toISOString().slice(0,10)}" style="width:auto;">
+          <input type="date" id="es-cycle-start" value="${s.cycle_start_date || new Date(s.created_at).toISOString().slice(0,10)}" style="width:auto;">
           <span>→</span>
           <span id="es-cycle-end-display" style="font-weight:700;color:var(--navy2);"></span>
           <button type="button" class="btn-sm" id="es-renew-today">Gia hạn từ hôm nay</button>
         </div>
-        <input type="hidden" data-f="cycle_end_date" id="es-cycle-end">
       </div>
 
-      <div class="field-row" style="background:var(--bg-2);border-radius:8px;padding:10px;margin:6px 0;">
+      <div class="field-row" style="background:var(--bg-page);border-radius:8px;padding:12px;margin:6px 0;">
         <label style="font-weight:700;">💰 Học phí cho chu kỳ này</label>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:6px 0 12px;">
           <span style="font-size:12px;color:var(--text-2);">Học phí (đ):</span>
-          <input type="number" min="0" id="es-tuition" style="max-width:140px;">
-          <span style="font-size:12px;color:var(--text-2);">Khuyến mãi:</span>
-          <select id="es-promotion" style="max-width:220px;">
-            <option value="">— Không áp dụng —</option>
-            ${esActivePromos.map(p=>{
-              const label = p.discount_type === "percent" ? `${p.name} (giảm ${p.discount_value}%)` : `${p.name} (giảm ${Number(p.discount_value).toLocaleString("vi-VN")}đ)`;
-              return `<option value="${p.id}">${escHtmlAdmin(label)}</option>`;
-            }).join("")}
-          </select>
+          <input type="number" min="0" id="es-tuition" style="max-width:160px;">
         </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
-          <span style="font-size:12px;color:var(--text-2);">Thưởng giới thiệu:</span>
-          <select id="es-referral" style="max-width:260px;">${courseReferralOptions(id, "", esPendingRewards)}</select>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
-          <span style="font-size:12px;color:var(--text-2);">Số tiền giảm (đ, tự tính — có thể sửa tay):</span>
-          <input type="number" min="0" id="es-discount" style="max-width:140px;">
-          <span style="font-size:12px;color:var(--text-2);">Thành tiền:</span>
-          <span id="es-final-display" style="font-weight:700;color:var(--navy2);"></span>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
-          <span style="font-size:12px;color:var(--text-2);">Trạng thái:</span>
-          <select id="es-course-status" style="max-width:200px;">
+        <div class="es-money-grid">
+          <label>Khuyến mãi</label>
+          <label style="text-align:right;">Số tiền giảm</label>
+          <select id="es-promotion"><option value="">— Không áp dụng —</option>${promoSelectOptions}</select>
+          <span id="es-promo-amount" style="text-align:right;font-weight:600;">0đ</span>
+
+          <label>Thưởng giới thiệu</label>
+          <label style="text-align:right;">Số tiền giảm</label>
+          <span id="es-referral-cell">${referralRowControl}</span>
+          <span id="es-referral-amount" style="text-align:right;font-weight:600;">0đ</span>
+
+          <label>Giảm khác — Lý do</label>
+          <label style="text-align:right;">Số tiền</label>
+          <input type="text" id="es-other-reason" placeholder="Vd: hỗ trợ hoàn cảnh khó khăn...">
+          <input type="number" min="0" id="es-other-amount" value="0" style="text-align:right;">
+
+          <label>Trạng thái</label>
+          <label style="text-align:right;">Đã đóng (đ)</label>
+          <select id="es-course-status">
             <option value="trial">Học thử (chưa cam kết)</option>
             <option value="unpaid">Đã đăng ký — chưa đóng đủ</option>
             <option value="paid">Đã đóng đủ học phí</option>
             <option value="cancelled">Đã huỷ</option>
           </select>
-          <span style="font-size:12px;color:var(--text-2);">Đã đóng (đ):</span>
-          <input type="number" min="0" id="es-amount-paid" value="0" style="max-width:140px;">
-          <span style="font-size:12px;color:var(--text-2);">Ngày đóng:</span>
-          <input type="date" id="es-paid-at" style="max-width:150px;">
+          <input type="number" min="0" id="es-amount-paid" value="0" style="text-align:right;">
         </div>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <button type="button" class="btn btn-primary btn-sm" id="es-save-tuition">💾 Lưu chu kỳ &amp; học phí</button>
+        <div style="display:flex;gap:8px;align-items:center;margin:10px 0;">
+          <span style="font-size:12px;color:var(--text-2);">Ngày đóng:</span>
+          <input type="date" id="es-paid-at" style="max-width:160px;">
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
+          <span>Số tiền phải đóng: <b id="es-amount-due" style="color:var(--navy2);">0đ</b></span>
+          <span>Số tiền còn đóng: <b id="es-amount-remaining" style="color:var(--navy2);">0đ</b></span>
+          <button type="button" class="btn btn-primary btn-sm" id="es-summarize">📊 Tổng kết</button>
           <span id="es-tuition-result" style="font-size:12px;"></span>
         </div>
-        <div style="margin-top:10px;">
+        <div style="margin-top:12px;">
           <div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:4px;">Lịch sử khóa học của học sinh này</div>
           <div class="table-wrap">
             <table style="font-size:12px;">
-              <thead><tr><th>Chu kỳ</th><th>Trạng thái</th><th>Học phí</th><th>Giảm</th><th>Thành tiền</th><th>Đã đóng</th><th>Ngày đóng</th><th></th></tr></thead>
+              <thead><tr><th>Chu kỳ</th><th>Trạng thái</th><th>Học phí</th><th>Giảm KM</th><th>Giảm GT</th><th>Giảm khác</th><th>Phải đóng</th><th>Đã đóng</th><th>Còn đóng</th><th>Ngày đóng</th><th></th></tr></thead>
               <tbody id="es-history-body"></tbody>
             </table>
           </div>
         </div>
       </div>
-
-      <div class="field-row">
-        <label style="display:flex;align-items:center;gap:8px;font-weight:600;">
-          <input type="checkbox" data-f="disabled" ${s.disabled?"checked":""} style="width:auto;">
-          Vô hiệu hoá tài khoản này (không cho đăng nhập)
-        </label>
-      </div>
-      <div class="result-msg" id="edit-student-result"></div>
-      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="es-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Lưu</button></div>
-    </form>`;
+    </div>`;
   document.getElementById("overlay").classList.add("show");
   document.getElementById("es-close").onclick = closeModal;
   document.getElementById("es-cancel").onclick = closeModal;
+
+  function showEsTab(tab){
+    document.getElementById("es-tab-info").classList.toggle("active", tab==="info");
+    document.getElementById("es-tab-cycle").classList.toggle("active", tab==="cycle");
+    document.getElementById("es-panel-info").style.display = tab==="info" ? "block" : "none";
+    document.getElementById("es-panel-cycle").style.display = tab==="cycle" ? "block" : "none";
+  }
+  document.getElementById("es-tab-info").addEventListener("click", ()=>showEsTab("info"));
+  document.getElementById("es-tab-cycle").addEventListener("click", ()=>showEsTab("cycle"));
+
+  document.getElementById("edit-info-form").onsubmit = async (e)=>{
+    e.preventDefault();
+    const payload = {};
+    e.target.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.type === "checkbox" ? el.checked : el.value; });
+    const { error } = await sb.from("profiles").update(payload).eq("id", s.id);
+    if(error){ document.getElementById("edit-student-result").textContent = "Lỗi: " + error.message; return; }
+
+    await syncPersonLink("parent_links", "parent_id", id, currentParentId, document.getElementById("es-parent").value, "parent");
+    await syncPersonLink("teacher_links", "teacher_id", id, currentTeacherId, document.getElementById("es-teacher").value, "teacher");
+
+    closeModal();
+    await loadDashboard();
+  };
+
+  // ---------- Chu kỳ học & học phí (migration 61+62+63) ----------
 
   // Ngày cuối kỳ luôn TÍNH LẠI từ ngày đầu kỳ + chu kỳ chọn (không cho gõ tay
   // trực tiếp) — tránh lệch giữa 2 ngày do sửa tay sai, đúng quy tắc "gia hạn =
@@ -2845,51 +2897,52 @@ async function openEditStudent(id){
     const duration = document.getElementById("es-cycle-duration").value;
     if(!start) return;
     const end = computeCycleEndDate(start, duration);
-    document.getElementById("es-cycle-end").value = end;
     document.getElementById("es-cycle-end-display").textContent = new Date(end+"T00:00:00").toLocaleDateString("vi-VN");
+    return end;
   };
   document.getElementById("es-cycle-start").addEventListener("change", updateCycleEndDisplay);
-  document.getElementById("es-cycle-duration").addEventListener("change", updateCycleEndDisplay);
+  document.getElementById("es-cycle-duration").addEventListener("change", ()=>{
+    updateCycleEndDisplay();
+    document.getElementById("es-tuition").value = esPlanFor(document.getElementById("es-cycle-duration").value);
+    recomputeEsSummary();
+  });
   document.getElementById("es-renew-today").addEventListener("click", ()=>{
     document.getElementById("es-cycle-start").value = new Date().toISOString().slice(0,10);
     updateCycleEndDisplay();
     document.getElementById("es-tuition").value = esPlanFor(document.getElementById("es-cycle-duration").value);
-    recomputeEsDiscount();
+    recomputeEsSummary();
   });
   updateCycleEndDisplay();
 
-  // ---------- Chu kỳ học & học phí (migration 61+62) ----------
   document.getElementById("es-tuition").value = esPlanFor(document.getElementById("es-cycle-duration").value);
   document.getElementById("es-paid-at").value = new Date().toISOString().slice(0,10);
 
-  const updateEsFinalDisplay = () => {
-    const tuition = parseFloat(document.getElementById("es-tuition").value) || 0;
-    const discount = parseFloat(document.getElementById("es-discount").value) || 0;
-    document.getElementById("es-final-display").textContent = Math.max(0, tuition - discount).toLocaleString("vi-VN") + "đ";
-  };
-  // Tự tính "Số tiền giảm" từ khuyến mãi + thưởng giới thiệu đang chọn — chỉ
-  // chạy khi đổi học phí/khuyến mãi/thưởng, KHÔNG chạy khi admin tự sửa tay ô
-  // "Số tiền giảm" (ô đó chỉ cập nhật lại "Thành tiền", đúng pattern đã dùng
-  // ở tab Từ vựng/Affiliate).
-  function recomputeEsDiscount(){
+  // Khuyến mãi/Thưởng giới thiệu CHỈ HIỂN THỊ số tiền giảm (tự tính từ % hoặc
+  // số cố định của đúng chương trình/thưởng đang chọn — không sửa tay từng
+  // khoản này); CHỈ "Giảm khác" là nhập tay tự do (không có mức cố định).
+  function recomputeEsSummary(){
     const tuition = parseFloat(document.getElementById("es-tuition").value) || 0;
     const promo = esActivePromos.find(p=>String(p.id)===document.getElementById("es-promotion").value);
-    const reward = esPendingRewards.find(r=>String(r.id)===document.getElementById("es-referral").value);
-    let discount = 0;
-    if(promo) discount += promo.discount_type === "percent" ? tuition * Number(promo.discount_value) / 100 : Number(promo.discount_value);
-    if(reward) discount += reward.discount_value_type === "percent" ? tuition * Number(reward.reward_value) / 100 : Number(reward.reward_value);
-    document.getElementById("es-discount").value = Math.round(discount);
-    updateEsFinalDisplay();
+    const referralSelect = document.getElementById("es-referral");
+    const reward = referralSelect ? esPendingRewards.find(r=>String(r.id)===referralSelect.value) : null;
+    const promoAmount = promo ? Math.round(promo.discount_type === "percent" ? tuition * Number(promo.discount_value) / 100 : Number(promo.discount_value)) : 0;
+    const referralAmount = reward ? Math.round(reward.discount_value_type === "percent" ? tuition * Number(reward.reward_value) / 100 : Number(reward.reward_value)) : 0;
+    const otherAmount = parseFloat(document.getElementById("es-other-amount").value) || 0;
+    const amountPaid = parseFloat(document.getElementById("es-amount-paid").value) || 0;
+    const amountDue = Math.max(0, tuition - promoAmount - referralAmount - otherAmount);
+    const remaining = amountDue - amountPaid;
+    document.getElementById("es-promo-amount").textContent = promoAmount.toLocaleString("vi-VN") + "đ";
+    document.getElementById("es-referral-amount").textContent = referralAmount.toLocaleString("vi-VN") + "đ";
+    document.getElementById("es-amount-due").textContent = amountDue.toLocaleString("vi-VN") + "đ";
+    document.getElementById("es-amount-remaining").textContent = remaining.toLocaleString("vi-VN") + "đ" + (remaining < 0 ? " (đã đóng dư)" : "");
+    return { promoAmount, referralAmount, otherAmount, amountDue, amountPaid };
   }
-  document.getElementById("es-cycle-duration").addEventListener("change", ()=>{
-    document.getElementById("es-tuition").value = esPlanFor(document.getElementById("es-cycle-duration").value);
-    recomputeEsDiscount();
-  });
-  document.getElementById("es-tuition").addEventListener("input", recomputeEsDiscount);
-  document.getElementById("es-promotion").addEventListener("change", recomputeEsDiscount);
-  document.getElementById("es-referral").addEventListener("change", recomputeEsDiscount);
-  document.getElementById("es-discount").addEventListener("input", updateEsFinalDisplay);
-  recomputeEsDiscount();
+  document.getElementById("es-tuition").addEventListener("input", recomputeEsSummary);
+  document.getElementById("es-promotion").addEventListener("change", recomputeEsSummary);
+  if(document.getElementById("es-referral")) document.getElementById("es-referral").addEventListener("change", recomputeEsSummary);
+  document.getElementById("es-other-amount").addEventListener("input", recomputeEsSummary);
+  document.getElementById("es-amount-paid").addEventListener("input", recomputeEsSummary);
+  recomputeEsSummary();
 
   const COURSE_STATUS_LABEL_ES = { trial: "Học thử", unpaid: "Chưa đóng đủ", paid: "Đã đóng đủ", cancelled: "Đã huỷ" };
   function renderEsHistory(){
@@ -2898,12 +2951,15 @@ async function openEditStudent(id){
         <td>${new Date(r.start_date+"T00:00:00").toLocaleDateString("vi-VN")} → ${new Date(r.end_date+"T00:00:00").toLocaleDateString("vi-VN")}</td>
         <td>${escHtmlAdmin(COURSE_STATUS_LABEL_ES[r.status]||r.status)}</td>
         <td>${Number(r.tuition_amount).toLocaleString("vi-VN")}đ</td>
-        <td>${Number(r.discount_amount).toLocaleString("vi-VN")}đ</td>
+        <td>${Number(r.promotion_discount_amount||0).toLocaleString("vi-VN")}đ</td>
+        <td>${Number(r.referral_discount_amount||0).toLocaleString("vi-VN")}đ</td>
+        <td>${Number(r.other_discount_amount||0).toLocaleString("vi-VN")}đ${r.other_discount_reason ? ` (${escHtmlAdmin(r.other_discount_reason)})` : ""}</td>
         <td>${Number(r.final_amount).toLocaleString("vi-VN")}đ</td>
         <td>${Number(r.amount_paid).toLocaleString("vi-VN")}đ</td>
+        <td>${(Number(r.final_amount) - Number(r.amount_paid)).toLocaleString("vi-VN")}đ</td>
         <td>${r.paid_at ? new Date(r.paid_at).toLocaleDateString("vi-VN") : "—"}</td>
         <td><button type="button" class="btn-sm danger" onclick="deleteEsEnrollment(${r.id})">Xoá</button></td>
-      </tr>`).join("") || `<tr><td colspan="8">Chưa có lịch sử — bấm "Lưu chu kỳ &amp; học phí" để ghi nhận lần đầu.</td></tr>`;
+      </tr>`).join("") || `<tr><td colspan="11">Chưa có lịch sử — bấm "Tổng kết" để ghi nhận lần đầu.</td></tr>`;
   }
   renderEsHistory();
 
@@ -2915,16 +2971,18 @@ async function openEditStudent(id){
     renderEsHistory();
   };
 
-  document.getElementById("es-save-tuition").addEventListener("click", async ()=>{
+  document.getElementById("es-summarize").addEventListener("click", async ()=>{
     const resultEl = document.getElementById("es-tuition-result");
     const startDate = document.getElementById("es-cycle-start").value;
     const duration = document.getElementById("es-cycle-duration").value;
     if(!startDate){ resultEl.style.color = "var(--red)"; resultEl.textContent = "Cần chọn ngày bắt đầu."; return; }
     const endDate = computeCycleEndDate(startDate, duration);
+    const referralSelect = document.getElementById("es-referral");
     const promotionId = document.getElementById("es-promotion").value ? parseInt(document.getElementById("es-promotion").value, 10) : null;
-    const referralRewardId = document.getElementById("es-referral").value ? parseInt(document.getElementById("es-referral").value, 10) : null;
+    const referralRewardId = (referralSelect && referralSelect.value) ? parseInt(referralSelect.value, 10) : null;
     const tuitionAmount = parseFloat(document.getElementById("es-tuition").value) || 0;
-    const discountAmount = parseFloat(document.getElementById("es-discount").value) || 0;
+    const otherReason = document.getElementById("es-other-reason").value.trim() || null;
+    const { promoAmount, referralAmount, otherAmount, amountDue, amountPaid } = recomputeEsSummary();
     const paidAtVal = document.getElementById("es-paid-at").value;
     const payload = {
       student_id: id,
@@ -2933,9 +2991,13 @@ async function openEditStudent(id){
       end_date: endDate,
       status: document.getElementById("es-course-status").value,
       tuition_amount: tuitionAmount,
-      discount_amount: discountAmount,
-      final_amount: Math.max(0, tuitionAmount - discountAmount),
-      amount_paid: parseFloat(document.getElementById("es-amount-paid").value) || 0,
+      promotion_discount_amount: promoAmount,
+      referral_discount_amount: referralAmount,
+      other_discount_reason: otherReason,
+      other_discount_amount: otherAmount,
+      discount_amount: promoAmount + referralAmount + otherAmount,
+      final_amount: amountDue,
+      amount_paid: amountPaid,
       paid_at: paidAtVal ? new Date(paidAtVal + "T00:00:00").toISOString() : null,
       promotion_id: promotionId,
       referral_reward_id: referralRewardId,
@@ -2953,7 +3015,15 @@ async function openEditStudent(id){
         const { error: rewardErr } = await sb.from("referral_rewards").update({ status: "applied", applied_at: new Date().toISOString(), updated_at: new Date().toISOString(), updated_by: CURRENT_ADMIN_ID }).eq("id", reward.id);
         if(!rewardErr){
           reward.status = "applied";
-          document.getElementById("es-referral").innerHTML = courseReferralOptions(id, "", esPendingRewards);
+          const remainingPending = esPendingRewards.filter(r=>r.status==="pending");
+          const cell = document.getElementById("es-referral-cell");
+          if(cell){
+            cell.innerHTML = remainingPending.length
+              ? `<select id="es-referral" style="width:100%;">${courseReferralOptions(id, "", esPendingRewards)}</select>`
+              : `<span style="color:var(--text-3);font-style:italic;">Không có thưởng đang chờ áp dụng</span>`;
+            const newSel = document.getElementById("es-referral");
+            if(newSel) newSel.addEventListener("change", recomputeEsSummary);
+          }
         }
       }
     }
@@ -2967,6 +3037,7 @@ async function openEditStudent(id){
 
     if(data) esEnrollments.unshift(data);
     renderEsHistory();
+    recomputeEsSummary();
 
     // Patch trực tiếp DASH_STUDENTS trong bộ nhớ (thay vì tải lại cả trang) —
     // để 2 thẻ KPI "Đã đóng học phí"/"Đang học thử" đúng ngay lập tức.
@@ -2983,20 +3054,6 @@ async function openEditStudent(id){
     resultEl.textContent = "Đã lưu ✓";
     setTimeout(()=>{ if(resultEl) resultEl.textContent = ""; }, 2500);
   });
-
-  document.getElementById("edit-student-form").onsubmit = async (e)=>{
-    e.preventDefault();
-    const payload = {};
-    e.target.querySelectorAll("[data-f]").forEach(el=>{ payload[el.dataset.f] = el.type === "checkbox" ? el.checked : el.value; });
-    const { error } = await sb.from("profiles").update(payload).eq("id", s.id);
-    if(error){ document.getElementById("edit-student-result").textContent = "Lỗi: " + error.message; return; }
-
-    await syncPersonLink("parent_links", "parent_id", id, currentParentId, document.getElementById("es-parent").value, "parent");
-    await syncPersonLink("teacher_links", "teacher_id", id, currentTeacherId, document.getElementById("es-teacher").value, "teacher");
-
-    closeModal();
-    await loadDashboard();
-  };
 }
 
 // Đồng bộ 1 loại liên kết (phụ huynh/giáo viên) cho 1 học sinh khi Lưu modal Sửa
