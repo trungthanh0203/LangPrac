@@ -61,6 +61,13 @@ header.top h1{font-size:18px;margin:0;font-weight:700;}
 .dash-card .label{display:block;font-size:11.5px;color:var(--text-2);margin-bottom:4px;}
 .dash-card .num{display:block;font-size:24px;font-weight:800;color:var(--navy2);}
 .dash-card.warn .num{color:var(--red);}
+.dash-card.clickable{cursor:pointer;transition:box-shadow .15s;}
+.dash-card.clickable:hover{box-shadow:0 4px 14px rgba(20,42,77,0.18);}
+.dash-card.active-filter{outline:2px solid var(--teal);outline-offset:-2px;}
+.content-legend-item{display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 6px;border-radius:6px;transition:opacity .15s;}
+.content-legend-item:hover{background:var(--bg-page);}
+.content-legend-item.dim{opacity:.4;}
+.content-legend-dot{width:11px;height:11px;border-radius:3px;flex:none;}
 .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:8px;}
 table{width:100%;border-collapse:collapse;font-size:13px;}
 thead th{position:sticky;top:0;background:var(--navy2);color:#fff;text-align:left;padding:9px 12px;font-weight:600;white-space:nowrap;}
@@ -692,11 +699,34 @@ async function afterLogin(){
 // ============================================================
 let TEACHER_STUDENTS = [];
 let CURRENT_DETAIL_STUDENT = null;
+// Bộ lọc từ 3 thẻ KPI + biểu đồ "Học sinh theo mức điểm trung bình" (bấm để lọc
+// bảng danh sách bên dưới, đúng pattern đã dùng ở QuanLyTuVung.html) — kết hợp
+// AND với nhau khi lọc, bấm lại 1 lựa chọn đang chọn để bỏ lọc.
+let TEACHER_FILTER = { activeToday: false, notActiveToday: false, scoreBucket: null };
+
+function activeTodayOf(s){ return !!(s.lastActivityAt && new Date(s.lastActivityAt).toDateString() === new Date().toDateString()); }
+// 4 mức điểm trung bình + 1 mức "Chưa làm bài" (avgPercent null) — CÙNG hàm này
+// dùng để đếm cho biểu đồ VÀ lọc bảng, đảm bảo bấm vào 1 phần luôn lọc ra đúng
+// những học sinh đã được đếm vào phần đó.
+function scoreBucketKeyOf(s){
+  if(s.avgPercent == null) return "none";
+  if(s.avgPercent <= 25) return "0-25";
+  if(s.avgPercent <= 50) return "26-50";
+  if(s.avgPercent <= 75) return "51-75";
+  return "76-100";
+}
+// Vẽ lại cả 3 thẻ KPI + biểu đồ + bảng danh sách theo đúng TEACHER_FILTER hiện tại.
+function refreshTeacherStats(){
+  renderTeacherCards(TEACHER_STUDENTS);
+  renderTeacherScoreChart(TEACHER_STUDENTS);
+  renderTeacherStudentList(TEACHER_STUDENTS);
+}
 
 async function loadOverview(teacherId){
   const cardsEl = document.getElementById("teacher-cards");
   cardsEl.innerHTML = `<div class="dash-card"><span class="label">Đang tải...</span></div>`;
   document.getElementById("teacher-student-list-body").innerHTML = `<tr><td colspan="6">Đang tải…</td></tr>`;
+  TEACHER_FILTER = { activeToday: false, notActiveToday: false, scoreBucket: null };
   await langsConfigPromise;
 
   const { data: links, error: linkError } = await sb.from("teacher_links").select("student_id").eq("teacher_id", teacherId);
@@ -734,58 +764,70 @@ async function loadOverview(teacherId){
     };
   }));
 
-  renderTeacherCards(TEACHER_STUDENTS);
-  renderTeacherScoreChart(TEACHER_STUDENTS);
-  renderTeacherStudentList(TEACHER_STUDENTS);
+  refreshTeacherStats();
 }
 
+// 3 thẻ KPI — thẻ đầu "Học sinh phụ trách / Điểm trung bình" gộp 2 số liệu
+// chung 1 thẻ (KHÔNG bấm được, đúng khuôn thẻ đầu tiên ở QuanLyTuVung.html);
+// 2 thẻ còn lại bấm được để lọc bảng danh sách bên dưới
+// (TEACHER_FILTER.activeToday/notActiveToday) — viền teal khi đang là bộ lọc
+// active, bấm lại chính thẻ đó để bỏ lọc.
 function renderTeacherCards(students){
   const total = students.length;
   const withScores = students.filter(s => s.avgPercent != null);
   const avgAll = withScores.length ? Math.round(withScores.reduce((s,x)=>s+x.avgPercent,0) / withScores.length) : null;
-  const today = new Date().toDateString();
-  const activeToday = students.filter(s => s.lastActivityAt && new Date(s.lastActivityAt).toDateString() === today).length;
+  const activeToday = students.filter(activeTodayOf).length;
+  const notActiveToday = total - activeToday;
   document.getElementById("teacher-cards").innerHTML = `
-    <div class="dash-card"><span class="label">Tổng học sinh phụ trách</span><span class="num">${total}</span></div>
-    <div class="dash-card"><span class="label">Điểm trung bình chung</span><span class="num">${avgAll==null?'—':avgAll+'%'}</span></div>
-    <div class="dash-card"><span class="label">Hoạt động hôm nay</span><span class="num">${activeToday}</span></div>
+    <div class="dash-card"><span class="label">Học sinh phụ trách / Điểm trung bình</span><span class="num">${total} / ${avgAll==null?'—':avgAll+'%'}</span></div>
+    <div class="dash-card clickable${TEACHER_FILTER.activeToday?' active-filter':''}" id="tkpi-active-today"><span class="label">Hoạt động hôm nay</span><span class="num">${activeToday}</span></div>
+    <div class="dash-card clickable${notActiveToday>0?' warn':''}${TEACHER_FILTER.notActiveToday?' active-filter':''}" id="tkpi-not-active-today"><span class="label">Chưa hoạt động</span><span class="num">${notActiveToday}</span></div>
   `;
+  document.getElementById("tkpi-active-today").addEventListener("click", ()=>{
+    TEACHER_FILTER.activeToday = !TEACHER_FILTER.activeToday;
+    refreshTeacherStats();
+  });
+  document.getElementById("tkpi-not-active-today").addEventListener("click", ()=>{
+    TEACHER_FILTER.notActiveToday = !TEACHER_FILTER.notActiveToday;
+    refreshTeacherStats();
+  });
 }
 
 // Donut SVG tự vẽ (không dùng thư viện ngoài) — cùng kỹ thuật đã dùng ở
 // QuanLyTuVung.html (renderDonutChart()), viết riêng 1 bản gọn cho trang này vì
 // mỗi trang trong dự án tự chứa 1 <script> độc lập (không import chung được).
+// Bấm vào 1 phần cung/dòng chú thích → lọc bảng danh sách theo đúng mức điểm đó
+// (TEACHER_FILTER.scoreBucket, dùng chung scoreBucketKeyOf() với renderTeacherStudentList()
+// để đảm bảo bấm vào phần nào lọc ra đúng những học sinh đã đếm vào phần đó).
 function renderTeacherScoreChart(students){
   const buckets = [
-    { label: "0–25% (Cần cải thiện)", color: "var(--red)", value: 0 },
-    { label: "26–50% (Trung bình)", color: "#f2994a", value: 0 },
-    { label: "51–75% (Khá)", color: "var(--teal)", value: 0 },
-    { label: "76–100% (Tốt)", color: "var(--green)", value: 0 },
-    { label: "Chưa làm bài", color: "var(--text-3)", value: 0 }
+    { key: "0-25", label: "0–25% (Cần cải thiện)", color: "var(--red)", value: 0 },
+    { key: "26-50", label: "26–50% (Trung bình)", color: "#f2994a", value: 0 },
+    { key: "51-75", label: "51–75% (Khá)", color: "var(--teal)", value: 0 },
+    { key: "76-100", label: "76–100% (Tốt)", color: "var(--green)", value: 0 },
+    { key: "none", label: "Chưa làm bài", color: "var(--text-3)", value: 0 }
   ];
-  students.forEach(s=>{
-    if(s.avgPercent == null) buckets[4].value++;
-    else if(s.avgPercent <= 25) buckets[0].value++;
-    else if(s.avgPercent <= 50) buckets[1].value++;
-    else if(s.avgPercent <= 75) buckets[2].value++;
-    else buckets[3].value++;
-  });
+  const byKey = Object.fromEntries(buckets.map(b=>[b.key,b]));
+  students.forEach(s=> byKey[scoreBucketKeyOf(s)].value++);
   const total = buckets.reduce((s,b)=>s+b.value, 0);
   const el = document.getElementById("teacher-score-chart");
   if(!total){ el.innerHTML = `<p class="empty-msg">Chưa có dữ liệu.</p>`; return; }
 
+  const selectedKey = TEACHER_FILTER.scoreBucket;
   const R = 70, C = 2*Math.PI*R, cx = 100, cy = 100, strokeW = 30;
   let offset = 0;
   const arcs = buckets.filter(b=>b.value>0).map(b=>{
     const len = (b.value/total) * C;
-    const html = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${b.color}" stroke-width="${strokeW}" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-offset}"></circle>`;
+    const isDim = selectedKey && selectedKey !== b.key;
+    const html = `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${b.color}" stroke-width="${strokeW}" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-offset}" data-key="${b.key}" style="cursor:pointer;opacity:${isDim?0.3:1};transition:opacity .15s;"></circle>`;
     offset += len;
     return html;
   }).join("");
   const legendHtml = buckets.map(b=>{
     const pct = Math.round(b.value/total*100);
-    return `<div style="display:flex;align-items:center;gap:8px;padding:3px 0;font-size:12.5px;">
-      <span style="width:11px;height:11px;border-radius:3px;background:${b.color};flex:none;"></span>
+    const isDim = selectedKey && selectedKey !== b.key;
+    return `<div class="content-legend-item${isDim?' dim':''}" data-key="${b.key}" title="${b.label}: ${b.value} (${pct}%)">
+      <span class="content-legend-dot" style="background:${b.color};"></span>
       <span style="flex:1;">${b.label}</span><b>${b.value}</b>&nbsp;<span style="color:var(--text-2);">(${pct}%)</span>
     </div>`;
   }).join("");
@@ -799,10 +841,26 @@ function renderTeacherScoreChart(students){
     </div>
     <div style="flex:1;min-width:180px;">${legendHtml}</div>
   </div>`;
+  el.querySelectorAll("[data-key]").forEach(node => node.addEventListener("click", ()=>{
+    TEACHER_FILTER.scoreBucket = (TEACHER_FILTER.scoreBucket === node.dataset.key) ? null : node.dataset.key;
+    refreshTeacherStats();
+  }));
 }
 
+// Áp TEACHER_FILTER (3 thẻ KPI + biểu đồ điểm) lên danh sách — students truyền
+// vào LUÔN là TOÀN BỘ TEACHER_STUDENTS, lọc ngay trong hàm này để renderTeacherCards()/
+// renderTeacherScoreChart() vẫn tính trên số liệu ĐẦY ĐỦ (không bị lọc trước).
 function renderTeacherStudentList(students){
-  document.getElementById("teacher-student-list-body").innerHTML = students.length ? students.map(s=>{
+  const filtered = students.filter(s=>{
+    if(TEACHER_FILTER.activeToday && !activeTodayOf(s)) return false;
+    if(TEACHER_FILTER.notActiveToday && activeTodayOf(s)) return false;
+    if(TEACHER_FILTER.scoreBucket && scoreBucketKeyOf(s) !== TEACHER_FILTER.scoreBucket) return false;
+    return true;
+  });
+  const emptyMsg = !students.length
+    ? "Chưa có học sinh nào được phân công cho tài khoản này."
+    : "Không có học sinh nào khớp bộ lọc hiện tại.";
+  document.getElementById("teacher-student-list-body").innerHTML = filtered.length ? filtered.map(s=>{
     const langLbl = s.selectedLanguage ? langLabel(s.selectedLanguage) : "—";
     const lastActive = s.lastActivityAt ? new Date(s.lastActivityAt).toLocaleDateString("vi-VN") : "Chưa từng hoạt động";
     return `<tr>
@@ -813,7 +871,7 @@ function renderTeacherStudentList(students){
       <td>${lastActive}</td>
       <td><button class="btn-sm" data-view-student="${s.id}" data-email="${escHtml(s.email).replace(/"/g,'&quot;')}">Xem</button></td>
     </tr>`;
-  }).join("") : `<tr><td colspan="6">Chưa có học sinh nào được phân công cho tài khoản này.</td></tr>`;
+  }).join("") : `<tr><td colspan="6">${emptyMsg}</td></tr>`;
 
   document.querySelectorAll("[data-view-student]").forEach(btn=>{
     btn.addEventListener("click", ()=> showStudentDetail(btn.dataset.viewStudent, btn.dataset.email));
