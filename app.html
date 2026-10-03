@@ -328,9 +328,6 @@ footer.foot{text-align:center;font-size:11.5px;color:var(--text-3);padding:18px 
       <div class="auth-field"><label>Nhập lại mật khẩu</label><input type="password" id="reg-password2" required autocomplete="new-password"></div>
       <div class="auth-field"><label>Số điện thoại</label><input type="tel" id="reg-phone" required autocomplete="tel"></div>
       <div class="auth-field"><label>Địa chỉ</label><input type="text" id="reg-address" required autocomplete="street-address"></div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;margin:6px 0 2px;cursor:pointer;">
-        <input type="checkbox" id="reg-as-parent" style="width:auto;margin:0;"> Đăng ký làm phụ huynh
-      </label>
       <button type="submit" class="auth-submit" id="register-submit">Đăng ký</button>
       <div class="auth-msg" id="register-msg"></div>
     </form>
@@ -565,9 +562,8 @@ async function boot(){
     // Phụ huynh/giáo viên bấm "Xem giao diện học sinh" (mục 13.32) đặt cờ này
     // trước khi mở app.html — có cờ thì bỏ qua redirect về đúng dashboard của
     // họ, cho vào thẳng giao diện học sinh bằng chính tài khoản của mình.
-    // Phụ huynh luôn bị chuyển về PhuHuynh.html (không có ngoại lệ xem thử).
-    if(await isParentUser(session.user.id)){ window.location.href = "PhuHuynh.html"; return; }
     if(sessionStorage.getItem("viewAsStudent") !== "1"){
+      if(await isParentUser(session.user.id)){ window.location.href = "PhuHuynh.html"; return; }
       if(await isTeacherUser(session.user.id)){ window.location.href = "GiaoVien.html"; return; }
     }
     await enterApp(session.user);
@@ -594,21 +590,9 @@ async function isAccountDisabled(userId){
   return !!(data && data.disabled);
 }
 
-// Phụ huynh KHÔNG vào được giao diện học sinh (không còn cờ viewAsStudent cho
-// phụ huynh). Tài khoản đăng ký bằng checkbox "Đăng ký làm phụ huynh" mang cờ
-// register_as_parent trong user_metadata (có thể chưa gán được role lúc signUp
-// vì chờ xác nhận email) → tự nâng role='parent' ở lần đăng nhập đầu tiên.
 async function isParentUser(userId){
   const { data } = await sb.from("profiles").select("role").eq("id", userId).maybeSingle();
-  if(data && data.role === "parent") return true;
-  if(data && data.role === "student"){
-    const { data: { user } } = await sb.auth.getUser();
-    if(user && user.id === userId && user.user_metadata && user.user_metadata.register_as_parent){
-      const { error } = await sb.from("profiles").update({ role: "parent" }).eq("id", userId);
-      return !error;
-    }
-  }
-  return false;
+  return !!(data && data.role === "parent");
 }
 
 async function isTeacherUser(userId){
@@ -701,8 +685,8 @@ document.getElementById("login-form").addEventListener("submit", async (e)=>{
     return;
   }
   if(await isAdminUser(data.user.id)){ window.location.href = "QuanLyTuVung.html"; return; }
-  if(await isParentUser(data.user.id)){ window.location.href = "PhuHuynh.html"; return; }
   if(sessionStorage.getItem("viewAsStudent") !== "1"){
+    if(await isParentUser(data.user.id)){ window.location.href = "PhuHuynh.html"; return; }
     if(await isTeacherUser(data.user.id)){ window.location.href = "GiaoVien.html"; return; }
   }
   await enterApp(data.user);
@@ -717,7 +701,6 @@ document.getElementById("register-form").addEventListener("submit", async (e)=>{
   const password2 = document.getElementById("reg-password2").value;
   const phone = document.getElementById("reg-phone").value.trim();
   const address = document.getElementById("reg-address").value.trim();
-  const asParent = document.getElementById("reg-as-parent").checked;
 
   if(password !== password2){ msg.className = "auth-msg err"; msg.textContent = "Mật khẩu nhập lại không khớp."; return; }
 
@@ -725,7 +708,7 @@ document.getElementById("register-form").addEventListener("submit", async (e)=>{
   btn.disabled = true; btn.textContent = "Đang đăng ký...";
   const { data, error } = await sb.auth.signUp({
     email, password,
-    options: { data: asParent ? { phone, address, register_as_parent: true } : { phone, address } }
+    options: { data: { phone, address } }
   });
   btn.disabled = false; btn.textContent = "Đăng ký";
   if(error){ msg.className = "auth-msg err"; msg.textContent = error.message; return; }
@@ -733,7 +716,6 @@ document.getElementById("register-form").addEventListener("submit", async (e)=>{
   if(data.session){
     // Email confirmation đang TẮT ở Supabase -> có phiên đăng nhập ngay
     if(await isAdminUser(data.user.id)){ window.location.href = "QuanLyTuVung.html"; return; }
-    if(await isParentUser(data.user.id)){ window.location.href = "PhuHuynh.html"; return; }
     await enterApp(data.user);
   } else {
     // Email confirmation đang BẬT -> cần xác nhận email trước khi đăng nhập được
@@ -792,7 +774,7 @@ async function enterApp(user){
   document.getElementById("main-wrap").classList.remove("hidden");
   document.getElementById("user-email-label").textContent = user.email;
 
-  if(sessionStorage.getItem("viewAsStudent") === "1" && profile && profile.role === "teacher"){
+  if(sessionStorage.getItem("viewAsStudent") === "1" && profile && (profile.role === "parent" || profile.role === "teacher")){
     showPreviewBanner(profile.role, user.email);
   }
 

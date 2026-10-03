@@ -132,8 +132,12 @@ header.top h1{font-size:18px;margin:0;font-weight:700;}
 
 <div class="wrap" id="main-wrap" style="display:none;">
   <header class="top">
-    <h1 id="parent-email-label" style="word-break:break-all;"></h1>
-    <button class="btn btn-outline" id="btn-logout">Thoát</button>
+    <h1>👪 Bảng theo dõi học tập</h1>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <span id="parent-email-label" style="font-size:13px;opacity:.85;"></span>
+      <button class="btn btn-outline" id="btn-view-as-student">🎓 Xem giao diện học sinh</button>
+      <button class="btn btn-outline" id="btn-logout">Đăng xuất</button>
+    </div>
   </header>
   <div class="date-filter-bar">
     <label for="activity-date-filter">Xem hoạt động ngày:</label>
@@ -265,6 +269,14 @@ document.getElementById("btn-logout").addEventListener("click", doLogout);
 document.getElementById("btn-logout-denied").addEventListener("click", doLogout);
 async function doLogout(){ await sb.auth.signOut(); showScreen("login"); }
 
+// Cho phụ huynh xem thử giao diện học sinh bằng chính tài khoản của mình (mục
+// 13.32) — lưu cờ tạm trong sessionStorage (chỉ tồn tại trong tab hiện tại),
+// app.html đọc cờ này để bỏ qua redirect về đúng PhuHuynh.html như bình thường.
+document.getElementById("btn-view-as-student").addEventListener("click", ()=>{
+  sessionStorage.setItem("viewAsStudent", "1");
+  window.location.href = "app.html";
+});
+
 let CURRENT_PARENT_ID = null;
 
 function todayLocalDateStr(){
@@ -293,7 +305,7 @@ async function afterLogin(){
   }
   showScreen("main");
   CURRENT_PARENT_ID = user.id;
-  document.getElementById("parent-email-label").textContent = "👪 " + (user.email || "");
+  document.getElementById("parent-email-label").textContent = user.email || "";
   const dateInput = document.getElementById("activity-date-filter");
   dateInput.value = todayLocalDateStr();
   dateInput.addEventListener("change", ()=> loadDashboard(CURRENT_PARENT_ID));
@@ -318,12 +330,7 @@ async function loadDashboard(parentId){
 
   const { data: links, error: linkError } = await sb.from("parent_links").select("student_id").eq("parent_id", parentId);
   if(linkError){ area.innerHTML = `<div class="empty-msg">Lỗi tải dữ liệu: ${linkError.message}</div>`; return; }
-  const filterBar = document.querySelector(".date-filter-bar");
-  if(filterBar) filterBar.style.display = (links && links.length) ? "flex" : "none";
-  if(!links || !links.length){
-    area.innerHTML = `<div class="card" style="text-align:center;"><h2>Con là ai nào?</h2><div class="sub" style="margin:8px 0 0;">Tài khoản của bạn đã đăng ký thành công. Quản trị viên sẽ xác nhận con của bạn và liên kết vào tài khoản này. Vui lòng quay lại sau hoặc liên hệ Mr.Thanh để được hỗ trợ nhanh hơn.</div></div>`;
-    return;
-  }
+  if(!links || !links.length){ area.innerHTML = `<div class="empty-msg">Chưa có học sinh nào được liên kết với tài khoản này.</div>`; return; }
 
   const dateStr = document.getElementById("activity-date-filter").value || todayLocalDateStr();
   const onlyQuiz = document.getElementById("only-quiz-filter").checked;
