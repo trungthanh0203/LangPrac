@@ -816,6 +816,16 @@ td.content-col-highlight{outline:2px solid var(--teal);outline-offset:-2px;}
         bình thường của app), admin chỉ cần chọn đúng tài khoản đã đăng ký đó
         khi sửa hồ sơ học sinh. Ở đây chỉ để xem tổng quan + đổi mật khẩu khi cần.
       </div>
+      <div class="card" id="unassigned-parents-card" style="display:none;border-left:4px solid var(--red);">
+        <h3>⚠️ Phụ huynh đăng ký chưa gán con (<span id="unassigned-parent-count">0</span>)</h3>
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:10px;">Xác nhận con của họ rồi bấm "Gán con" để chọn tài khoản học sinh.</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Email</th><th>Điện thoại</th><th>Ngày đăng ký</th><th></th></tr></thead>
+            <tbody id="unassigned-parent-body"></tbody>
+          </table>
+        </div>
+      </div>
       <div class="card" id="parent-table-card">
         <h3>Phụ huynh (<span id="parent-count">0</span>)</h3>
         <div class="table-wrap">
@@ -3260,6 +3270,20 @@ async function loadParents(){
   const counts = countBy(parentLinks, "parent_id");
 
   document.getElementById("parent-count").textContent = profiles.length;
+  // Phụ huynh tự đăng ký nhưng chưa có liên kết nào (và chưa bị khoá) → admin xác nhận con rồi gán.
+  const unassigned = profiles.filter(p => !counts[p.id] && !p.disabled);
+  document.getElementById("unassigned-parents-card").style.display = unassigned.length ? "block" : "none";
+  document.getElementById("unassigned-parent-count").textContent = unassigned.length;
+  document.getElementById("unassigned-parent-body").innerHTML = unassigned.map(p => `
+    <tr>
+      <td>${escHtmlAdmin(p.email||p.id)}</td>
+      <td>${escHtmlAdmin(p.phone || "—")}</td>
+      <td>${p.created_at ? new Date(p.created_at).toLocaleDateString("vi-VN") : "—"}</td>
+      <td><button class="btn-sm" data-assign-child="${p.id}" data-email="${escHtmlAdmin(p.email||p.id).replace(/"/g,'&quot;')}">Gán con</button></td>
+    </tr>`).join("");
+  document.querySelectorAll("#unassigned-parent-body [data-assign-child]").forEach(btn=>{
+    btn.addEventListener("click", ()=> openAssignChild(btn.dataset.assignChild, btn.dataset.email));
+  });
   document.getElementById("parent-list-body").innerHTML = profiles.length ? profiles.map(p => `
     <tr>
       <td>${escHtmlAdmin(p.email||p.id)}${p.disabled ? ' <span style="color:var(--red);font-weight:700;">(Đã khoá)</span>' : ''}</td>
@@ -3282,6 +3306,43 @@ async function loadParents(){
   document.querySelectorAll("#parent-list-body [data-edit-person]").forEach(btn=>{
     btn.addEventListener("click", ()=> openEditPerson(btn.dataset.editPerson));
   });
+}
+
+// Modal "Gán con" cho phụ huynh mới đăng ký: gõ/chọn email học sinh (datalist)
+// rồi tạo liên kết parent_links. Danh sách học sinh tải phân trang .range()
+// vì profiles có thể vượt 1000 dòng (giới hạn mặc định PostgREST).
+async function openAssignChild(parentId, parentEmail){
+  const students = [];
+  for(let from = 0; ; from += 1000){
+    const { data } = await sb.from("profiles").select("id,email").eq("role", "student").order("email").range(from, from + 999);
+    if(!data || !data.length) break;
+    students.push(...data);
+    if(data.length < 1000) break;
+  }
+  document.getElementById("modal").innerHTML = `
+    <div class="modal-head"><h2 style="margin:0;font-size:16px;">Gán con cho ${escHtmlAdmin(parentEmail)}</h2><button class="modal-close" id="ac-close">&times;</button></div>
+    <form id="assign-child-form">
+      <div class="field-row"><label>Email tài khoản học sinh (con)</label>
+        <input id="ac-student" list="ac-student-list" autocomplete="off" placeholder="Gõ để tìm email học sinh" required>
+        <datalist id="ac-student-list">${students.map(s=>`<option value="${escHtmlAdmin(s.email||"").replace(/"/g,'&quot;')}"></option>`).join("")}</datalist>
+      </div>
+      <div class="result-msg" id="assign-child-result"></div>
+      <div class="modal-actions"><button type="button" class="btn btn-ghost" id="ac-cancel">Huỷ</button><button type="submit" class="btn btn-primary">Xác nhận gán</button></div>
+    </form>`;
+  document.getElementById("overlay").classList.add("show");
+  document.getElementById("ac-close").onclick = closeModal;
+  document.getElementById("ac-cancel").onclick = closeModal;
+  document.getElementById("assign-child-form").onsubmit = async (e)=>{
+    e.preventDefault();
+    const res = document.getElementById("assign-child-result");
+    const typed = document.getElementById("ac-student").value.trim().toLowerCase();
+    const st = students.find(s => (s.email||"").toLowerCase() === typed);
+    if(!st){ res.textContent = "Không tìm thấy học sinh với email này."; return; }
+    const { error } = await sb.from("parent_links").insert({ parent_id: parentId, student_id: st.id });
+    if(error && error.code !== "23505"){ res.textContent = "Lỗi: " + error.message; return; }
+    closeModal();
+    await loadParents();
+  };
 }
 
 async function loadTeachers(){
